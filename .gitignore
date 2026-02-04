@@ -30,3 +30,6 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# I edit my Markdown in Obsidian, alright.
+.obsidian
