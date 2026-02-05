@@ -67,7 +67,7 @@ func (m manager) Init() tea.Cmd {
 func main() {
 	m := models.InitialModel()
 
-	m.List.Title = "GitHub Repos"
+	m.Model.Title = "GitHub Repos"
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
 

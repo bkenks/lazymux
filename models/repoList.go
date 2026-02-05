@@ -26,12 +26,12 @@ var docStyle = lipgloss.NewStyle().Margin(1, 2)
 /////////////////////////////////////
 //// Interface: tea.Model
 type RepoList struct {
-	List list.Model
+	Model list.Model
 }
 
 func InitialModel() RepoList {
 	return RepoList{
-		List: list.New(listRepos(), list.NewDefaultDelegate(), 0, 0),
+		Model: list.New(listRepos(), list.NewDefaultDelegate(), 0, 0),
 	}
 }
 
@@ -49,7 +49,7 @@ func (m RepoList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 			if msg.String() == "enter" {
-				selectedRepo := m.list.SelectedItem()
+				selectedRepo := m.Model.SelectedItem()
 				var fullRepoPath string
 				if repo, ok := selectedRepo.(repo); ok {
 					fullRepoPath = getFullRepoPath(repo.path)
@@ -62,7 +62,7 @@ func (m RepoList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		/////////////////////////////////////
 		case tea.WindowSizeMsg:
 			h, v := docStyle.GetFrameSize()
-			m.List.SetSize(msg.Width-h, msg.Height-v)
+			m.Model.SetSize(msg.Width-h, msg.Height-v)
 		/////////////////////////////////////
 
 	}
@@ -71,13 +71,13 @@ func (m RepoList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Output
 	var cmd tea.Cmd
-	m.List, cmd = m.List.Update(msg)
+	m.Model, cmd = m.Model.Update(msg)
 	return m, cmd
 	// End "Output"
 }
 
 func (m RepoList) View() string {
-	return docStyle.Render(m.List.View())
+	return docStyle.Render(m.Model.View())
 }
 //// End "Interface: tea.Model"
 /////////////////////////////////////
