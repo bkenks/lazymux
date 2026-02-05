@@ -31,18 +31,17 @@ type RepoList struct {
 	Model list.Model
 }
 
-func InitialRepoListModel() *RepoList {
-	return &RepoList{
+func InitialRepoListModel() RepoList {
+	return RepoList{
 		Model: list.New(listRepos(), list.NewDefaultDelegate(), 0, 0),
 	}
 }
 
-func (m *RepoList) Init() tea.Cmd {
-	// m.Model = list.New(listRepos(), list.NewDefaultDelegate(), 0, 0)
+func (m RepoList) Init() tea.Cmd {
 	return nil
 }
 
-func (m *RepoList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m RepoList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -65,8 +64,8 @@ func (m *RepoList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.WindowSizeMsg:
 			h, v := docStyle.GetFrameSize()
 			m.Model.SetSize(msg.Width-h, msg.Height-v)
-			// m.windowWidth = msg.Width
-			// m.windowHeight = msg.Height
+			m.windowWidth = msg.Width
+			m.windowHeight = msg.Height
 		/////////////////////////////////////
 	}
 
@@ -78,7 +77,7 @@ func (m *RepoList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// End "Output"
 }
 
-func (m *RepoList) View() string {
+func (m RepoList) View() string {
 	return docStyle.Render(m.Model.View())
 }
 //// End "Interface: tea.Model"
