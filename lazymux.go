@@ -14,61 +14,34 @@ import (
 var docStyle = lipgloss.NewStyle().Margin(1, 2)
 
 type manager struct {
-	currentModel tea.Model
+	Model tea.Model
+}
+
+func initalManagerModel() manager {
+	return manager{
+		Model: models.InitialRepoListModel(),
+	}
 }
 
 func (m manager) Init() tea.Cmd {
 	return nil
 }
 
-// func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m manager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 
-// 	switch msg:= msg.(type) {
+	m.Model, cmd = m.Model.Update(msg)
+	return m, cmd
+}
 
-// 		/////////////////////////////////////
-// 		case tea.KeyMsg:
-// 			if msg.String() == "ctrl+c" {
-// 				return m, tea.Quit
-// 			}
-// 			if msg.String() == "enter" {
-// 				selectedRepo := m.list.SelectedItem()
-// 				var fullRepoPath string
-// 				if repo, ok := selectedRepo.(repo); ok {
-// 					fullRepoPath = getFullRepoPath(repo.path)
-// 				}
-				
-// 				cmd := openLazygit(fullRepoPath)
-				
-// 				return m, cmd
-// 			}
-// 		/////////////////////////////////////
-// 		case tea.WindowSizeMsg:
-// 			h, v := docStyle.GetFrameSize()
-// 			m.list.SetSize(msg.Width-h, msg.Height-v)
-// 		/////////////////////////////////////
-
-// 	}
-
-// 	/////////////////////////////////////
-
-// 	// Output
-// 	var cmd tea.Cmd
-// 	m.list, cmd = m.list.Update(msg)
-// 	return m, cmd
-// 	// End "Output"
-// }
-
-// func (m model) View() string {
-// 	return docStyle.Render()
-// }
+func (m manager) View() string {
+	return docStyle.Render(m.Model.View())
+}
 
 
 
 func main() {
-	m := models.InitialRepoListModel()
-
-	m.Model.Title = "GitHub Repos"
-
+	m := initalManagerModel()
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	if _,err := p.Run(); err != nil {
