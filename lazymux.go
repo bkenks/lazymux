@@ -65,7 +65,7 @@ func (m manager) Init() tea.Cmd {
 
 
 func main() {
-	m := models.InitialModel()
+	m := models.InitialRepoListModel()
 
 	m.Model.Title = "GitHub Repos"
 

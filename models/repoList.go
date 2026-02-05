@@ -29,7 +29,7 @@ type RepoList struct {
 	Model list.Model
 }
 
-func InitialModel() RepoList {
+func InitialRepoListModel() RepoList {
 	return RepoList{
 		Model: list.New(listRepos(), list.NewDefaultDelegate(), 0, 0),
 	}
