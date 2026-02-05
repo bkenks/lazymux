@@ -33,3 +33,6 @@ go.work.sum
 
 # I edit my Markdown in Obsidian, alright.
 .obsidian
+
+# Build Zips
+.zips
