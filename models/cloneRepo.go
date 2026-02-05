@@ -12,38 +12,29 @@ type CloneRepo struct {
 	Model textinput.Model
 }
 
-func InitialCloneRepoModel() *CloneRepo {
+func InitialCloneRepoModel() CloneRepo {
 	ti := textinput.New()
 	ti.Placeholder = "ex: git@github.com:ispenttoo/muchtimeonthis.git..."
 	ti.Focus()
 	ti.CharLimit = 156
 	ti.Width = 20
 
-	return &CloneRepo{
+	return CloneRepo{
 		Model: ti,
 	}
 }
 
-func (m *CloneRepo) Init() tea.Cmd {
+func (m CloneRepo) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (m *CloneRepo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m CloneRepo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-
-	// switch msg := msg.(type) {
-	// case tea.KeyMsg:
-	// 	switch msg.Type {
-	// 	case tea.KeyEnter, tea.KeyCtrlC, tea.KeyEsc:
-	// 		return m, tea.Quit
-	// 	}
-	// }
-
 	m.Model, cmd = m.Model.Update(msg)
 	return m, cmd 
 }
 
-func (m *CloneRepo) View() string {
+func (m CloneRepo) View() string {
 	foreStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), true).
 		BorderForeground(lipgloss.Color("#FF06B7")).
