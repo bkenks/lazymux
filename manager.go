@@ -23,32 +23,46 @@ type Manager struct {
 	overlay      tea.Model
 }
 
-func InitialManagerModel() Manager {
-	thisForeground := models.InitialCloneRepoModel()
-	thisBackground := models.InitialRepoListModel()
+// func InitialManagerModel() Manager {
+// 	thisForeground := models.InitialCloneRepoModel()
+// 	thisBackground := models.InitialRepoListModel()
 
-	return Manager{
-		state: mainView,
-		foreground: thisForeground,
-		background: thisBackground,
-		overlay: overlay.New(
-			thisForeground,
-			thisBackground,
-			overlay.Center,
-			overlay.Center,
-			0,
-			0,
-		),
-	}
-}
+// 	return Manager{
+// 		state: mainView,
+// 		foreground: thisForeground,
+// 		background: thisBackground,
+// 		overlay: overlay.New(
+// 			thisForeground,
+// 			thisBackground,
+// 			overlay.Center,
+// 			overlay.Center,
+// 			0,
+// 			0,
+// 		),
+// 	}
+// }
 
 // Init initialises the Manager on program load. It partly implements the tea.Model interface.
-func (m Manager) Init() tea.Cmd {
+func (m *Manager) Init() tea.Cmd {
+	m.state = mainView
+	m.foreground = models.InitialCloneRepoModel()
+	m.background = models.InitialRepoListModel()
+	m.overlay = overlay.New(
+		m.foreground,
+		m.background,
+		overlay.Center,
+		overlay.Center,
+		0,
+		0,
+	)
 	return nil
 }
 
 // Update handles event and manages internal state. It partly implements the tea.Model interface.
-func (m Manager) Update(message tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Manager) Update(message tea.Msg) (tea.Model, tea.Cmd) {
+	var fg, bg tea.Model
+	var fgCmd, bgCmd tea.Cmd
+	
 	switch msg := message.(type) {
 	case tea.WindowSizeMsg:
 		m.windowWidth = msg.Width
@@ -56,24 +70,27 @@ func (m Manager) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "q", "esc":
+		case "q":
 			return m, tea.Quit
+			
+		case "ctrl+n":
+			m.state = modalView
+			return m, nil
 
-		case " ":
-			if m.state == mainView {
-				m.state = modalView
-			} else {
-				m.state = mainView
-			}
+		case "esc":
+			m.state = mainView
 			return m, nil
 		}
 	}
 
-	fg, fgCmd := m.foreground.Update(message)
-	m.foreground = fg
-
-	bg, bgCmd := m.background.Update(message)
-	m.background = bg
+	
+	if m.state == modalView {
+		fg, fgCmd = m.foreground.Update(message)
+		m.foreground = fg
+	} else {
+		bg, bgCmd = m.background.Update(message)
+		m.background = bg
+	}
 
 	cmds := []tea.Cmd{}
 	cmds = append(cmds, fgCmd, bgCmd)
@@ -83,7 +100,7 @@ func (m Manager) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 // View applies and styling and handles rendering the view. It partly implements the tea.Model
 // interface.
-func (m Manager) View() string {
+func (m *Manager) View() string {
 	if m.state == modalView {
 		return m.overlay.View()
 	}

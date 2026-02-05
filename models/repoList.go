@@ -26,29 +26,31 @@ var docStyle = lipgloss.NewStyle().Margin(1, 2)
 /////////////////////////////////////
 //// Interface: tea.Model
 type RepoList struct {
+	windowWidth  int
+	windowHeight int
 	Model list.Model
 }
 
-func InitialRepoListModel() RepoList {
-	return RepoList{
+func InitialRepoListModel() *RepoList {
+	return &RepoList{
 		Model: list.New(listRepos(), list.NewDefaultDelegate(), 0, 0),
 	}
 }
 
-func (m RepoList) Init() tea.Cmd {
+func (m *RepoList) Init() tea.Cmd {
+	// m.Model = list.New(listRepos(), list.NewDefaultDelegate(), 0, 0)
 	return nil
 }
 
-func (m RepoList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *RepoList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 
-	switch msg:= msg.(type) {
+	switch msg := msg.(type) {
 
 		/////////////////////////////////////
 		case tea.KeyMsg:
-			if msg.String() == "ctrl+c" {
-				return m, tea.Quit
-			}
-			if msg.String() == "enter" {
+			switch msg.String() {
+			case "enter":
 				selectedRepo := m.Model.SelectedItem()
 				var fullRepoPath string
 				if repo, ok := selectedRepo.(repo); ok {
@@ -63,20 +65,20 @@ func (m RepoList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.WindowSizeMsg:
 			h, v := docStyle.GetFrameSize()
 			m.Model.SetSize(msg.Width-h, msg.Height-v)
+			// m.windowWidth = msg.Width
+			// m.windowHeight = msg.Height
 		/////////////////////////////////////
-
 	}
 
 	/////////////////////////////////////
 
 	// Output
-	var cmd tea.Cmd
 	m.Model, cmd = m.Model.Update(msg)
 	return m, cmd
 	// End "Output"
 }
 
-func (m RepoList) View() string {
+func (m *RepoList) View() string {
 	return docStyle.Render(m.Model.View())
 }
 //// End "Interface: tea.Model"

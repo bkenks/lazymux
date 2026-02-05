@@ -1,51 +1,59 @@
 package models
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type CloneRepo struct {
+	windowWidth  int
+	windowHeight int
 	Model textinput.Model
 }
 
-func InitialCloneRepoModel() CloneRepo {
+func InitialCloneRepoModel() *CloneRepo {
 	ti := textinput.New()
 	ti.Placeholder = "ex: git@github.com:ispenttoo/muchtimeonthis.git..."
 	ti.Focus()
 	ti.CharLimit = 156
 	ti.Width = 20
 
-	return CloneRepo{
+	return &CloneRepo{
 		Model: ti,
 	}
 }
 
-func (m CloneRepo) Init() tea.Cmd {
+func (m *CloneRepo) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (m CloneRepo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *CloneRepo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEnter, tea.KeyCtrlC, tea.KeyEsc:
-			return m, tea.Quit
-		}
-	}
+	// switch msg := msg.(type) {
+	// case tea.KeyMsg:
+	// 	switch msg.Type {
+	// 	case tea.KeyEnter, tea.KeyCtrlC, tea.KeyEsc:
+	// 		return m, tea.Quit
+	// 	}
+	// }
 
 	m.Model, cmd = m.Model.Update(msg)
 	return m, cmd 
 }
 
-func (m CloneRepo) View() string {
-	return fmt.Sprintf(
-		"Enter your repository url:\n\n%s\n\n%s",
-		m.Model.View(),
-		"(esc to quit)",
-	) + "\n"
+func (m *CloneRepo) View() string {
+	foreStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder(), true).
+		BorderForeground(lipgloss.Color("#FF06B7")).
+		Padding(0, 1)
+
+	boldStyle := lipgloss.NewStyle().Bold(true)
+	title := boldStyle.Render("Enter your repository url\n")
+	content := m.Model.View()
+	footer := "\n(esc to quit)\n"
+	layout := lipgloss.JoinVertical(lipgloss.Left, title, content, footer)
+
+	return foreStyle.Render(layout)
 }
