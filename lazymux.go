@@ -11,10 +11,9 @@ import (
 
 // var docStyle: lipgloss.NewStyle().Margin(1, 2)
 
-
 func main() {
 
-	tui := &Manager{}
+	tui := InitManagerModel()
 	p := tea.NewProgram(tui, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error running program:", err)

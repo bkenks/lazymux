@@ -5,6 +5,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+
+
 type sessionState int
 
 const (
@@ -16,20 +18,23 @@ type Manager struct {
 	state		sessionState
 	repoList	tea.Model
 	cloneRepo	tea.Model
-	Model		tea.Model
+}
+
+func InitManagerModel() Manager {
+	return Manager{
+		state: mainView,
+		repoList: models.InitialRepoListModel(),
+		cloneRepo: models.InitialCloneRepoModel(),
+	}
 }
 
 // Init initialises the Manager on program load. It partly implements the tea.Model interface.
-func (m *Manager) Init() tea.Cmd {
-	m.state = mainView
-	m.repoList = models.InitialRepoListModel()
-	m.cloneRepo = models.InitialCloneRepoModel()
-	m.Model = m.repoList
+func (m Manager) Init() tea.Cmd {
 	return nil
 }
 
 // Update handles event and manages internal state. It partly implements the tea.Model interface.
-func (m *Manager) Update(message tea.Msg) (tea.Model, tea.Cmd) {
+func (m Manager) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	var fg, bg tea.Model
 	var fgCmd, bgCmd tea.Cmd
 	
@@ -66,7 +71,7 @@ func (m *Manager) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 // View applies and styling and handles rendering the view. It partly implements the tea.Model
 // interface.
-func (m *Manager) View() string {
+func (m Manager) View() string {
 	if m.state == cloneRepo {
 		return m.cloneRepo.View()
 	}
