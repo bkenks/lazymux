@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	tui "github.com/bkenks/lazymux/internal/app"
+	"github.com/bkenks/lazymux/tui"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
