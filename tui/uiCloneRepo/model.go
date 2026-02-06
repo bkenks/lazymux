@@ -1,11 +1,16 @@
 package uiCloneRepo
 
 import (
+	"github.com/bkenks/lazymux/constants"
 	"github.com/bkenks/lazymux/tui/commands"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Interface: tea.Model
+// - Model (UI) for the dialog to clone a new repo
 
 type Model struct {
 	width  int
@@ -13,29 +18,27 @@ type Model struct {
 	Model textinput.Model
 }
 
-func InitialModel() Model {
+
+func New() *Model {
 	ti := textinput.New()
 	ti.Placeholder = "ex: git@github.com:ispenttoo/muchtimeonthis.git..."
 	ti.Focus()
 	ti.CharLimit = 156
 	ti.Width = 50
 
-	return Model{
+	return &Model{
 		Model: ti,
 	}
 }
 
-func (m Model) Init() tea.Cmd {
-	return textinput.Blink
-}
+
+func (m Model) Init() tea.Cmd { return textinput.Blink }
+
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
@@ -51,25 +54,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd 
 }
 
+
 func (m Model) View() string {
-	foreStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder(), true).
-		BorderForeground(lipgloss.Color("#FF06B7")).
-		Padding(0, 1)
-
-
-	boldStyle := lipgloss.NewStyle().Bold(true)
-	title := boldStyle.Render("Enter your repository url\n")
-	content := m.Model.View()
-	footer := "\n(esc to quit)\n"
-	layout := lipgloss.JoinVertical(lipgloss.Center, title, content, footer)
+	title := constants.DialogTitleStyle.Render("Enter Your Repository URL:\n\n")
+	textInput := m.Model.View()
+	footer := "\n(esc to go back)"
+	layout := lipgloss.JoinVertical(lipgloss.Left, title, textInput, footer)
 
 	return lipgloss.Place(
-		m.width,
-		m.height,
+		constants.WindowSize.Width,
+		constants.WindowSize.Height,
+		lipgloss.Left,
 		lipgloss.Center,
-		lipgloss.Center,
-		foreStyle.Render(layout),
+		constants.DialogStyle.Render(layout),
 	)
 	
 }
+
+// End "Interface: tea.Model"
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////

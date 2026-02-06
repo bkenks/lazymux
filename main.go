@@ -14,7 +14,7 @@ import (
 
 func main() {
 
-	tui := tui.InitialModel()
+	tui := tui.New()
 	p := tea.NewProgram(tui, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error running program:", err)

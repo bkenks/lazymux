@@ -1,11 +1,18 @@
 package tui
 
 import (
+	"github.com/bkenks/lazymux/constants"
 	"github.com/bkenks/lazymux/tui/commands"
 	"github.com/bkenks/lazymux/tui/uiCloneRepo"
 	"github.com/bkenks/lazymux/tui/uiMain"
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Interface: tea.Model
+//
+// ModelManager:
+//	- Model for managing sub-Models (i.e other UI/Views/Screens)
 
 type sessionState int
 
@@ -14,46 +21,51 @@ const (
 	stateCloneRepo
 )
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Interfaces
-
 type ModelManager struct {
 	state 		sessionState
 	main 		tea.Model
 	cloneRepo 	tea.Model
-	width		int
-	height		int
 }
 
-func InitialModel() ModelManager {
-	return ModelManager{
-		state: stateMain,
-		main: uiMain.InitialModel(),
-		cloneRepo: uiCloneRepo.InitialModel(),
+func New() *ModelManager {
+	return &ModelManager{  // Not sure why using pointer but I saw it somewhere (prolly performace). Don't have to use, works without
+		state: stateMain, // Initial state of TUI
+		main: uiMain.New(), // Main Model (List)
+		cloneRepo: uiCloneRepo.New(), // CloneRepo Model (Dialog)
 	}
 }
 
-func (m ModelManager) Init() tea.Cmd {
-	return nil
-}
+func (m ModelManager) Init() tea.Cmd { return nil }
 
 func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+
+	/////////////////////////////////////
+	// Set func-scoped cmds
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
+
+	/////////////////////////////////////
+	// UI Manager
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.height = msg.Height
-		m.width = msg.Width
+		constants.WindowSize = msg
 	case commands.MsgCloneRepoDialog:
+		m.cloneRepo = uiCloneRepo.New()
 		m.state = stateCloneRepo
 	case commands.MsgQuitRepoDialog:
 		m.state = stateMain
 	case commands.MsgGhqGet:
 		m.state = stateMain
-		return m, commands.UpdateRepoList()
+		constants.RepoList = constants.RefreshRepos()
+		return m, nil
 	}
+	// End "UI Manager"
+	/////////////////////////////////////
 
+
+	/////////////////////////////////////
+	// Input & Model Router
 	switch m.state {
 	case stateMain:
 		newMain, newCmd := m.main.Update(msg)
@@ -72,19 +84,28 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cloneRepo = cloneRepoModel
 		cmd = newCmd
 	}
+	// End "Input Router"
+	/////////////////////////////////////
 
+
+	/////////////////////////////////////
+	// Pass Model and Cmds from sub-Models to self (main update/event loop)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
 
 func (m ModelManager) View() string {
+	var currentView string
+
 	switch m.state {
 	case stateCloneRepo:
-		return m.cloneRepo.View()
+		currentView = m.cloneRepo.View()
 	default:
-		return m.main.View()
+		currentView = m.main.View()
 	}
+
+	return constants.DocStyle.Render(currentView)
 }
 
-// End "Interfaces"
+// End "Interface: tea.Model"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
