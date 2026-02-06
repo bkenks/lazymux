@@ -1,8 +1,7 @@
-package cloneRepoUI
+package uiCloneRepo
 
 import (
-	"os/exec"
-
+	"github.com/bkenks/lazymux/tui/commands"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -40,10 +39,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
-			cmd = cmdEsc() // Send message to ModelManager to change state to CloneRepoUI
+			cmd = commands.QuitRepoDialog() // Send message to ModelManager to change state to CloneRepoUI
 			return m, cmd
 		case "enter":
-			cmd = cloneRepo(m.Model.Value())
+			cmd = commands.CloneRepoAction(m.Model.Value())
 			return m, cmd
 		}
 	}
@@ -74,38 +73,3 @@ func (m Model) View() string {
 	)
 	
 }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Cmds & Msgs
-
-type MsgEsc struct {}
-
-func cmdEsc() tea.Cmd {
-	return func() tea.Msg {
-		return MsgEsc{}
-	}
-}
-
-type MsgGhqGet struct { err error }
-
-func cloneRepo (repo string) tea.Cmd {
-	c := exec.Command("ghq", "get", repo)
-
-	cmd := tea.ExecProcess(c, func(err error) tea.Msg {
-		return MsgGhqGet{err: err}
-	})
-
-	return tea.Cmd(cmd)
-}
-
-// End "Cmds & Msgs"
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Functions
-
-
-
-// End "Functions"
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////

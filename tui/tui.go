@@ -1,8 +1,9 @@
 package tui
 
 import (
-	"github.com/bkenks/lazymux/internal/pkg/tui/cloneRepoUI"
-	"github.com/bkenks/lazymux/internal/pkg/tui/mainUI"
+	"github.com/bkenks/lazymux/tui/commands"
+	"github.com/bkenks/lazymux/tui/uiCloneRepo"
+	"github.com/bkenks/lazymux/tui/uiMain"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -27,8 +28,8 @@ type ModelManager struct {
 func InitialModel() ModelManager {
 	return ModelManager{
 		state: stateMain,
-		main: mainUI.InitialModel(),
-		cloneRepo: cloneRepoUI.InitialModel(),
+		main: uiMain.InitialModel(),
+		cloneRepo: uiCloneRepo.InitialModel(),
 	}
 }
 
@@ -44,19 +45,19 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
 		m.width = msg.Width
-	case mainUI.MsgCtrlN:
+	case commands.MsgCloneRepoDialog:
 		m.state = stateCloneRepo
-	case cloneRepoUI.MsgEsc:
+	case commands.MsgQuitRepoDialog:
 		m.state = stateMain
-	case cloneRepoUI.MsgGhqGet:
+	case commands.MsgGhqGet:
 		m.state = stateMain
-		return m, mainUI.UpdateRepoList()
+		return m, commands.UpdateRepoList()
 	}
 
 	switch m.state {
 	case stateMain:
 		newMain, newCmd := m.main.Update(msg)
-		mainModel, ok := newMain.(mainUI.Model)
+		mainModel, ok := newMain.(uiMain.Model)
 		if !ok {
 			panic("could not perform assertion on main model")
 		}
@@ -64,9 +65,9 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = newCmd
 	case stateCloneRepo:
 		newCloneRepo, newCmd := m.cloneRepo.Update(msg)
-		cloneRepoModel, ok := newCloneRepo.(cloneRepoUI.Model)
+		cloneRepoModel, ok := newCloneRepo.(uiCloneRepo.Model)
 		if !ok {
-			panic("could not perform assertion on cloneRepoUI model")
+			panic("could not perform assertion on uiCloneRepo model")
 		}
 		m.cloneRepo = cloneRepoModel
 		cmd = newCmd

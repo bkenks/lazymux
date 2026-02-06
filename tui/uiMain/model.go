@@ -1,4 +1,4 @@
-package mainUI
+package uiMain
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/bkenks/lazymux/tui/commands"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -57,7 +58,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 
-	case msgUpdateProjectList:
+	case commands.MsgUpdateProjectList:
 		m.List.SetItems(listRepos())
 	/////////////////////////////////////
 	case tea.KeyMsg:
@@ -73,7 +74,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			
 			return m, cmd
 		case "ctrl+n":
-			cmd = cmdCtrlN() // Send message to ModelManager to change state to CloneRepoUI
+			cmd = commands.CloneRepoDialog() // Send message to ModelManager to change state to CloneRepoUI
 			return m, cmd
 		}
 	/////////////////////////////////////
@@ -119,22 +120,7 @@ func (r repo) FilterValue() string			{ return r.name }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Cmds & Msgs
 
-type (
-	msgUpdateProjectList struct{}
-	MsgCtrlN struct {}
-)
 
-func cmdCtrlN() (tea.Cmd) {
-	return func() tea.Msg {
-		return MsgCtrlN{}
-	}
-}
-
-func UpdateRepoList() (tea.Cmd) {
-	return func() tea.Msg {
-		return msgUpdateProjectList{}
-	}
-}
 
 // End "Cmds"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
