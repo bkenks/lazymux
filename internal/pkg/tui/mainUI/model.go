@@ -1,4 +1,4 @@
-package models
+package mainUI
 
 import (
 	"fmt"
@@ -20,71 +20,88 @@ var docStyle = lipgloss.NewStyle().Margin(1, 2)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Types
+
+
+// End "Types"
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Interfaces
 
 /////////////////////////////////////
 //// Interface: tea.Model
-type RepoList struct {
+type Model struct {
 	windowWidth  int
 	windowHeight int
-	Model list.Model
+	List list.Model
 }
 
-func InitialRepoListModel() RepoList {
-	return RepoList{
-		Model: list.New(listRepos(), list.NewDefaultDelegate(), 0, 0),
+func InitialModel() Model {
+	return Model{
+		List: list.New(listRepos(), list.NewDefaultDelegate(), 0, 0),
 	}
 }
 
-func (m RepoList) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m RepoList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 
-		/////////////////////////////////////
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "enter":
-				selectedRepo := m.Model.SelectedItem()
-				var fullRepoPath string
-				if repo, ok := selectedRepo.(repo); ok {
-					fullRepoPath = getFullRepoPath(repo.path)
-				}
-				
-				cmd := openLazygit(fullRepoPath)
-				
-				return m, cmd
+	case msgUpdateProjectList:
+		m.List.SetItems(listRepos())
+	/////////////////////////////////////
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			selectedRepo := m.List.SelectedItem()
+			var fullRepoPath string
+			if repo, ok := selectedRepo.(repo); ok {
+				fullRepoPath = getFullRepoPath(repo.path)
 			}
-		/////////////////////////////////////
-		case tea.WindowSizeMsg:
-			h, v := docStyle.GetFrameSize()
-			m.Model.SetSize(msg.Width-h, msg.Height-v)
-			m.windowWidth = msg.Width
-			m.windowHeight = msg.Height
-		/////////////////////////////////////
+			
+			cmd := openLazygit(fullRepoPath)
+			
+			return m, cmd
+		case "ctrl+n":
+			cmd = cmdCtrlN() // Send message to ModelManager to change state to CloneRepoUI
+			return m, cmd
+		}
+	/////////////////////////////////////
+	case tea.WindowSizeMsg:
+		h, v := docStyle.GetFrameSize()
+		m.List.SetSize(msg.Width-h, msg.Height-v)
+		m.windowWidth = msg.Width
+		m.windowHeight = msg.Height
+	/////////////////////////////////////
 	}
 
 	/////////////////////////////////////
-
 	// Output
-	m.Model, cmd = m.Model.Update(msg)
-	return m, cmd
+	m.List, cmd = m.List.Update(msg)
+	cmds = append(cmds, cmd)
+	return m, tea.Batch(cmds...)
 	// End "Output"
+	/////////////////////////////////////
 }
 
-func (m RepoList) View() string {
-	return docStyle.Render(m.Model.View())
+func (m Model) View() string {
+	return docStyle.Render(m.List.View())
 }
 //// End "Interface: tea.Model"
 /////////////////////////////////////
 
 /////////////////////////////////////
-//// Interface: list.Item
+//// Interface: List.Item
 type repo struct {
 	name, path string
 }
@@ -92,10 +109,34 @@ type repo struct {
 func (r repo) Title() string				{ return r.name }
 func (r repo) Description() string			{ return r.path }
 func (r repo) FilterValue() string			{ return r.name }
-//// End "Interface: list.Item"
+//// End "Interface: List.Item"
 /////////////////////////////////////
 
 // End "Interfaces"
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Cmds & Msgs
+
+type (
+	msgUpdateProjectList struct{}
+	MsgCtrlN struct {}
+)
+
+func cmdCtrlN() (tea.Cmd) {
+	return func() tea.Msg {
+		return MsgCtrlN{}
+	}
+}
+
+func UpdateRepoList() (tea.Cmd) {
+	return func() tea.Msg {
+		return msgUpdateProjectList{}
+	}
+}
+
+// End "Cmds"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -107,7 +148,7 @@ func listRepos() ([]list.Item) {
 	out, err := cmd.Output()
 
 	if err != nil {
-		fmt.Println("Error getting repo list:", err)
+		fmt.Println("Error getting repo List:", err)
 		os.Exit(1)
 	}
 
@@ -135,7 +176,7 @@ func listRepos() ([]list.Item) {
 }
 
 func getFullRepoPath(repo string) (string) {
-	cmd := exec.Command("ghq", "list", "--full-path", repo)
+	cmd := exec.Command("ghq", "List", "--full-path", repo)
 	out, err := cmd.Output()
 
 	if err != nil {
