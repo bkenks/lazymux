@@ -50,10 +50,10 @@ func CloneRepoAction(repoUrl string) tea.Cmd {
 // Msgs
 type (
 	MsgUpdateProjectList struct{}
-	MsgConfirmDeleteDialogAffirmative struct{}
 	MsgConfirmDeleteDialog struct{
 		repoPath string
 	}
+	MsgConfirmDeleteDialogQuit struct{}
 )
 
 
@@ -77,11 +77,12 @@ func ConfirmDeleteDialog() (tea.Cmd) {
 	}
 }
 
-func ConfirmDeleteDialogAffirmative() (tea.Cmd) {
+func ConfirmDeleteDialogQuit() (tea.Cmd) {
 	return func() tea.Msg {
-		return MsgConfirmDeleteDialogAffirmative{}
+		return MsgConfirmDeleteDialogQuit{}
 	}
 }
+
 // End "UI Cmds"
 /////////////////////////////////////
 

@@ -137,13 +137,13 @@ func GetFullRepoPath(repo string) (string) {
 
 type KeyMap struct {
     C key.Binding
-    CtrlShiftD key.Binding
+    D key.Binding
 }
 
 func (k KeyMap) Bindings() []key.Binding {
 	return []key.Binding{
 		k.C,
-		k.CtrlShiftD,
+		k.D,
 	}
 }
 
@@ -152,9 +152,9 @@ var DefaultKeyMap = KeyMap{
         key.WithKeys("c"),        // actual keybindings
         key.WithHelp("c", "clone repo"), // corresponding help text
     ),
-	CtrlShiftD: key.NewBinding(
-        key.WithKeys("ctrl+shift+d"),        // actual keybindings
-        key.WithHelp("ctrl+shift+d", "delete repo"), // corresponding help text
+	D: key.NewBinding(
+        key.WithKeys("d"),        // actual keybindings
+        key.WithHelp("d", "delete repo"), // corresponding help text
     ),
 }
 

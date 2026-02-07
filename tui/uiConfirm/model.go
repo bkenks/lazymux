@@ -14,7 +14,7 @@ func New() *Model {
 	return &Model{
 		form: *huh.NewForm(
 			huh.NewGroup(
-				huh.NewConfirm().Title("Are you sure?").Affirmative("Yes").Negative("No"),
+				huh.NewConfirm().Key("confirm").Title("Are you sure?").Affirmative("Yes").Negative("No"),
 			),
 		),
 	}
@@ -34,8 +34,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if m.form.State == huh.StateCompleted {
 		// Quit when the form is done.
-		cmd = commands.DeleteRepoAction(m.RepoPath)
-		return m, cmd
+		if m.form.GetBool("confirm") {
+			cmd = commands.DeleteRepoAction(m.RepoPath)
+		} else {
+			cmd = commands.ConfirmDeleteDialogQuit()
+		}
 	}
 	
 	return m, cmd

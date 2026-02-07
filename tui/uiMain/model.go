@@ -51,8 +51,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 
 	switch msg := msg.(type) {
-	case commands.MsgConfirmDeleteDialogAffirmative:
-		
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "enter":

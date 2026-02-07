@@ -56,8 +56,14 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case commands.MsgCloneRepoDialog:
 		m.cloneRepo = *uiCloneRepo.New()
 		m.state = stateCloneRepo
+	case commands.MsgConfirmDeleteDialog:
+		m.confirmDelete = *uiConfirm.New()
+		m.state = stateConfirmDelete
 	case commands.MsgQuitRepoDialog:
 		m.state = stateMain
+	case commands.MsgConfirmDeleteDialogQuit:
+		m.state = stateMain
+	/////////////////////////////////////
 	case commands.MsgGhqGet:
 		m.state = stateMain
 		constants.RepoList = constants.RefreshRepos()
@@ -65,8 +71,6 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case commands.MsgGhqRm:
 		constants.RepoList = constants.RefreshRepos()
 		m.main = *uiMain.New()
-	case commands.MsgConfirmDeleteDialog:
-		m.state = stateConfirmDelete
 	}
 	// End "UI Manager"
 	/////////////////////////////////////
