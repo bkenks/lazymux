@@ -51,6 +51,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 
 	switch msg := msg.(type) {
+	case commands.MsgConfirmDeleteDialogAffirmative:
+		
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "enter":
@@ -66,12 +68,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "c":
 			cmd = commands.CloneRepoDialog() // Send message to ModelManager to change state to CloneRepoUI
 			return m, cmd
-		case "ctrl+shift+d":
-			selectedRepo := m.List.SelectedItem()
-			if repo, ok := selectedRepo.(constants.Repo); ok {
-				cmd = commands.DeleteRepoAction(repo.Path)
-				return m, cmd
-			}
+		case "d":
+			cmd = commands.ConfirmDeleteDialog() // Send message to ModelManager to change state to CloneRepoUI
+			return m, cmd
 		}
 	case tea.WindowSizeMsg:
 		x, y := constants.DocStyle.GetFrameSize()

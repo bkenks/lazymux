@@ -35,18 +35,6 @@ func CloneRepoAction(repoUrl string) tea.Cmd {
 
 	return cmd
 }
-
-func DeleteRepoAction(repoGhqPath string) tea.Cmd {
-	c := exec.Command("ghq", "rm", repoGhqPath)
-
-	c.Stdin = strings.NewReader("y")
-
-	cmd := tea.ExecProcess(c, func(err error) tea.Msg {
-		return MsgGhqRm{err: err}
-	})
-
-	return cmd
-}
 // End "External Action Cmds"
 /////////////////////////////////////
 
@@ -62,6 +50,10 @@ func DeleteRepoAction(repoGhqPath string) tea.Cmd {
 // Msgs
 type (
 	MsgUpdateProjectList struct{}
+	MsgConfirmDeleteDialogAffirmative struct{}
+	MsgConfirmDeleteDialog struct{
+		repoPath string
+	}
 )
 
 
@@ -76,6 +68,18 @@ func CloneRepoDialog() (tea.Cmd) {
 func UpdateRepoList() (tea.Cmd) {
 	return func() tea.Msg {
 		return MsgUpdateProjectList{}
+	}
+}
+
+func ConfirmDeleteDialog() (tea.Cmd) {
+	return func() tea.Msg {
+		return MsgConfirmDeleteDialog{}
+	}
+}
+
+func ConfirmDeleteDialogAffirmative() (tea.Cmd) {
+	return func() tea.Msg {
+		return MsgConfirmDeleteDialogAffirmative{}
 	}
 }
 // End "UI Cmds"
@@ -93,6 +97,18 @@ func OpenLazygitAction(path string) tea.Cmd {
 	})
 	
 	return tea.Cmd(cmd)
+}
+
+func DeleteRepoAction(repoGhqPath string) tea.Cmd {
+	c := exec.Command("ghq", "rm", repoGhqPath)
+
+	c.Stdin = strings.NewReader("y")
+
+	cmd := tea.ExecProcess(c, func(err error) tea.Msg {
+		return MsgGhqRm{err: err}
+	})
+
+	return cmd
 }
 
 // End "uiMain: Cmds & Msgs"
