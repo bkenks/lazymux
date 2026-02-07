@@ -2,6 +2,7 @@ package commands
 
 import (
 	"os/exec"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -14,6 +15,7 @@ type (
 	MsgCloneRepoDialog struct {}
 	MsgQuitRepoDialog struct {}
 	MsgGhqGet struct { err error }
+	MsgGhqRm struct {err error}
 )
 
 // UI Cmds
@@ -23,16 +25,31 @@ func QuitRepoDialog() tea.Cmd {
 	}
 }
 
+/////////////////////////////////////
 // External Action Cmds
-func CloneRepoAction(repo string) tea.Cmd {
-	c := exec.Command("ghq", "get", repo)
-
+func CloneRepoAction(repoUrl string) tea.Cmd {
+	c := exec.Command("ghq", "get", repoUrl)
 	cmd := tea.ExecProcess(c, func(err error) tea.Msg {
 		return MsgGhqGet{err: err}
 	})
 
-	return tea.Cmd(cmd)
+	return cmd
 }
+
+func DeleteRepoAction(repoGhqPath string) tea.Cmd {
+	c := exec.Command("ghq", "rm", repoGhqPath)
+
+	c.Stdin = strings.NewReader("y")
+
+
+	cmd := tea.ExecProcess(c, func(err error) tea.Msg {
+		return MsgGhqRm{err: err}
+	})
+
+	return cmd
+}
+// End "External Action Cmds"
+/////////////////////////////////////
 
 // End "uiCloneRepo: Cmds & Msgs"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

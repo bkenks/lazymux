@@ -14,22 +14,29 @@ import (
 //	- Model (UI) for listing the repos from ghq and allowing the user to open them with Lazygit
 
 type Model struct {
-	List list.Model
+	List			list.Model
+	frameWidth		int
+	frameHeight		int
 }
 
 
 func New() *Model {
-	constants.RepoList = constants.RefreshRepos() // Pull new repos and set them to the global RepoList var
+	x, y := constants.DocStyle.GetFrameSize()
+	widthBuffer 	:= constants.WindowSize.Width-x
+	heightBuffer 	:= constants.WindowSize.Height-y
 
+	constants.RepoList = constants.RefreshRepos() // Pull new repos and set them to the global RepoList var
 	newList := list.New(
 		constants.RepoList, // []list.Item containing the parsed list of repos from ghq
 		list.NewDefaultDelegate(), // Default list.Item styling
-		0, 0) // Height & Width (Set in WindowSizeMsg)
+		widthBuffer, heightBuffer) // Height & Width
 	newList.Title = "Repositories"
 	newList.AdditionalShortHelpKeys = constants.DefaultKeyMap.Bindings
 
 	return &Model{
 		List: newList,
+		frameWidth: widthBuffer,
+		frameHeight: heightBuffer,
 	}
 }
 
@@ -58,10 +65,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "c":
 			cmd = commands.CloneRepoDialog() // Send message to ModelManager to change state to CloneRepoUI
 			return m, cmd
+		case "d":
+			selectedRepo := m.List.SelectedItem()
+			if repo, ok := selectedRepo.(constants.Repo); ok {
+				cmd = commands.DeleteRepoAction(repo.Path)
+				return m, cmd
+			}
 		}
 	case tea.WindowSizeMsg:
 		x, y := constants.DocStyle.GetFrameSize()
-		m.List.SetSize(constants.WindowSize.Width-x, constants.WindowSize.Height-y)
+		m.frameWidth 	= constants.WindowSize.Width-x
+		m.frameHeight 	= constants.WindowSize.Height-y
+		m.List.SetSize(m.frameWidth, m.frameHeight)
 	}
 
 

@@ -50,6 +50,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+
 	m.Model, cmd = m.Model.Update(msg)
 	return m, cmd 
 }

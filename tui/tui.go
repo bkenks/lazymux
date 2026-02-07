@@ -58,7 +58,10 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case commands.MsgGhqGet:
 		m.state = stateMain
 		constants.RepoList = constants.RefreshRepos()
-		return m, nil
+		m.main = uiMain.New()
+	case commands.MsgGhqRm:
+		constants.RepoList = constants.RefreshRepos()
+		m.main = uiMain.New()
 	}
 	// End "UI Manager"
 	/////////////////////////////////////
