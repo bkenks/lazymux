@@ -32,6 +32,7 @@ func New() *Model {
 		widthBuffer, heightBuffer) // Height & Width
 	newList.Title = "Repositories"
 	newList.AdditionalShortHelpKeys = constants.DefaultKeyMap.Bindings
+	newList.AdditionalFullHelpKeys = constants.DefaultKeyMap.Bindings
 
 	return &Model{
 		List: newList,
@@ -65,7 +66,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "c":
 			cmd = commands.CloneRepoDialog() // Send message to ModelManager to change state to CloneRepoUI
 			return m, cmd
-		case "d":
+		case "ctrl+shift+d":
 			selectedRepo := m.List.SelectedItem()
 			if repo, ok := selectedRepo.(constants.Repo); ok {
 				cmd = commands.DeleteRepoAction(repo.Path)

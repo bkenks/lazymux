@@ -41,7 +41,6 @@ func DeleteRepoAction(repoGhqPath string) tea.Cmd {
 
 	c.Stdin = strings.NewReader("y")
 
-
 	cmd := tea.ExecProcess(c, func(err error) tea.Msg {
 		return MsgGhqRm{err: err}
 	})

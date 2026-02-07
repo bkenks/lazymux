@@ -6,7 +6,6 @@ require (
 	github.com/charmbracelet/bubbles v0.21.1
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/rmhubbert/bubbletea-overlay v0.6.4
 )
 
 require (

@@ -59,7 +59,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	title := constants.DialogTitleStyle.Render("Enter Your Repository URL:\n\n")
 	textInput := m.Model.View()
-	footer := "\n(esc to go back)"
+	footer := "\n\n(esc to go back)"
 	layout := lipgloss.JoinVertical(lipgloss.Left, title, textInput, footer)
 
 	return lipgloss.Place(
