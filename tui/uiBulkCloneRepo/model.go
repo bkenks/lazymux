@@ -21,6 +21,8 @@ type Model struct {
 	adjHeight int // Something weird occurs in the textarea model so we have
 	adjWidth int // to set these two to obscure values to fill the window properly
 	err      error
+	RepoCounter int
+	TotalRepos int
 }
 
 func New() *Model {
@@ -42,13 +44,12 @@ func New() *Model {
 	}
 }
 
-func (m Model) Init() tea.Cmd {
+func (m *Model) Init() tea.Cmd {
 	return textarea.Blink
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
-	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -62,15 +63,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textarea.Blur()
 			}
 		case tea.KeyCtrlC:
-			cmd = commands.BulkCloneRepoAction(m.textarea.Value())
-			cmds = append(cmds, cmd)
+			cmds = append(cmds,
+				commands.StartCloneReposCmd(m.textarea.Value()),
+			)
 
-			cmd = commands.SetState(commands.StateMain)
-			cmds = append(cmds, cmd)
+			cmds = append(cmds,
+				commands.SetState(commands.StateMain),
+			)
 		default:
 			if !m.textarea.Focused() {
-				cmd = m.textarea.Focus()
-				cmds = append(cmds, cmd)
+				cmds = append(cmds,
+					m.textarea.Focus(),
+				)
 			}
 		}
 
@@ -80,6 +84,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	var cmd tea.Cmd
 	m.textarea, cmd = m.textarea.Update(msg)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
@@ -109,7 +114,7 @@ func sizeBuffer() (w, h int) {
 }
 
 
-func (m Model) View() string {
+func (m *Model) View() string {
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,

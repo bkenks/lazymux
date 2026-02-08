@@ -26,12 +26,11 @@ func New() *Model {
 	}
 }
 
-func (m Model) Init() tea.Cmd {
+func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
@@ -46,24 +45,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			if m.cursor == choiceYes {
-				cmd = commands.DeleteRepoAction(m.RepoPath)
-				cmds = append(cmds, cmd)
+				cmds = append(
+					cmds,
+					commands.DeleteRepoCmd(m.RepoPath),
+					commands.SetState(commands.StateMain),
+				)
 			}
-
-			cmd = commands.SetState(commands.StateMain)
-			cmds = append(cmds, cmd)
-
 		case "esc":
-			cmd = commands.SetState(commands.StateMain)
-			cmds = append(cmds, cmd)
+			cmds = append(
+				cmds,
+				commands.SetState(commands.StateMain),
+			)
 		}
 	}
 
-
-	return m, nil
+	cmd := tea.Batch(cmds...)
+	return m, cmd
 }
 
-func (m Model) View() string {
+func (m *Model) View() string {
 
 	title := constants.Title.Margin(1, 0, 2).Render(
 		"Delete Repository")

@@ -3,6 +3,7 @@ package uiMain
 import (
 	"github.com/bkenks/lazymux/constants"
 	"github.com/bkenks/lazymux/tui/commands"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -14,75 +15,69 @@ import (
 //	- Model (UI) for listing the repos from ghq and allowing the user to open them with Lazygit
 
 type Model struct {
-	List			list.Model
-	frameWidth		int
-	frameHeight		int
+	List		list.Model
+	RepoList	[]list.Item
 }
 
 
 func New() *Model {
-	x, y := constants.DocStyle.GetFrameSize()
-	widthBuffer 	:= constants.WindowSize.Width-x
-	heightBuffer 	:= constants.WindowSize.Height-y
-
-	constants.RepoList = constants.RefreshRepos() // Pull new repos and set them to the global RepoList var
+	commands.RefreshReposCmd()
+	
+	w, h := sizeBuffer()
 	newList := list.New(
-		constants.RepoList, // []list.Item containing the parsed list of repos from ghq
-		list.NewDefaultDelegate(), // Default list.Item styling
-		widthBuffer, heightBuffer) // Height & Width
+		[]list.Item{}, 				// []list.Item containing the parsed list of repos from ghq
+		list.NewDefaultDelegate(),	// Default list.Item styling
+		w, h)						// Width & Height
 	newList.Title = "Repositories"
-	newList.AdditionalShortHelpKeys = constants.DefaultKeyMap.Bindings
-	newList.AdditionalFullHelpKeys = constants.DefaultKeyMap.Bindings
+	newList.AdditionalShortHelpKeys = constants.UIMainKeyMap.Bindings
+	newList.AdditionalFullHelpKeys = constants.UIMainKeyMap.Bindings
 
 	return &Model{
 		List: newList,
-		frameWidth: widthBuffer,
-		frameHeight: heightBuffer,
 	}
 }
 
 
-func (m Model) Init() tea.Cmd { return nil }
+func (m *Model) Init() tea.Cmd { return nil }
 
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 
+	/////////////////////////////////////
 	switch msg := msg.(type) {
+		
 	case tea.WindowSizeMsg:
-		x, y := constants.DocStyle.GetFrameSize()
-		m.frameWidth 	= constants.WindowSize.Width-x
-		m.frameHeight 	= constants.WindowSize.Height-y
-		m.List.SetSize(m.frameWidth, m.frameHeight)
+		w, h := sizeBuffer()
+		m.List.SetSize(w, h)
+
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "enter":
+		switch {
+		case key.Matches(msg, constants.UIMainKeyMap.Select):
 			selectedRepo := m.List.SelectedItem()
-			var fullRepoPath string
 			if repo, ok := selectedRepo.(constants.Repo); ok {
-				cmd = commands.SetState(commands.StateBulkCloneRepos)
-				cmds = append(cmds, cmd)
+				fullRepoPath := constants.GetFullRepoPath(repo.Path)
 
-				fullRepoPath = constants.GetFullRepoPath(repo.Path)
-				cmd = commands.OpenLazygitAction(fullRepoPath)
-				cmds = append(cmds, cmd)
+				cmds = append(
+					cmds,
+					commands.TeaCmdBuilder("lazygit", "-p", fullRepoPath),
+				)
 			}
-		case "d":
-			cmd = commands.SetState(commands.StateConfirmDelete)
-			cmds = append(cmds, cmd)
-
-			cmd = commands.ConfirmDeleteDialog() // Send message to ModelManager to change state to CloneRepoUI
-			cmds = append(cmds, cmd)
-		case "c":
-			cmd = commands.SetState(commands.StateBulkCloneRepos)
-			cmds = append(cmds, cmd)
-			
-			cmd = commands.BulkCloneRepoDialog() // Send message to ModelManager to change state to CloneRepoUI
-			cmds = append(cmds, cmd)
+		case key.Matches(msg, constants.UIMainKeyMap.C):
+			cmds = append(
+				cmds,
+				commands.SetState(commands.StateBulkCloneRepos),
+			)
+		case key.Matches(msg, constants.UIMainKeyMap.D):
+			cmds = append(
+				cmds,
+				commands.SetState(commands.StateConfirmDelete),
+			)
 		}
 	}
+	/////////////////////////////////////
 	
 
 
@@ -95,8 +90,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	/////////////////////////////////////
 }
 
+func sizeBuffer() (width, height int) {
+	x, y := constants.DocStyle.GetFrameSize()
+	widthBuffer := constants.WindowSize.Width - x
+	heightBuffer := constants.WindowSize.Height - y
+	return widthBuffer, heightBuffer
+}
 
-func (m Model) View() string { return m.List.View() }
+func (m *Model) View() string { return m.List.View() }
+
+func (m *Model) UpdateRepoList(repoList []list.Item) {
+	m.List.SetItems(repoList)
+}
 
 // End "Interface"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

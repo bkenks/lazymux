@@ -99,44 +99,7 @@ func (r Repo) FilterValue() string			{ return r.Name }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Functions
 
-func RefreshRepos() ([]list.Item) {
-	cmd := exec.Command("ghq", "list") // Call ghq to list repositories
-	out, err := cmd.Output()
 
-	if err != nil { // Fail-Safe
-		fmt.Println("Error getting Repo List:", err)
-		os.Exit(1)
-	}
-
-
-	// string(out) → "github.com/user/Repo1\ngithub.com/user/Repo2\n"
-	// strings.TrimSpace(...) → removes the final \n, giving "github.com/user/Repo1\ngithub.com/user/Repo2"
-	// strings.Split(..., "\n") → splits into strings on "\n"
-	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-
-	Repos := make([]list.Item, 0, len(lines)) // preallocate slice (i.e. set array size)
-
-
-	/////////////////////////////////////
-	// Format lines (list of repos like "github.com/user/Repo1") into a []list.Item
-	for _, line := range lines {
-		if line == "" { // Fail-Safe
-			continue
-		}
-		
-		parts := strings.Split(line, "/") // split path ("github.com/user/Repo1") by "/"
-		nameFromSplit := parts[len(parts)-1] // grab the last element from the split (which is the repo name)
-
-		Repos = append(Repos, Repo{ // Add to a []list.Item (array of `list.Item`s)
-			Name: nameFromSplit,
-			Path: line,
-		})
-	}
-	//
-	/////////////////////////////////////
-
-	return Repos
-}
 
 func GetFullRepoPath(repo string) (string) {
 	cmd := exec.Command("ghq", "list", "--full-path", repo)
@@ -162,18 +125,28 @@ func GetFullRepoPath(repo string) (string) {
 // Bindings
 
 type KeyMap struct {
+	Select key.Binding
+	Left key.Binding
+	Right key.Binding
     C key.Binding
     D key.Binding
 }
 
 func (k KeyMap) Bindings() []key.Binding {
 	return []key.Binding{
+		k.Select,
+		k.Left,
+		k.Right,
 		k.C,
 		k.D,
 	}
 }
 
-var DefaultKeyMap = KeyMap{
+var UIMainKeyMap = KeyMap{
+	Select: key.NewBinding(
+		key.WithKeys("enter", "space"),
+		key.WithHelp("enter/space", "open in lazygit"),
+	),
     C: key.NewBinding(
         key.WithKeys("c"),        // actual keybindings
         key.WithHelp("c", "clone repo"), // corresponding help text
@@ -184,6 +157,47 @@ var DefaultKeyMap = KeyMap{
     ),
 }
 
+var UIConfirm = KeyMap{
+	Select: key.NewBinding(
+		key.WithKeys("enter", "space"),
+		key.WithHelp("enter/space", "select"),
+	),
+	Left: key.NewBinding(
+		key.WithKeys("left", "h"),
+		key.WithHelp("←/h", "left"),
+	),
+	Right: key.NewBinding(
+		key.WithKeys("right", "l"),
+		key.WithHelp("→/l", "right"),
+	),
+}
+
 
 // End "Bindings"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+// case tea.KeyMsg:
+// 		switch msg.String() {
+
+// 		case "left", "h", "up", "k":
+// 			m.cursor = choiceYes
+
+// 		case "right", "l", "down", "j":
+// 			m.cursor = choiceNo
+
+// 		case "enter":
+// 			if m.cursor == choiceYes {
+// 				cmds = append(
+// 					cmds,
+// 					commands.DeleteRepoCmd(m.RepoPath),
+// 					commands.SetState(commands.StateMain),
+// 				)
+// 			}
+// 		case "esc":
+// 			cmds = append(
+// 				cmds,
+// 				commands.SetState(commands.StateMain),
+// 			)
+// 		}
+// 	}

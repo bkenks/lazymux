@@ -1,15 +1,23 @@
 package commands
 
 import (
+	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
+	"github.com/bkenks/lazymux/constants"
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type CommandsMsg interface {
 	isCommandMsg()
 }
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// State Management
 
 type SessionState int
 
@@ -24,7 +32,9 @@ type (
 	MsgSetState struct{ State SessionState }
 )
 
+// Implementations (p.s. setting "isCommandMsg" func on Msg gives it the type CommandsMsg so we can switch on it in ModelManager)
 func (MsgSetState) isCommandMsg() {}
+
 func SetState(state SessionState) tea.Cmd {
 	return func() tea.Msg {
 		return MsgSetState{
@@ -33,140 +43,136 @@ func SetState(state SessionState) tea.Cmd {
 	}
 	
 }
+// End "State Management"
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// uiCloneRepo: Cmds & Msgs
+// External Cmds
 
-// Msgs
 type (
-	MsgQuitRepoDialog struct {}
-	MsgGhqGet struct { err error }
-	MsgGhqBulkCount struct { err error }
-	MsgGhqRm struct {err error}
+	MsgCmdErrorHandler struct { Err error } // used for error handling
+	
+	MsgReposRefreshed struct {
+		RepoList []list.Item
+	}
 )
 
-func (MsgQuitRepoDialog) isCommandMsg() {}
-func (MsgGhqGet) isCommandMsg() {}
-func (MsgGhqBulkCount) isCommandMsg() {}
-func (MsgGhqRm) isCommandMsg() {}
-
-
-
-// UI Cmds
-func QuitRepoDialog() tea.Cmd {
-	return func() tea.Msg {
-		return MsgQuitRepoDialog{}
-	}
-}
+// Implementations (p.s. setting "isCommandMsg" func on Msg gives it the type CommandsMsg so we can switch on it in ModelManager)
+func (MsgCmdErrorHandler) isCommandMsg() {}
+func (MsgReposRefreshed) isCommandMsg() {}
 
 /////////////////////////////////////
-// External Action Cmds
-func CloneRepoAction(repoUrl string) tea.Cmd {
-	c := exec.Command("ghq", "get", repoUrl)
-	cmd := tea.ExecProcess(c, func(err error) tea.Msg {
-		return MsgGhqGet{err: err}
-	})
+// Helper Functions
+var MsgCmdCompleted tea.ExecCallback =
+	func(err error) tea.Msg { return MsgCmdErrorHandler{Err: err} }
+
+func TeaCmdBuilder(name string, arg ...string) tea.Cmd {
+	cmdBuilder := exec.Command(name, arg...)
+	
+	cmd := tea.ExecProcess(
+		cmdBuilder, // insert prior command
+		MsgCmdCompleted,  // run this function when done (i.e. emit Msg)
+	)
 
 	return cmd
 }
 
-func CmdFinishedCloningRepos() tea.Cmd {
+func RefreshReposCmd() tea.Cmd {
+	
+	cmd := exec.Command("ghq", "list") // Call ghq to list repositories
+	out, err := cmd.Output()
+
+	if err != nil { // Fail-Safe
+		fmt.Println("Error getting Repo List:", err)
+		os.Exit(1)
+	}
+
+
+	// string(out) → "github.com/user/Repo1\ngithub.com/user/Repo2\n"
+	// strings.TrimSpace(...) → removes the final \n, giving "github.com/user/Repo1\ngithub.com/user/Repo2"
+	// strings.Split(..., "\n") → splits into strings on "\n"
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+
+	repos := make([]list.Item, 0, len(lines)) // preallocate slice (i.e. set array size)
+
+
+	/////////////////////////////////////
+	// Format lines (list of repos like "github.com/user/Repo1") into a []list.Item
+	for _, line := range lines {
+		if line == "" { // Fail-Safe
+			continue
+		}
+		
+		parts := strings.Split(line, "/") // split path ("github.com/user/Repo1") by "/"
+		nameFromSplit := parts[len(parts)-1] // grab the last element from the split (which is the repo name)
+
+		repos = append(repos, constants.Repo{ // Add to a []list.Item (array of `list.Item`s)
+			Name: nameFromSplit,
+			Path: line,
+		})
+	}
+	//
+	/////////////////////////////////////
+
 	return func() tea.Msg {
-		return MsgGhqGet{}
+		return MsgReposRefreshed{ RepoList: repos }
 	}
 }
 
-func BulkCloneRepoAction(repoUrlsChunk string) tea.Cmd {
-	var cmd tea.Cmd
-	var cmds []tea.Cmd
+type (
+	MsgStartRepoClone struct { RepoUrls []string }
+	MsgRepoCloneInit struct { TotalRepos int }
+	MsgRepoCloned struct { Err error }
+)
+func (MsgStartRepoClone) isCommandMsg() {}
+func (MsgRepoCloneInit) isCommandMsg() {}
+func (MsgRepoCloned) isCommandMsg() {}
 
+func StartCloneReposCmd(repoUrlsChunk string) tea.Cmd {
 	repoUrls := strings.Split(strings.TrimSpace(repoUrlsChunk), "\n")
 
-	for _, r := range repoUrls {
-		c := exec.Command("ghq", "get", r)
-		cmd = tea.ExecProcess(c, func(err error) tea.Msg {
-			return MsgGhqBulkCount{ err: err }
-		})
-		cmds = append(cmds, cmd)
+	return func() tea.Msg {
+		return MsgStartRepoClone{
+			RepoUrls: repoUrls,
+		}
 	}
-	
+}
+
+func CloneReposExecCmd(repoUrls []string) tea.Cmd {
+	var cmds []tea.Cmd
+
+	for _, r := range repoUrls {
+		cmds = append(cmds, tea.ExecProcess(
+			exec.Command("ghq", "get", r),
+			func(err error) tea.Msg {
+				return MsgRepoCloned{Err: err}
+			},
+		))
+	}
+
 	return tea.Batch(cmds...)
 }
-// End "External Action Cmds"
-/////////////////////////////////////
 
-// End "uiCloneRepo: Cmds & Msgs"
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+type MsgRepoDeleted struct { Err error }
+func (MsgRepoDeleted) isCommandMsg() {}
 
+func DeleteRepoCmd(repoGhqPath string) tea.Cmd {
+	cmdBuilder := exec.Command("ghq", "rm", repoGhqPath) // build shell command
+	cmdBuilder.Stdin = strings.NewReader("y") // pipe "y" to terminal to accept ghq prompt asking if sure to remove repo
 
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// uiMain: Cmds & Msgs
-
-// Msgs
-type (
-	MsgUpdateProjectList struct{}
-	MsgConfirmDeleteDialog struct{
-		repoPath string
-	}
-	MsgBulkCloneRepoDialog struct{}
-)
-
-func (MsgUpdateProjectList) isCommandMsg() {}
-func (MsgConfirmDeleteDialog) isCommandMsg() {}
-func (MsgBulkCloneRepoDialog) isCommandMsg() {}
-
-
-/////////////////////////////////////
-// UI Cmds
-func BulkCloneRepoDialog() (tea.Cmd) {
-	return func() tea.Msg {
-		return MsgBulkCloneRepoDialog{}
-	}
-}
-
-func UpdateRepoList() (tea.Cmd) {
-	return func() tea.Msg {
-		return MsgUpdateProjectList{}
-	}
-}
-
-func ConfirmDeleteDialog() (tea.Cmd) {
-	return func() tea.Msg {
-		return MsgConfirmDeleteDialog{}
-	}
-}
-
-// End "UI Cmds"
-/////////////////////////////////////
-
-
-// External Action Cmds
-func OpenLazygitAction(path string) tea.Cmd {
-	c := exec.Command("lazygit", "-p", path)
-
-	type lgFinishedMsg struct { err error }
-
-	cmd := tea.ExecProcess(c, func(err error) tea.Msg {
-		return lgFinishedMsg{err: err}
-	})
-	
-	return tea.Cmd(cmd)
-}
-
-func DeleteRepoAction(repoGhqPath string) tea.Cmd {
-	c := exec.Command("ghq", "rm", repoGhqPath)
-
-	c.Stdin = strings.NewReader("y")
-
-	cmd := tea.ExecProcess(c, func(err error) tea.Msg {
-		return MsgGhqRm{err: err}
-	})
+	cmd := tea.ExecProcess(
+		cmdBuilder, // insert prior command
+		func(err error) tea.Msg { return MsgRepoDeleted{ Err: err } }, // run this function when done (i.e. emit Msg)
+	)
 
 	return cmd
 }
+// End "Helper Functions"
+/////////////////////////////////////
 
-// End "uiMain: Cmds & Msgs"
+
+// End "External Cmds"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
