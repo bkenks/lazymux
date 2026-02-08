@@ -62,6 +62,10 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = stateCloneRepo
 	case commands.MsgConfirmDeleteDialog:
 		m.confirmDelete = *uiConfirm.New()
+		selectedRepo := m.main.List.SelectedItem()
+		if repo, ok := selectedRepo.(constants.Repo); ok {
+			m.confirmDelete.RepoPath = repo.Path
+		}
 		m.state = stateConfirmDelete
 	case commands.MsgBulkCloneRepoDialog:
 		m.bulkCloneRepos = *uiBulkCloneRepo.New()
@@ -78,10 +82,11 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case commands.MsgGhqRm:
 		constants.RepoList = constants.RefreshRepos()
 		m.main = *uiMain.New()
-	case commands.MsgGhqBulkCount:
 		m.state = stateMain
+	case commands.MsgGhqBulkCount:
 		constants.RepoList = constants.RefreshRepos()
 		m.main = *uiMain.New()
+		m.state = stateMain
 	}
 	// End "UI Manager"
 	/////////////////////////////////////
@@ -105,10 +110,7 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			panic("could not perform assertion on confirm model")
 		}
 
-		selectedRepo := m.main.List.SelectedItem()
-		if repo, ok := selectedRepo.(constants.Repo); ok {
-			cdModel.RepoPath = repo.Path
-		}
+		
 		
 		m.confirmDelete = cdModel
 		cmd = newCmd
