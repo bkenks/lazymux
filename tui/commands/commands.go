@@ -7,6 +7,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+type CommandsMsg interface {
+	isCommandMsg()
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // uiCloneRepo: Cmds & Msgs
 
@@ -18,6 +22,14 @@ type (
 	MsgGhqBulkCount struct { err error }
 	MsgGhqRm struct {err error}
 )
+
+func (MsgCloneRepoDialog) isCommandMsg() {}
+func (MsgQuitRepoDialog) isCommandMsg() {}
+func (MsgGhqGet) isCommandMsg() {}
+func (MsgGhqBulkCount) isCommandMsg() {}
+func (MsgGhqRm) isCommandMsg() {}
+
+
 
 // UI Cmds
 func QuitRepoDialog() tea.Cmd {
@@ -80,6 +92,11 @@ type (
 	MsgConfirmDeleteDialogQuit struct{}
 	MsgBulkCloneRepoDialog struct{}
 )
+
+func (MsgUpdateProjectList) isCommandMsg() {}
+func (MsgConfirmDeleteDialog) isCommandMsg() {}
+func (MsgConfirmDeleteDialogQuit) isCommandMsg() {}
+func (MsgBulkCloneRepoDialog) isCommandMsg() {}
 
 
 /////////////////////////////////////

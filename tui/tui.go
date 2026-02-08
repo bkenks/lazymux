@@ -57,36 +57,40 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		constants.WindowSize = msg
-	case commands.MsgCloneRepoDialog:
-		m.cloneRepo = *uiCloneRepo.New()
-		m.state = stateCloneRepo
-	case commands.MsgConfirmDeleteDialog:
-		m.confirmDelete = *uiConfirm.New()
-		selectedRepo := m.main.List.SelectedItem()
-		if repo, ok := selectedRepo.(constants.Repo); ok {
-			m.confirmDelete.RepoPath = repo.Path
+
+	case commands.CommandsMsg:
+		switch msg.(type) {
+		case commands.MsgCloneRepoDialog:
+			m.cloneRepo = *uiCloneRepo.New()
+			m.state = stateCloneRepo
+		case commands.MsgConfirmDeleteDialog:
+			m.confirmDelete = *uiConfirm.New()
+			selectedRepo := m.main.List.SelectedItem()
+			if repo, ok := selectedRepo.(constants.Repo); ok {
+				m.confirmDelete.RepoPath = repo.Path
+			}
+			m.state = stateConfirmDelete
+		case commands.MsgBulkCloneRepoDialog:
+			m.bulkCloneRepos = *uiBulkCloneRepo.New()
+			m.state = stateBulkCloneRepos
+		case commands.MsgQuitRepoDialog:
+			m.state = stateMain
+		case commands.MsgConfirmDeleteDialogQuit:
+			m.state = stateMain
+		/////////////////////////////////////
+		case commands.MsgGhqGet:
+			m.state = stateMain
+			constants.RepoList = constants.RefreshRepos()
+			m.main = *uiMain.New()
+		case commands.MsgGhqRm:
+			constants.RepoList = constants.RefreshRepos()
+			m.main = *uiMain.New()
+			m.state = stateMain
+		case commands.MsgGhqBulkCount:
+			constants.RepoList = constants.RefreshRepos()
+			m.main = *uiMain.New()
+			m.state = stateMain
 		}
-		m.state = stateConfirmDelete
-	case commands.MsgBulkCloneRepoDialog:
-		m.bulkCloneRepos = *uiBulkCloneRepo.New()
-		m.state = stateBulkCloneRepos
-	case commands.MsgQuitRepoDialog:
-		m.state = stateMain
-	case commands.MsgConfirmDeleteDialogQuit:
-		m.state = stateMain
-	/////////////////////////////////////
-	case commands.MsgGhqGet:
-		m.state = stateMain
-		constants.RepoList = constants.RefreshRepos()
-		m.main = *uiMain.New()
-	case commands.MsgGhqRm:
-		constants.RepoList = constants.RefreshRepos()
-		m.main = *uiMain.New()
-		m.state = stateMain
-	case commands.MsgGhqBulkCount:
-		constants.RepoList = constants.RefreshRepos()
-		m.main = *uiMain.New()
-		m.state = stateMain
 	}
 	// End "UI Manager"
 	/////////////////////////////////////
