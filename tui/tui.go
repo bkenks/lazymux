@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/bkenks/lazymux/constants"
 	"github.com/bkenks/lazymux/tui/commands"
+	"github.com/bkenks/lazymux/tui/uiBulkCloneRepo"
 	"github.com/bkenks/lazymux/tui/uiCloneRepo"
 	"github.com/bkenks/lazymux/tui/uiConfirm"
 	"github.com/bkenks/lazymux/tui/uiMain"
@@ -21,6 +22,7 @@ const (
 	stateMain sessionState = iota
 	stateConfirmDelete
 	stateCloneRepo
+	stateBulkCloneRepos
 )
 
 type ModelManager struct {
@@ -28,6 +30,7 @@ type ModelManager struct {
 	main 			uiMain.Model
 	confirmDelete 	uiConfirm.Model
 	cloneRepo 		uiCloneRepo.Model
+	bulkCloneRepos	uiBulkCloneRepo.Model
 }
 
 func New() *ModelManager {
@@ -36,6 +39,7 @@ func New() *ModelManager {
 		main: *uiMain.New(), // Main Model (List)
 		cloneRepo: *uiCloneRepo.New(), // CloneRepo Model (Dialog)
 		confirmDelete: *uiConfirm.New(), // Delete Repo Confirmation (Dialog)
+		bulkCloneRepos: *uiBulkCloneRepo.New(),
 	}
 }
 
@@ -59,6 +63,9 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case commands.MsgConfirmDeleteDialog:
 		m.confirmDelete = *uiConfirm.New()
 		m.state = stateConfirmDelete
+	case commands.MsgBulkCloneRepoDialog:
+		m.bulkCloneRepos = *uiBulkCloneRepo.New()
+		m.state = stateBulkCloneRepos
 	case commands.MsgQuitRepoDialog:
 		m.state = stateMain
 	case commands.MsgConfirmDeleteDialogQuit:
@@ -69,6 +76,10 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		constants.RepoList = constants.RefreshRepos()
 		m.main = *uiMain.New()
 	case commands.MsgGhqRm:
+		constants.RepoList = constants.RefreshRepos()
+		m.main = *uiMain.New()
+	case commands.MsgGhqBulkCount:
+		m.state = stateMain
 		constants.RepoList = constants.RefreshRepos()
 		m.main = *uiMain.New()
 	}
@@ -109,6 +120,14 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.cloneRepo = cloneRepoModel
 		cmd = newCmd
+	case stateBulkCloneRepos:
+		newBulkCloneRepo, newCmd := m.bulkCloneRepos.Update(msg)
+		BulkCloneRepoModel, ok := newBulkCloneRepo.(uiBulkCloneRepo.Model)
+		if !ok {
+			panic("could not perform assertion on uiCloneRepo model")
+		}
+		m.bulkCloneRepos = BulkCloneRepoModel
+		cmd = newCmd
 	}
 	// End "Input Router"
 	/////////////////////////////////////
@@ -128,6 +147,8 @@ func (m ModelManager) View() string {
 		currentView = m.cloneRepo.View()
 	case stateConfirmDelete:
 		currentView = m.confirmDelete.View()
+	case stateBulkCloneRepos:
+		currentView = m.bulkCloneRepos.View()
 	default:
 		currentView = m.main.View()
 	}

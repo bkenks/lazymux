@@ -15,6 +15,7 @@ type (
 	MsgCloneRepoDialog struct {}
 	MsgQuitRepoDialog struct {}
 	MsgGhqGet struct { err error }
+	MsgGhqBulkCount struct { err error }
 	MsgGhqRm struct {err error}
 )
 
@@ -35,6 +36,28 @@ func CloneRepoAction(repoUrl string) tea.Cmd {
 
 	return cmd
 }
+
+func CmdFinishedCloningRepos() tea.Cmd {
+	return func() tea.Msg {
+		return MsgGhqGet{}
+	}
+}
+
+func BulkCloneRepoAction(repoUrls []string) tea.Cmd {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+
+	for _, r := range repoUrls {
+		c := exec.Command("ghq", "get", r)
+		cmd = tea.ExecProcess(c, func(err error) tea.Msg {
+			return MsgGhqBulkCount{ err: err }
+		})
+		cmds = append(cmds, cmd)
+	}
+	
+	cmds = append(cmds, )
+	return tea.Batch(cmds...)
+}
 // End "External Action Cmds"
 /////////////////////////////////////
 
@@ -54,6 +77,7 @@ type (
 		repoPath string
 	}
 	MsgConfirmDeleteDialogQuit struct{}
+	MsgBulkCloneRepoDialog struct{}
 )
 
 
@@ -62,6 +86,12 @@ type (
 func CloneRepoDialog() (tea.Cmd) {
 	return func() tea.Msg {
 		return MsgCloneRepoDialog{}
+	}
+}
+
+func BulkCloneRepoDialog() (tea.Cmd) {
+	return func() tea.Msg {
+		return MsgBulkCloneRepoDialog{}
 	}
 }
 

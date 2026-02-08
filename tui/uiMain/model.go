@@ -69,6 +69,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d":
 			cmd = commands.ConfirmDeleteDialog() // Send message to ModelManager to change state to CloneRepoUI
 			return m, cmd
+		case "b":
+			cmd = commands.BulkCloneRepoDialog() // Send message to ModelManager to change state to CloneRepoUI
+			return m, cmd 
 		}
 	case tea.WindowSizeMsg:
 		x, y := constants.DocStyle.GetFrameSize()
