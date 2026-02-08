@@ -30,19 +30,45 @@ var (
 // Styling
 
 var (
-	purple = lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}
-	test = lipgloss.Color("#ffbb00")
+	DarkPink = lipgloss.AdaptiveColor{Light: "#EE6FF8", Dark: "#EE6FF8"}
+	DullGrey = lipgloss.AdaptiveColor{Light: "#C2B8C2", Dark: "#4D4D4D"}
+	Purple = lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}
+	DarkPurple = lipgloss.Color("62")
+	White = lipgloss.Color("230")
+
+	ButtonStyle = lipgloss.NewStyle().
+		Padding(0, 2).
+		Margin(0, 1)
+
+	SelectedButton = ButtonStyle.
+		Background(DarkPurple).
+		Foreground(White).
+		Bold(true)
+
+	UnselectedButton = ButtonStyle.
+		Background(DullGrey).
+		Foreground(lipgloss.Color("250"))
+
+	DocStyle = lipgloss.NewStyle().
+		Margin(3, 1)
+
+	DialogStyle = lipgloss.NewStyle().
+		Padding(0, 6, 1).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(DullGrey)
+
+	DialogTitleStyle = lipgloss.NewStyle().Bold(true)
+
+	Title = lipgloss.NewStyle().
+		Background(DarkPurple).
+		Foreground(White).
+		Padding(0, 1).
+		Bold(true).
+		MarginBottom(1)
+
+	SubtitleStyle = lipgloss.NewStyle().
+		MarginBottom(1)
 )
-
-var DocStyle = lipgloss.NewStyle().
-	Margin(3, 1)
-
-var DialogStyle = lipgloss.NewStyle().
-	Padding(2, 2).
-	Border(lipgloss.NormalBorder(), false, false, false, true).
-	BorderForeground(purple)
-
-var DialogTitleStyle = lipgloss.NewStyle().Bold(true)
 
 // End "Styling"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -137,13 +163,13 @@ func GetFullRepoPath(repo string) (string) {
 
 type KeyMap struct {
     C key.Binding
-    CtrlShiftD key.Binding
+    D key.Binding
 }
 
 func (k KeyMap) Bindings() []key.Binding {
 	return []key.Binding{
 		k.C,
-		k.CtrlShiftD,
+		k.D,
 	}
 }
 
@@ -152,9 +178,9 @@ var DefaultKeyMap = KeyMap{
         key.WithKeys("c"),        // actual keybindings
         key.WithHelp("c", "clone repo"), // corresponding help text
     ),
-	CtrlShiftD: key.NewBinding(
-        key.WithKeys("ctrl+shift+d"),        // actual keybindings
-        key.WithHelp("ctrl+shift+d", "delete repo"), // corresponding help text
+	D: key.NewBinding(
+        key.WithKeys("d"),        // actual keybindings
+        key.WithHelp("d", "delete repo"), // corresponding help text
     ),
 }
 

@@ -7,6 +7,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+type CommandsMsg interface {
+	isCommandMsg()
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // uiCloneRepo: Cmds & Msgs
 
@@ -15,8 +19,17 @@ type (
 	MsgCloneRepoDialog struct {}
 	MsgQuitRepoDialog struct {}
 	MsgGhqGet struct { err error }
+	MsgGhqBulkCount struct { err error }
 	MsgGhqRm struct {err error}
 )
+
+func (MsgCloneRepoDialog) isCommandMsg() {}
+func (MsgQuitRepoDialog) isCommandMsg() {}
+func (MsgGhqGet) isCommandMsg() {}
+func (MsgGhqBulkCount) isCommandMsg() {}
+func (MsgGhqRm) isCommandMsg() {}
+
+
 
 // UI Cmds
 func QuitRepoDialog() tea.Cmd {
@@ -36,16 +49,27 @@ func CloneRepoAction(repoUrl string) tea.Cmd {
 	return cmd
 }
 
-func DeleteRepoAction(repoGhqPath string) tea.Cmd {
-	c := exec.Command("ghq", "rm", repoGhqPath)
+func CmdFinishedCloningRepos() tea.Cmd {
+	return func() tea.Msg {
+		return MsgGhqGet{}
+	}
+}
 
-	c.Stdin = strings.NewReader("y")
+func BulkCloneRepoAction(repoUrlsChunk string) tea.Cmd {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
 
-	cmd := tea.ExecProcess(c, func(err error) tea.Msg {
-		return MsgGhqRm{err: err}
-	})
+	repoUrls := strings.Split(strings.TrimSpace(repoUrlsChunk), "\n")
 
-	return cmd
+	for _, r := range repoUrls {
+		c := exec.Command("ghq", "get", r)
+		cmd = tea.ExecProcess(c, func(err error) tea.Msg {
+			return MsgGhqBulkCount{ err: err }
+		})
+		cmds = append(cmds, cmd)
+	}
+	
+	return tea.Batch(cmds...)
 }
 // End "External Action Cmds"
 /////////////////////////////////////
@@ -62,7 +86,17 @@ func DeleteRepoAction(repoGhqPath string) tea.Cmd {
 // Msgs
 type (
 	MsgUpdateProjectList struct{}
+	MsgConfirmDeleteDialog struct{
+		repoPath string
+	}
+	MsgConfirmDeleteDialogQuit struct{}
+	MsgBulkCloneRepoDialog struct{}
 )
+
+func (MsgUpdateProjectList) isCommandMsg() {}
+func (MsgConfirmDeleteDialog) isCommandMsg() {}
+func (MsgConfirmDeleteDialogQuit) isCommandMsg() {}
+func (MsgBulkCloneRepoDialog) isCommandMsg() {}
 
 
 /////////////////////////////////////
@@ -73,11 +107,30 @@ func CloneRepoDialog() (tea.Cmd) {
 	}
 }
 
+func BulkCloneRepoDialog() (tea.Cmd) {
+	return func() tea.Msg {
+		return MsgBulkCloneRepoDialog{}
+	}
+}
+
 func UpdateRepoList() (tea.Cmd) {
 	return func() tea.Msg {
 		return MsgUpdateProjectList{}
 	}
 }
+
+func ConfirmDeleteDialog() (tea.Cmd) {
+	return func() tea.Msg {
+		return MsgConfirmDeleteDialog{}
+	}
+}
+
+func ConfirmDeleteDialogQuit() (tea.Cmd) {
+	return func() tea.Msg {
+		return MsgConfirmDeleteDialogQuit{}
+	}
+}
+
 // End "UI Cmds"
 /////////////////////////////////////
 
@@ -93,6 +146,18 @@ func OpenLazygitAction(path string) tea.Cmd {
 	})
 	
 	return tea.Cmd(cmd)
+}
+
+func DeleteRepoAction(repoGhqPath string) tea.Cmd {
+	c := exec.Command("ghq", "rm", repoGhqPath)
+
+	c.Stdin = strings.NewReader("y")
+
+	cmd := tea.ExecProcess(c, func(err error) tea.Msg {
+		return MsgGhqRm{err: err}
+	})
+
+	return cmd
 }
 
 // End "uiMain: Cmds & Msgs"
