@@ -63,13 +63,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd := commands.OpenLazygitAction(fullRepoPath)
 			
 			return m, cmd
-		case "c":
-			cmd = commands.CloneRepoDialog() // Send message to ModelManager to change state to CloneRepoUI
-			return m, cmd
 		case "d":
 			cmd = commands.ConfirmDeleteDialog() // Send message to ModelManager to change state to CloneRepoUI
 			return m, cmd
-		case "b":
+		case "c":
 			cmd = commands.BulkCloneRepoDialog() // Send message to ModelManager to change state to CloneRepoUI
 			return m, cmd 
 		}

@@ -43,9 +43,11 @@ func CmdFinishedCloningRepos() tea.Cmd {
 	}
 }
 
-func BulkCloneRepoAction(repoUrls []string) tea.Cmd {
+func BulkCloneRepoAction(repoUrlsChunk string) tea.Cmd {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
+
+	repoUrls := strings.Split(strings.TrimSpace(repoUrlsChunk), "\n")
 
 	for _, r := range repoUrls {
 		c := exec.Command("ghq", "get", r)
@@ -55,7 +57,6 @@ func BulkCloneRepoAction(repoUrls []string) tea.Cmd {
 		cmds = append(cmds, cmd)
 	}
 	
-	cmds = append(cmds, )
 	return tea.Batch(cmds...)
 }
 // End "External Action Cmds"
