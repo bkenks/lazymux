@@ -51,31 +51,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		x, y := constants.DocStyle.GetFrameSize()
+		m.frameWidth 	= constants.WindowSize.Width-x
+		m.frameHeight 	= constants.WindowSize.Height-y
+		m.List.SetSize(m.frameWidth, m.frameHeight)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "enter":
 			selectedRepo := m.List.SelectedItem()
 			var fullRepoPath string
 			if repo, ok := selectedRepo.(constants.Repo); ok {
+				cmd = commands.SetState(commands.StateBulkCloneRepos)
+				cmds = append(cmds, cmd)
+
 				fullRepoPath = constants.GetFullRepoPath(repo.Path)
+				cmd = commands.OpenLazygitAction(fullRepoPath)
+				cmds = append(cmds, cmd)
 			}
-			
-			cmd := commands.OpenLazygitAction(fullRepoPath)
-			
-			return m, cmd
 		case "d":
+			cmd = commands.SetState(commands.StateConfirmDelete)
+			cmds = append(cmds, cmd)
+
 			cmd = commands.ConfirmDeleteDialog() // Send message to ModelManager to change state to CloneRepoUI
-			return m, cmd
+			cmds = append(cmds, cmd)
 		case "c":
+			cmd = commands.SetState(commands.StateBulkCloneRepos)
+			cmds = append(cmds, cmd)
+			
 			cmd = commands.BulkCloneRepoDialog() // Send message to ModelManager to change state to CloneRepoUI
-			return m, cmd 
+			cmds = append(cmds, cmd)
 		}
-	case tea.WindowSizeMsg:
-		x, y := constants.DocStyle.GetFrameSize()
-		m.frameWidth 	= constants.WindowSize.Width-x
-		m.frameHeight 	= constants.WindowSize.Height-y
-		m.List.SetSize(m.frameWidth, m.frameHeight)
 	}
+	
 
 
 	/////////////////////////////////////

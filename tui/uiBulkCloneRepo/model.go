@@ -63,7 +63,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case tea.KeyCtrlC:
 			cmd = commands.BulkCloneRepoAction(m.textarea.Value())
-			return m, cmd
+			cmds = append(cmds, cmd)
+
+			cmd = commands.SetState(commands.StateMain)
+			cmds = append(cmds, cmd)
 		default:
 			if !m.textarea.Focused() {
 				cmd = m.textarea.Focus()

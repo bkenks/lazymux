@@ -11,19 +11,41 @@ type CommandsMsg interface {
 	isCommandMsg()
 }
 
+type SessionState int
+
+const (
+	StateMain SessionState = iota
+	StateConfirmDelete
+	StateCloneRepo
+	StateBulkCloneRepos
+)
+
+type (
+	MsgSetState struct{ State SessionState }
+)
+
+func (MsgSetState) isCommandMsg() {}
+func SetState(state SessionState) tea.Cmd {
+	return func() tea.Msg {
+		return MsgSetState{
+			State: state,
+		}
+	}
+	
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // uiCloneRepo: Cmds & Msgs
 
 // Msgs
 type (
-	MsgCloneRepoDialog struct {}
 	MsgQuitRepoDialog struct {}
 	MsgGhqGet struct { err error }
 	MsgGhqBulkCount struct { err error }
 	MsgGhqRm struct {err error}
 )
 
-func (MsgCloneRepoDialog) isCommandMsg() {}
 func (MsgQuitRepoDialog) isCommandMsg() {}
 func (MsgGhqGet) isCommandMsg() {}
 func (MsgGhqBulkCount) isCommandMsg() {}
@@ -89,24 +111,16 @@ type (
 	MsgConfirmDeleteDialog struct{
 		repoPath string
 	}
-	MsgConfirmDeleteDialogQuit struct{}
 	MsgBulkCloneRepoDialog struct{}
 )
 
 func (MsgUpdateProjectList) isCommandMsg() {}
 func (MsgConfirmDeleteDialog) isCommandMsg() {}
-func (MsgConfirmDeleteDialogQuit) isCommandMsg() {}
 func (MsgBulkCloneRepoDialog) isCommandMsg() {}
 
 
 /////////////////////////////////////
 // UI Cmds
-func CloneRepoDialog() (tea.Cmd) {
-	return func() tea.Msg {
-		return MsgCloneRepoDialog{}
-	}
-}
-
 func BulkCloneRepoDialog() (tea.Cmd) {
 	return func() tea.Msg {
 		return MsgBulkCloneRepoDialog{}
@@ -122,12 +136,6 @@ func UpdateRepoList() (tea.Cmd) {
 func ConfirmDeleteDialog() (tea.Cmd) {
 	return func() tea.Msg {
 		return MsgConfirmDeleteDialog{}
-	}
-}
-
-func ConfirmDeleteDialogQuit() (tea.Cmd) {
-	return func() tea.Msg {
-		return MsgConfirmDeleteDialogQuit{}
 	}
 }
 

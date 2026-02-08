@@ -31,6 +31,9 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -43,12 +46,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			if m.cursor == choiceYes {
-				return m, commands.DeleteRepoAction(m.RepoPath)
+				cmd = commands.DeleteRepoAction(m.RepoPath)
+				cmds = append(cmds, cmd)
 			}
-			return m, commands.ConfirmDeleteDialogQuit()
+
+			cmd = commands.SetState(commands.StateMain)
+			cmds = append(cmds, cmd)
 
 		case "esc":
-			return m, commands.ConfirmDeleteDialogQuit()
+			cmd = commands.SetState(commands.StateMain)
+			cmds = append(cmds, cmd)
 		}
 	}
 

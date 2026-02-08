@@ -16,17 +16,8 @@ import (
 // ModelManager:
 //	- Model for managing sub-Models (i.e other UI/Views/Screens)
 
-type sessionState int
-
-const (
-	stateMain sessionState = iota
-	stateConfirmDelete
-	stateCloneRepo
-	stateBulkCloneRepos
-)
-
 type ModelManager struct {
-	state 			sessionState
+	state 			commands.SessionState
 	main 			uiMain.Model
 	confirmDelete 	uiConfirm.Model
 	cloneRepo 		uiCloneRepo.Model
@@ -35,7 +26,7 @@ type ModelManager struct {
 
 func New() *ModelManager {
 	return &ModelManager{  // Not sure why using pointer but I saw it somewhere (prolly performace). Don't have to use, works without
-		state: stateMain, // Initial state of TUI
+		state: commands.StateMain, // Initial state of TUI
 		main: *uiMain.New(), // Main Model (List)
 		cloneRepo: *uiCloneRepo.New(), // CloneRepo Model (Dialog)
 		confirmDelete: *uiConfirm.New(), // Delete Repo Confirmation (Dialog)
@@ -46,50 +37,37 @@ func New() *ModelManager {
 func (m ModelManager) Init() tea.Cmd { return nil }
 
 func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
-	/////////////////////////////////////
-	// Set func-scoped cmds
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
+
 
 	/////////////////////////////////////
 	// UI Manager
 	switch msg := msg.(type) {
+	// Reactive Window Sizing
 	case tea.WindowSizeMsg:
 		constants.WindowSize = msg
-
+	
+	// State Manager
 	case commands.CommandsMsg:
-		switch msg.(type) {
-		case commands.MsgCloneRepoDialog:
-			m.cloneRepo = *uiCloneRepo.New()
-			m.state = stateCloneRepo
-		case commands.MsgConfirmDeleteDialog:
-			m.confirmDelete = *uiConfirm.New()
-			selectedRepo := m.main.List.SelectedItem()
-			if repo, ok := selectedRepo.(constants.Repo); ok {
-				m.confirmDelete.RepoPath = repo.Path
+		switch msg := msg.(type) {
+		case commands.MsgSetState:
+			m.state = msg.State
+
+			// Initialization for each state
+			switch m.state {
+			case commands.StateMain:
+				constants.RepoList = constants.RefreshRepos()
+				m.main = *uiMain.New()
+			case commands.StateConfirmDelete:
+				m.confirmDelete = *uiConfirm.New()
+				selectedRepo := m.main.List.SelectedItem()
+				if repo, ok := selectedRepo.(constants.Repo); ok {
+					m.confirmDelete.RepoPath = repo.Path
+				}
+			case commands.StateBulkCloneRepos:
+				m.bulkCloneRepos = *uiBulkCloneRepo.New()
 			}
-			m.state = stateConfirmDelete
-		case commands.MsgBulkCloneRepoDialog:
-			m.bulkCloneRepos = *uiBulkCloneRepo.New()
-			m.state = stateBulkCloneRepos
-		case commands.MsgQuitRepoDialog:
-			m.state = stateMain
-		case commands.MsgConfirmDeleteDialogQuit:
-			m.state = stateMain
-		/////////////////////////////////////
-		case commands.MsgGhqGet:
-			m.state = stateMain
-			constants.RepoList = constants.RefreshRepos()
-			m.main = *uiMain.New()
-		case commands.MsgGhqRm:
-			constants.RepoList = constants.RefreshRepos()
-			m.main = *uiMain.New()
-			m.state = stateMain
-		case commands.MsgGhqBulkCount:
-			constants.RepoList = constants.RefreshRepos()
-			m.main = *uiMain.New()
-			m.state = stateMain
 		}
 	}
 	// End "UI Manager"
@@ -99,7 +77,7 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	/////////////////////////////////////
 	// Input & Model Router
 	switch m.state {
-	case stateMain:
+	case commands.StateMain:
 		newMain, newCmd := m.main.Update(msg)
 		mainModel, ok := newMain.(uiMain.Model)
 		if !ok {
@@ -107,18 +85,15 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.main = mainModel
 		cmd = newCmd
-	case stateConfirmDelete:
+	case commands.StateConfirmDelete:
 		newCD, newCmd := m.confirmDelete.Update(msg)
 		cdModel, ok := newCD.(uiConfirm.Model)
 		if !ok {
 			panic("could not perform assertion on confirm model")
 		}
-
-		
-		
 		m.confirmDelete = cdModel
 		cmd = newCmd
-	case stateCloneRepo:
+	case commands.StateCloneRepo:
 		newCloneRepo, newCmd := m.cloneRepo.Update(msg)
 		cloneRepoModel, ok := newCloneRepo.(uiCloneRepo.Model)
 		if !ok {
@@ -126,7 +101,7 @@ func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.cloneRepo = cloneRepoModel
 		cmd = newCmd
-	case stateBulkCloneRepos:
+	case commands.StateBulkCloneRepos:
 		newBulkCloneRepo, newCmd := m.bulkCloneRepos.Update(msg)
 		BulkCloneRepoModel, ok := newBulkCloneRepo.(uiBulkCloneRepo.Model)
 		if !ok {
@@ -149,11 +124,11 @@ func (m ModelManager) View() string {
 	var currentView string
 
 	switch m.state {
-	case stateCloneRepo:
+	case commands.StateCloneRepo:
 		currentView = m.cloneRepo.View()
-	case stateConfirmDelete:
+	case commands.StateConfirmDelete:
 		currentView = m.confirmDelete.View()
-	case stateBulkCloneRepos:
+	case commands.StateBulkCloneRepos:
 		currentView = m.bulkCloneRepos.View()
 	default:
 		currentView = m.main.View()
