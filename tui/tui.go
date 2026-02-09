@@ -4,7 +4,6 @@ import (
 	"github.com/bkenks/lazymux/constants"
 	"github.com/bkenks/lazymux/tui/commands"
 	"github.com/bkenks/lazymux/tui/uiBulkCloneRepo"
-	"github.com/bkenks/lazymux/tui/uiCloneRepo"
 	"github.com/bkenks/lazymux/tui/uiConfirm"
 	"github.com/bkenks/lazymux/tui/uiMain"
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,150 +15,99 @@ import (
 // ModelManager:
 //	- Model for managing sub-Models (i.e other UI/Views/Screens)
 
-type sessionState int
-
-const (
-	stateMain sessionState = iota
-	stateConfirmDelete
-	stateCloneRepo
-	stateBulkCloneRepos
-)
-
 type ModelManager struct {
-	state 			sessionState
+	state			commands.SessionState
 	main 			uiMain.Model
 	confirmDelete 	uiConfirm.Model
-	cloneRepo 		uiCloneRepo.Model
 	bulkCloneRepos	uiBulkCloneRepo.Model
+	
+	active			tea.Model
 }
 
 func New() *ModelManager {
-	return &ModelManager{  // Not sure why using pointer but I saw it somewhere (prolly performace). Don't have to use, works without
-		state: stateMain, // Initial state of TUI
+	m := &ModelManager{
 		main: *uiMain.New(), // Main Model (List)
-		cloneRepo: *uiCloneRepo.New(), // CloneRepo Model (Dialog)
 		confirmDelete: *uiConfirm.New(), // Delete Repo Confirmation (Dialog)
 		bulkCloneRepos: *uiBulkCloneRepo.New(),
 	}
+
+	m.active = &m.main
+
+	return m
 }
 
-func (m ModelManager) Init() tea.Cmd { return nil }
+func (m *ModelManager) Init() tea.Cmd { return commands.RefreshReposCmd() }
 
-func (m ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
-	/////////////////////////////////////
-	// Set func-scoped cmds
-	var cmd tea.Cmd
+func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	/////////////////////////////////////
 	// UI Manager
 	switch msg := msg.(type) {
+
+	//// Reactive Window Sizing
 	case tea.WindowSizeMsg:
 		constants.WindowSize = msg
 
 	case commands.CommandsMsg:
-		switch msg.(type) {
-		case commands.MsgCloneRepoDialog:
-			m.cloneRepo = *uiCloneRepo.New()
-			m.state = stateCloneRepo
-		case commands.MsgConfirmDeleteDialog:
-			m.confirmDelete = *uiConfirm.New()
-			selectedRepo := m.main.List.SelectedItem()
-			if repo, ok := selectedRepo.(constants.Repo); ok {
-				m.confirmDelete.RepoPath = repo.Path
+		switch msg := msg.(type) {
+
+		//// State Manager
+		case commands.MsgSetState:
+			m.state = msg.State
+
+			// Initialization for each state
+			switch m.state {
+
+			case commands.StateMain: m.active = &m.main
+
+			case commands.StateConfirmDelete:
+				m.confirmDelete = *uiConfirm.New()
+				selectedRepo := m.main.List.SelectedItem()
+				if repo, ok := selectedRepo.(constants.Repo); ok {
+					m.confirmDelete.RepoPath = repo.Path
+				}
+				m.active = &m.confirmDelete
+
+			case commands.StateBulkCloneRepos:
+				m.bulkCloneRepos = *uiBulkCloneRepo.New()
+				m.active = &m.bulkCloneRepos
 			}
-			m.state = stateConfirmDelete
-		case commands.MsgBulkCloneRepoDialog:
-			m.bulkCloneRepos = *uiBulkCloneRepo.New()
-			m.state = stateBulkCloneRepos
-		case commands.MsgQuitRepoDialog:
-			m.state = stateMain
-		case commands.MsgConfirmDeleteDialogQuit:
-			m.state = stateMain
-		/////////////////////////////////////
-		case commands.MsgGhqGet:
-			m.state = stateMain
-			constants.RepoList = constants.RefreshRepos()
-			m.main = *uiMain.New()
-		case commands.MsgGhqRm:
-			constants.RepoList = constants.RefreshRepos()
-			m.main = *uiMain.New()
-			m.state = stateMain
-		case commands.MsgGhqBulkCount:
-			constants.RepoList = constants.RefreshRepos()
-			m.main = *uiMain.New()
-			m.state = stateMain
+
+		//// Trigger: Repos are being cloned.
+		case commands.MsgStartRepoClone:
+			m.bulkCloneRepos.RepoCounter = 0
+			m.bulkCloneRepos.TotalRepos = len(msg.RepoUrls)
+
+			cmds = append(cmds, commands.CloneReposExecCmd(msg.RepoUrls))
+		case commands.MsgRepoCloned:
+			if m.bulkCloneRepos.RepoCounter < m.bulkCloneRepos.TotalRepos {
+				m.bulkCloneRepos.RepoCounter++
+			}
+			if m.bulkCloneRepos.RepoCounter == m.bulkCloneRepos.TotalRepos {
+				cmds = append(cmds,
+					commands.RefreshReposCmd(),
+					commands.SetState(commands.StateMain),
+				)
+			}
+		/// Trigger: A repo has been deleted.
+		case commands.MsgRepoDeleted: cmds = append(cmds, commands.RefreshReposCmd())
+		//// - Trigger: Completed pulling a list of repos from ghq
+		case commands.MsgReposRefreshed: m.main.UpdateRepoList(msg.RepoList)
 		}
 	}
 	// End "UI Manager"
 	/////////////////////////////////////
 
 
-	/////////////////////////////////////
-	// Input & Model Router
-	switch m.state {
-	case stateMain:
-		newMain, newCmd := m.main.Update(msg)
-		mainModel, ok := newMain.(uiMain.Model)
-		if !ok {
-			panic("could not perform assertion on main model")
-		}
-		m.main = mainModel
-		cmd = newCmd
-	case stateConfirmDelete:
-		newCD, newCmd := m.confirmDelete.Update(msg)
-		cdModel, ok := newCD.(uiConfirm.Model)
-		if !ok {
-			panic("could not perform assertion on confirm model")
-		}
-
-		
-		
-		m.confirmDelete = cdModel
-		cmd = newCmd
-	case stateCloneRepo:
-		newCloneRepo, newCmd := m.cloneRepo.Update(msg)
-		cloneRepoModel, ok := newCloneRepo.(uiCloneRepo.Model)
-		if !ok {
-			panic("could not perform assertion on uiCloneRepo model")
-		}
-		m.cloneRepo = cloneRepoModel
-		cmd = newCmd
-	case stateBulkCloneRepos:
-		newBulkCloneRepo, newCmd := m.bulkCloneRepos.Update(msg)
-		BulkCloneRepoModel, ok := newBulkCloneRepo.(uiBulkCloneRepo.Model)
-		if !ok {
-			panic("could not perform assertion on uiCloneRepo model")
-		}
-		m.bulkCloneRepos = BulkCloneRepoModel
-		cmd = newCmd
-	}
-	// End "Input Router"
-	/////////////////////////////////////
-
-
-	/////////////////////////////////////
-	// Pass Model and Cmds from sub-Models to self (main update/event loop)
+	var cmd tea.Cmd	
+	m.active, cmd = m.active.Update(msg)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
 
-func (m ModelManager) View() string {
-	var currentView string
-
-	switch m.state {
-	case stateCloneRepo:
-		currentView = m.cloneRepo.View()
-	case stateConfirmDelete:
-		currentView = m.confirmDelete.View()
-	case stateBulkCloneRepos:
-		currentView = m.bulkCloneRepos.View()
-	default:
-		currentView = m.main.View()
-	}
-
-	return constants.DocStyle.Render(currentView)
+func (m *ModelManager) View() string {
+	return constants.DocStyle.Render(m.active.View())
 }
 
 // End "Interface: tea.Model"

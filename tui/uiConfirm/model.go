@@ -3,6 +3,7 @@ package uiConfirm
 import (
 	"github.com/bkenks/lazymux/constants"
 	"github.com/bkenks/lazymux/tui/commands"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -26,37 +27,48 @@ func New() *Model {
 	}
 }
 
-func (m Model) Init() tea.Cmd {
+func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
+		switch {
 
-		case "left", "h", "up", "k":
+		case key.Matches(msg, constants.UIConfirm.Left):
 			m.cursor = choiceYes
 
-		case "right", "l", "down", "j":
+		case key.Matches(msg, constants.UIConfirm.Right):
 			m.cursor = choiceNo
 
-		case "enter":
+		case key.Matches(msg, constants.DefaultKeyMap.Select):
 			if m.cursor == choiceYes {
-				return m, commands.DeleteRepoAction(m.RepoPath)
+				cmds = append(
+					cmds,
+					commands.DeleteRepoCmd(m.RepoPath),
+					commands.SetState(commands.StateMain),
+				)
+			} else {
+				cmds = append(cmds,
+					commands.SetState(commands.StateMain),
+				)
 			}
-			return m, commands.ConfirmDeleteDialogQuit()
-
-		case "esc":
-			return m, commands.ConfirmDeleteDialogQuit()
+		case key.Matches(msg, constants.DefaultKeyMap.Esc):
+			cmds = append(
+				cmds,
+				commands.SetState(commands.StateMain),
+			)
 		}
 	}
 
-
-	return m, nil
+	cmd := tea.Batch(cmds...)
+	return m, cmd
 }
 
-func (m Model) View() string {
+func (m *Model) View() string {
 
 	title := constants.Title.Margin(1, 0, 2).Render(
 		"Delete Repository")
