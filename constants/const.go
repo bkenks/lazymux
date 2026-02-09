@@ -125,26 +125,41 @@ func GetFullRepoPath(repo string) (string) {
 // Bindings
 
 type KeyMap struct {
+	Esc key.Binding
 	Select key.Binding
 	Left key.Binding
 	Right key.Binding
     C key.Binding
     D key.Binding
+	Confirm key.Binding
 }
 
 func (k KeyMap) Bindings() []key.Binding {
 	return []key.Binding{
+		k.Esc,
 		k.Select,
 		k.Left,
 		k.Right,
 		k.C,
 		k.D,
+		k.Confirm,
 	}
+}
+
+var DefaultKeyMap = KeyMap{
+	Select: key.NewBinding(
+		key.WithKeys(tea.KeyEnter.String(), tea.KeySpace.String()),
+		key.WithHelp("enter/space", "select"),
+	),
+	Esc: key.NewBinding(
+		key.WithKeys(),
+		key.WithHelp(tea.KeyEsc.String(), "back"),
+	),
 }
 
 var UIMainKeyMap = KeyMap{
 	Select: key.NewBinding(
-		key.WithKeys("enter", "space"),
+		key.WithKeys(DefaultKeyMap.Select.Keys()...),
 		key.WithHelp("enter/space", "open in lazygit"),
 	),
     C: key.NewBinding(
@@ -159,7 +174,7 @@ var UIMainKeyMap = KeyMap{
 
 var UIConfirm = KeyMap{
 	Select: key.NewBinding(
-		key.WithKeys("enter", "space"),
+		key.WithKeys(DefaultKeyMap.Select.Keys()...),
 		key.WithHelp("enter/space", "select"),
 	),
 	Left: key.NewBinding(
@@ -170,34 +185,22 @@ var UIConfirm = KeyMap{
 		key.WithKeys("right", "l"),
 		key.WithHelp("→/l", "right"),
 	),
+	Esc: key.NewBinding(
+		key.WithKeys(tea.KeyEsc.String()),
+		key.WithHelp(tea.KeyEsc.String(), "back"),
+	),
 }
 
+var UICloneRepo = KeyMap{
+	Esc: key.NewBinding(
+		key.WithKeys(tea.KeyEsc.String()),
+		key.WithHelp(tea.KeyEsc.String(), "back"),
+	),
+	Confirm: key.NewBinding(
+		key.WithKeys(tea.KeyCtrlJ.String()),
+		key.WithHelp("ctrl+j", "clone repos"),
+	),
+}
 
 // End "Bindings"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-// case tea.KeyMsg:
-// 		switch msg.String() {
-
-// 		case "left", "h", "up", "k":
-// 			m.cursor = choiceYes
-
-// 		case "right", "l", "down", "j":
-// 			m.cursor = choiceNo
-
-// 		case "enter":
-// 			if m.cursor == choiceYes {
-// 				cmds = append(
-// 					cmds,
-// 					commands.DeleteRepoCmd(m.RepoPath),
-// 					commands.SetState(commands.StateMain),
-// 				)
-// 			}
-// 		case "esc":
-// 			cmds = append(
-// 				cmds,
-// 				commands.SetState(commands.StateMain),
-// 			)
-// 		}
-// 	}

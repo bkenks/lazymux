@@ -3,6 +3,7 @@ package uiBulkCloneRepo
 import (
 	"github.com/bkenks/lazymux/constants"
 	"github.com/bkenks/lazymux/tui/commands"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -57,27 +58,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea.SetWidth(wBuffer)
 		m.textarea.SetHeight(hBuffer)
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEsc:
-			if m.textarea.Focused() {
-				m.textarea.Blur()
-			}
-		case tea.KeyCtrlC:
-			cmds = append(cmds,
-				commands.StartCloneReposCmd(m.textarea.Value()),
-			)
-
-			cmds = append(cmds,
+		switch {
+		case key.Matches(msg, constants.UICloneRepo.Esc):
+			cmds = append(cmds, 
 				commands.SetState(commands.StateMain),
 			)
-		default:
-			if !m.textarea.Focused() {
-				cmds = append(cmds,
-					m.textarea.Focus(),
-				)
-			}
+		case key.Matches(msg, constants.UICloneRepo.Confirm):
+			cmds = append(cmds, 
+				commands.StartCloneReposCmd(m.textarea.Value()),
+			)
 		}
-
 	// We handle errors just like any other message
 	case errMsg:
 		m.err = msg
@@ -93,20 +83,20 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func headerView() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		"\n\n\n",
+		"\n\n\n\n",
 		constants.Title.Align(lipgloss.Center).Render("Repository Clone"),
 	)
 }
 
 func footerView() string {
-		return "\n(ctrl+c clone • esc back)"
+		return "\n(ctrl+j clone • esc back)"
 }
 
 func sizeBuffer() (w, h int) {
 	headerHeight := lipgloss.Height(headerView())
 	footerHeight := lipgloss.Height(footerView())
 
-	heightBuffer := 5
+	heightBuffer := 0
 	widthBuffer := 2
 
 	return (constants.WindowSize.Width - widthBuffer),
@@ -123,10 +113,8 @@ func (m *Model) View() string {
 		footerView(),
 	)
 
-	placedContent := lipgloss.Place(
-		constants.WindowSize.Width,
+	placedContent := lipgloss.PlaceVertical(
 		constants.WindowSize.Height,
-		lipgloss.Left,
 		lipgloss.Center,
 		content,
 	)

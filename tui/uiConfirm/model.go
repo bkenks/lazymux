@@ -3,6 +3,7 @@ package uiConfirm
 import (
 	"github.com/bkenks/lazymux/constants"
 	"github.com/bkenks/lazymux/tui/commands"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -35,23 +36,27 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
+		switch {
 
-		case "left", "h", "up", "k":
+		case key.Matches(msg, constants.UIConfirm.Left):
 			m.cursor = choiceYes
 
-		case "right", "l", "down", "j":
+		case key.Matches(msg, constants.UIConfirm.Right):
 			m.cursor = choiceNo
 
-		case "enter":
+		case key.Matches(msg, constants.DefaultKeyMap.Select):
 			if m.cursor == choiceYes {
 				cmds = append(
 					cmds,
 					commands.DeleteRepoCmd(m.RepoPath),
 					commands.SetState(commands.StateMain),
 				)
+			} else {
+				cmds = append(cmds,
+					commands.SetState(commands.StateMain),
+				)
 			}
-		case "esc":
+		case key.Matches(msg, constants.DefaultKeyMap.Esc):
 			cmds = append(
 				cmds,
 				commands.SetState(commands.StateMain),
