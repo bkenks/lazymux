@@ -4,8 +4,9 @@ import (
 	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
+	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/styles"
-	"github.com/bkenks/lazymux/internal/ui/bulkclone"
+	"github.com/bkenks/lazymux/internal/ui/clonerepos"
 	"github.com/bkenks/lazymux/internal/ui/confirm"
 	"github.com/bkenks/lazymux/internal/ui/repolist"
 	tea "github.com/charmbracelet/bubbletea"
@@ -18,19 +19,19 @@ import (
 //	- Model for managing sub-Models (i.e other UI/Views/Screens)
 
 type ModelManager struct {
-	state          commands.SessionState
-	main           repolist.Model
-	confirmDelete  confirm.Model
-	bulkCloneRepos bulkclone.Model
+	state         domain.SessionState
+	main          repolist.Model
+	confirmDelete confirm.Model
+	clonerepos    clonerepos.Model
 
 	active tea.Model
 }
 
 func New() *ModelManager {
 	m := &ModelManager{
-		main:           *repolist.New(), // Main Model (List)
-		confirmDelete:  *confirm.New(),  // Delete Repo Confirmation (Dialog)
-		bulkCloneRepos: *bulkclone.New(),
+		main:          *repolist.New(), // Main Model (List)
+		confirmDelete: *confirm.New(),  // Delete Repo Confirmation (Dialog)
+		clonerepos:    *clonerepos.New(),
 	}
 
 	m.active = &m.main
@@ -51,20 +52,20 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		constants.WindowSize = msg
 
-	case commands.CommandsMsg:
+	case events.Event:
 		switch msg := msg.(type) {
 
 		//// State Manager
-		case commands.MsgSetState:
+		case events.SetState:
 			m.state = msg.State
 
 			// Initialization for each state
 			switch m.state {
 
-			case commands.StateMain:
+			case domain.StateMain:
 				m.active = &m.main
 
-			case commands.StateConfirmDelete:
+			case domain.StateConfirmDelete:
 				m.confirmDelete = *confirm.New()
 				selectedRepo := m.main.List.SelectedItem()
 				if repo, ok := selectedRepo.(domain.Repo); ok {
@@ -72,32 +73,32 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.active = &m.confirmDelete
 
-			case commands.StateBulkCloneRepos:
-				m.bulkCloneRepos = *bulkclone.New()
-				m.active = &m.bulkCloneRepos
+			case domain.StateCloneRepo:
+				m.clonerepos = *clonerepos.New()
+				m.active = &m.clonerepos
 			}
 
 		//// Trigger: Repos are being cloned.
-		case commands.MsgStartRepoClone:
-			m.bulkCloneRepos.RepoCounter = 0
-			m.bulkCloneRepos.TotalRepos = len(msg.RepoUrls)
+		case events.StartRepoClone:
+			m.clonerepos.RepoCounter = 0
+			m.clonerepos.TotalRepos = len(msg.RepoUrls)
 
 			cmds = append(cmds, commands.CloneReposExecCmd(msg.RepoUrls))
-		case commands.MsgRepoCloned:
-			if m.bulkCloneRepos.RepoCounter < m.bulkCloneRepos.TotalRepos {
-				m.bulkCloneRepos.RepoCounter++
+		case events.CloneRepoExec:
+			if m.clonerepos.RepoCounter < m.clonerepos.TotalRepos {
+				m.clonerepos.RepoCounter++
 			}
-			if m.bulkCloneRepos.RepoCounter == m.bulkCloneRepos.TotalRepos {
+			if m.clonerepos.RepoCounter == m.clonerepos.TotalRepos {
 				cmds = append(cmds,
 					commands.RefreshReposCmd(),
-					commands.SetState(commands.StateMain),
+					commands.SetState(domain.StateMain),
 				)
 			}
 		/// Trigger: A repo has been deleted.
-		case commands.MsgRepoDeleted:
+		case events.RepoDeleted:
 			cmds = append(cmds, commands.RefreshReposCmd())
 		//// - Trigger: Completed pulling a list of repos from ghq
-		case commands.MsgReposRefreshed:
+		case events.ReposRefreshed:
 			m.main.UpdateRepoList(msg.RepoList)
 		}
 	}

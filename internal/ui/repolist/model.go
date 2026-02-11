@@ -66,12 +66,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, constants.RepoListKeyMap.Clone):
 			cmds = append(
 				cmds,
-				commands.SetState(commands.StateBulkCloneRepos),
+				commands.SetState(domain.StateCloneRepo),
 			)
 		case key.Matches(msg, constants.RepoListKeyMap.Delete):
 			cmds = append(
 				cmds,
-				commands.SetState(commands.StateConfirmDelete),
+				commands.SetState(domain.StateConfirmDelete),
 			)
 		}
 	}

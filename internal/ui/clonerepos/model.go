@@ -1,4 +1,4 @@
-package bulkclone
+package clonerepos
 
 import (
 	"github.com/bkenks/lazymux/internal/commands"
@@ -62,7 +62,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, constants.CloneRepoKeyMap.Exit):
 			cmds = append(cmds,
-				commands.SetState(commands.StateMain),
+				commands.SetState(domain.StateMain),
 			)
 		case key.Matches(msg, constants.CloneRepoKeyMap.Proceed):
 			cmds = append(cmds,

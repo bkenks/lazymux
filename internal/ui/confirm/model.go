@@ -42,11 +42,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(
 				cmds,
 				commands.DeleteRepoCmd(m.RepoPath),
-				commands.SetState(commands.StateMain),
+				commands.SetState(domain.StateMain),
 			)
 		case key.Matches(msg, constants.ConfirmKeyMap.Exit):
 			cmds = append(cmds,
-				commands.SetState(commands.StateMain),
+				commands.SetState(domain.StateMain),
 			)
 		}
 	}
