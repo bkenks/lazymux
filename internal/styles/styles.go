@@ -73,7 +73,7 @@ var (
 	DialogStyle = lipgloss.NewStyle().
 			Padding(1, 6, 1).
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(DarkPurple)
+			BorderForeground(SubduedColor)
 
 	DialogTitleStyle = lipgloss.NewStyle().
 				Background(DarkPurple).
