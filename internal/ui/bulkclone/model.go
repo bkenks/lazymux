@@ -1,8 +1,10 @@
-package uiBulkCloneRepo
+package bulkclone
 
 import (
-	"github.com/bkenks/lazymux/constants"
-	"github.com/bkenks/lazymux/tui/commands"
+	"github.com/bkenks/lazymux/internal/commands"
+	"github.com/bkenks/lazymux/internal/constants"
+	"github.com/bkenks/lazymux/internal/domain"
+	"github.com/bkenks/lazymux/internal/styles"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
@@ -14,16 +16,15 @@ import (
 
 // TODO: CHANGE THIS TO USE ANOTHER LIST
 
-
 type errMsg error
 
 type Model struct {
-	textarea textarea.Model
-	adjHeight int // Something weird occurs in the textarea model so we have
-	adjWidth int // to set these two to obscure values to fill the window properly
-	err      error
+	textarea    textarea.Model
+	adjHeight   int // Something weird occurs in the textarea model so we have
+	adjWidth    int // to set these two to obscure values to fill the window properly
+	err         error
 	RepoCounter int
-	TotalRepos int
+	TotalRepos  int
 }
 
 func New() *Model {
@@ -38,10 +39,10 @@ func New() *Model {
 	ti.SetWidth(wBuffer)
 
 	return &Model{
-		textarea: ti,
+		textarea:  ti,
 		adjHeight: hBuffer,
-		adjWidth: wBuffer,
-		err:      nil,
+		adjWidth:  wBuffer,
+		err:       nil,
 	}
 }
 
@@ -59,12 +60,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea.SetHeight(hBuffer)
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, constants.UICloneRepo.Esc):
-			cmds = append(cmds, 
+		case key.Matches(msg, constants.CloneRepoKeyMap.Exit):
+			cmds = append(cmds,
 				commands.SetState(commands.StateMain),
 			)
-		case key.Matches(msg, constants.UICloneRepo.Confirm):
-			cmds = append(cmds, 
+		case key.Matches(msg, constants.CloneRepoKeyMap.Proceed):
+			cmds = append(cmds,
 				commands.StartCloneReposCmd(m.textarea.Value()),
 			)
 		}
@@ -81,15 +82,26 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func headerView() string {
-	return lipgloss.JoinVertical(
+	title := lipgloss.JoinVertical(
 		lipgloss.Left,
 		"\n\n\n\n",
-		constants.Title.Align(lipgloss.Center).Render("Repository Clone"),
+		styles.MenuTitle.Render("Repository Clone"),
+		styles.MenuSubStyle.
+			Render("paste repository URLs here"),
 	)
+
+	return title
 }
 
 func footerView() string {
-		return "\n(ctrl+j clone • esc back)"
+	helpKeys := styles.MenuHelpStyle.
+		Render(
+			domain.FormatBindingsInline(
+				constants.CloneRepoKeyMap.HelpBinds(constants.Short),
+			),
+		)
+
+	return helpKeys
 }
 
 func sizeBuffer() (w, h int) {
@@ -100,9 +112,8 @@ func sizeBuffer() (w, h int) {
 	widthBuffer := 2
 
 	return (constants.WindowSize.Width - widthBuffer),
-	(constants.WindowSize.Height - headerHeight - footerHeight - heightBuffer)
+		(constants.WindowSize.Height - headerHeight - footerHeight - heightBuffer)
 }
-
 
 func (m *Model) View() string {
 
@@ -118,6 +129,6 @@ func (m *Model) View() string {
 		lipgloss.Center,
 		content,
 	)
-	
+
 	return placedContent
 }

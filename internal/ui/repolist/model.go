@@ -1,8 +1,10 @@
-package uiMain
+package repolist
 
 import (
-	"github.com/bkenks/lazymux/constants"
-	"github.com/bkenks/lazymux/tui/commands"
+	"github.com/bkenks/lazymux/internal/commands"
+	"github.com/bkenks/lazymux/internal/constants"
+	"github.com/bkenks/lazymux/internal/domain"
+	"github.com/bkenks/lazymux/internal/styles"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,62 +17,58 @@ import (
 //	- Model (UI) for listing the repos from ghq and allowing the user to open them with Lazygit
 
 type Model struct {
-	List		list.Model
-	RepoList	[]list.Item
+	List     list.Model
+	RepoList []list.Item
 }
-
 
 func New() *Model {
 	commands.RefreshReposCmd()
-	
+
 	w, h := sizeBuffer()
 	newList := list.New(
-		[]list.Item{}, 				// []list.Item containing the parsed list of repos from ghq
-		list.NewDefaultDelegate(),	// Default list.Item styling
-		w, h)						// Width & Height
+		[]list.Item{},             // []list.Item containing the parsed list of repos from ghq
+		list.NewDefaultDelegate(), // Default list.Item styling
+		w, h)                      // Width & Height
 	newList.Title = "Repositories"
-	newList.AdditionalShortHelpKeys = constants.UIMainKeyMap.Bindings
-	newList.AdditionalFullHelpKeys = constants.UIMainKeyMap.Bindings
+	newList.AdditionalShortHelpKeys = constants.RepoListKeyMap.HelpBinds(constants.Short)
+	newList.AdditionalFullHelpKeys = constants.RepoListKeyMap.HelpBinds(constants.Full)
 
 	return &Model{
 		List: newList,
 	}
 }
 
-
 func (m *Model) Init() tea.Cmd { return nil }
-
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
-
 	/////////////////////////////////////
 	switch msg := msg.(type) {
-		
+
 	case tea.WindowSizeMsg:
 		w, h := sizeBuffer()
 		m.List.SetSize(w, h)
 
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, constants.UIMainKeyMap.Select):
+		case key.Matches(msg, constants.RepoListKeyMap.Select):
 			selectedRepo := m.List.SelectedItem()
-			if repo, ok := selectedRepo.(constants.Repo); ok {
-				fullRepoPath := constants.GetFullRepoPath(repo.Path)
+			if repo, ok := selectedRepo.(domain.Repo); ok {
+				fullRepoPath := GetFullRepoPath(repo.Path)
 
 				cmds = append(
 					cmds,
 					commands.TeaCmdBuilder("lazygit", "-p", fullRepoPath),
 				)
 			}
-		case key.Matches(msg, constants.UIMainKeyMap.C):
+		case key.Matches(msg, constants.RepoListKeyMap.Clone):
 			cmds = append(
 				cmds,
 				commands.SetState(commands.StateBulkCloneRepos),
 			)
-		case key.Matches(msg, constants.UIMainKeyMap.D):
+		case key.Matches(msg, constants.RepoListKeyMap.Delete):
 			cmds = append(
 				cmds,
 				commands.SetState(commands.StateConfirmDelete),
@@ -78,8 +76,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	/////////////////////////////////////
-	
-
 
 	/////////////////////////////////////
 	// Output
@@ -91,7 +87,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func sizeBuffer() (width, height int) {
-	x, y := constants.DocStyle.GetFrameSize()
+	x, y := styles.DocStyle.GetFrameSize()
 	widthBuffer := constants.WindowSize.Width - x
 	heightBuffer := constants.WindowSize.Height - y
 	return widthBuffer, heightBuffer

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bkenks/lazymux/tui"
+	"github.com/bkenks/lazymux/internal/app"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -14,7 +14,7 @@ import (
 
 func main() {
 
-	tui := tui.New()
+	tui := app.New()
 	p := tea.NewProgram(tui, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error running program:", err)

@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/bkenks/lazymux/constants"
+	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -14,7 +14,6 @@ import (
 type CommandsMsg interface {
 	isCommandMsg()
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // State Management
@@ -41,20 +40,18 @@ func SetState(state SessionState) tea.Cmd {
 			State: state,
 		}
 	}
-	
+
 }
+
 // End "State Management"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // External Cmds
 
 type (
-	MsgCmdErrorHandler struct { Err error } // used for error handling
-	
+	MsgCmdErrorHandler struct{ Err error } // used for error handling
+
 	MsgReposRefreshed struct {
 		RepoList []list.Item
 	}
@@ -62,26 +59,25 @@ type (
 
 // Implementations (p.s. setting "isCommandMsg" func on Msg gives it the type CommandsMsg so we can switch on it in ModelManager)
 func (MsgCmdErrorHandler) isCommandMsg() {}
-func (MsgReposRefreshed) isCommandMsg() {}
+func (MsgReposRefreshed) isCommandMsg()  {}
 
-/////////////////////////////////////
+// ///////////////////////////////////
 // Helper Functions
-var MsgCmdCompleted tea.ExecCallback =
-	func(err error) tea.Msg { return MsgCmdErrorHandler{Err: err} }
+var MsgCmdCompleted tea.ExecCallback = func(err error) tea.Msg { return MsgCmdErrorHandler{Err: err} }
 
 func TeaCmdBuilder(name string, arg ...string) tea.Cmd {
 	cmdBuilder := exec.Command(name, arg...)
-	
+
 	cmd := tea.ExecProcess(
-		cmdBuilder, // insert prior command
-		MsgCmdCompleted,  // run this function when done (i.e. emit Msg)
+		cmdBuilder,      // insert prior command
+		MsgCmdCompleted, // run this function when done (i.e. emit Msg)
 	)
 
 	return cmd
 }
 
 func RefreshReposCmd() tea.Cmd {
-	
+
 	cmd := exec.Command("ghq", "list") // Call ghq to list repositories
 	out, err := cmd.Output()
 
@@ -90,7 +86,6 @@ func RefreshReposCmd() tea.Cmd {
 		os.Exit(1)
 	}
 
-
 	// string(out) → "github.com/user/Repo1\ngithub.com/user/Repo2\n"
 	// strings.TrimSpace(...) → removes the final \n, giving "github.com/user/Repo1\ngithub.com/user/Repo2"
 	// strings.Split(..., "\n") → splits into strings on "\n"
@@ -98,18 +93,17 @@ func RefreshReposCmd() tea.Cmd {
 
 	repos := make([]list.Item, 0, len(lines)) // preallocate slice (i.e. set array size)
 
-
 	/////////////////////////////////////
 	// Format lines (list of repos like "github.com/user/Repo1") into a []list.Item
 	for _, line := range lines {
 		if line == "" { // Fail-Safe
 			continue
 		}
-		
-		parts := strings.Split(line, "/") // split path ("github.com/user/Repo1") by "/"
+
+		parts := strings.Split(line, "/")    // split path ("github.com/user/Repo1") by "/"
 		nameFromSplit := parts[len(parts)-1] // grab the last element from the split (which is the repo name)
 
-		repos = append(repos, constants.Repo{ // Add to a []list.Item (array of `list.Item`s)
+		repos = append(repos, domain.Repo{ // Add to a []list.Item (array of `list.Item`s)
 			Name: nameFromSplit,
 			Path: line,
 		})
@@ -118,18 +112,19 @@ func RefreshReposCmd() tea.Cmd {
 	/////////////////////////////////////
 
 	return func() tea.Msg {
-		return MsgReposRefreshed{ RepoList: repos }
+		return MsgReposRefreshed{RepoList: repos}
 	}
 }
 
 type (
-	MsgStartRepoClone struct { RepoUrls []string }
-	MsgRepoCloneInit struct { TotalRepos int }
-	MsgRepoCloned struct { Err error }
+	MsgStartRepoClone struct{ RepoUrls []string }
+	MsgRepoCloneInit  struct{ TotalRepos int }
+	MsgRepoCloned     struct{ Err error }
 )
+
 func (MsgStartRepoClone) isCommandMsg() {}
-func (MsgRepoCloneInit) isCommandMsg() {}
-func (MsgRepoCloned) isCommandMsg() {}
+func (MsgRepoCloneInit) isCommandMsg()  {}
+func (MsgRepoCloned) isCommandMsg()     {}
 
 func StartCloneReposCmd(repoUrlsChunk string) tea.Cmd {
 	repoUrls := strings.Split(strings.TrimSpace(repoUrlsChunk), "\n")
@@ -156,23 +151,24 @@ func CloneReposExecCmd(repoUrls []string) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-type MsgRepoDeleted struct { Err error }
+type MsgRepoDeleted struct{ Err error }
+
 func (MsgRepoDeleted) isCommandMsg() {}
 
 func DeleteRepoCmd(repoGhqPath string) tea.Cmd {
 	cmdBuilder := exec.Command("ghq", "rm", repoGhqPath) // build shell command
-	cmdBuilder.Stdin = strings.NewReader("y") // pipe "y" to terminal to accept ghq prompt asking if sure to remove repo
+	cmdBuilder.Stdin = strings.NewReader("y")            // pipe "y" to terminal to accept ghq prompt asking if sure to remove repo
 
 	cmd := tea.ExecProcess(
 		cmdBuilder, // insert prior command
-		func(err error) tea.Msg { return MsgRepoDeleted{ Err: err } }, // run this function when done (i.e. emit Msg)
+		func(err error) tea.Msg { return MsgRepoDeleted{Err: err} }, // run this function when done (i.e. emit Msg)
 	)
 
 	return cmd
 }
+
 // End "Helper Functions"
 /////////////////////////////////////
-
 
 // End "External Cmds"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
