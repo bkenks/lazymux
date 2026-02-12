@@ -93,6 +93,7 @@ type repoListKeyMap struct {
 	Select key.Binding
 	Clone  key.Binding
 	Delete key.Binding
+	VSCode key.Binding
 }
 
 var RepoListKeyMap = repoListKeyMap{
@@ -107,6 +108,10 @@ var RepoListKeyMap = repoListKeyMap{
 	Delete: key.NewBinding(
 		key.WithKeys("d"),
 		key.WithHelp("d", unsetText),
+	),
+	VSCode: key.NewBinding(
+		key.WithKeys("v"),
+		key.WithHelp("v", unsetText),
 	),
 }
 
@@ -129,6 +134,12 @@ func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 			RepoListKeyMap.Delete,
 			"delete",
 			"delete repo",
+		),
+		SetOnHelpType(
+			helpType,
+			RepoListKeyMap.VSCode,
+			"vscode",
+			"open in vscode",
 		),
 	}
 

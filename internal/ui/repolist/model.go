@@ -4,7 +4,6 @@ import (
 	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
-	"github.com/bkenks/lazymux/internal/styles"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -24,7 +23,7 @@ type Model struct {
 func New() *Model {
 	commands.RefreshReposCmd()
 
-	w, h := sizeBuffer()
+	w, h := SizeBuffer()
 	newList := list.New(
 		[]list.Item{},             // []list.Item containing the parsed list of repos from ghq
 		list.NewDefaultDelegate(), // Default list.Item styling
@@ -48,21 +47,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
-		w, h := sizeBuffer()
+		w, h := SizeBuffer()
 		m.List.SetSize(w, h)
 
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, constants.RepoListKeyMap.Select):
-			selectedRepo := m.List.SelectedItem()
-			if repo, ok := selectedRepo.(domain.Repo); ok {
-				fullRepoPath := GetFullRepoPath(repo.Path)
+			absoluteRepoPath := AbsRepoPath(m.List.SelectedItem())
 
-				cmds = append(
-					cmds,
-					commands.TeaCmdBuilder("lazygit", "-p", fullRepoPath),
-				)
-			}
+			cmds = append(
+				cmds,
+				commands.TeaCmdBuilder("lazygit", "-p", absoluteRepoPath),
+			)
 		case key.Matches(msg, constants.RepoListKeyMap.Clone):
 			cmds = append(
 				cmds,
@@ -72,6 +68,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(
 				cmds,
 				commands.SetState(domain.StateConfirmDelete),
+			)
+		case key.Matches(msg, constants.RepoListKeyMap.VSCode):
+			absoluteRepoPath := AbsRepoPath(m.List.SelectedItem())
+
+			cmds = append(cmds,
+				commands.OpenInVSCode(absoluteRepoPath),
 			)
 		}
 	}
@@ -84,13 +86,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 	// End "Output"
 	/////////////////////////////////////
-}
-
-func sizeBuffer() (width, height int) {
-	x, y := styles.DocStyle.GetFrameSize()
-	widthBuffer := constants.WindowSize.Width - x
-	heightBuffer := constants.WindowSize.Height - y
-	return widthBuffer, heightBuffer
 }
 
 func (m *Model) View() string { return m.List.View() }
