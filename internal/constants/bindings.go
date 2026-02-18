@@ -98,8 +98,8 @@ type repoListKeyMap struct {
 
 var RepoListKeyMap = repoListKeyMap{
 	Select: key.NewBinding(
-		key.WithKeys("l"),            // actual keybindings
-		key.WithHelp("l", unsetText), // corresponding help text
+		key.WithKeys(tea.KeyEnter.String()),            // actual keybindings
+		key.WithHelp(tea.KeyEnter.String(), unsetText), // corresponding help text
 	),
 	Clone: key.NewBinding(
 		key.WithKeys("c"),
