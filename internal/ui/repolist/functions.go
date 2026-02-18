@@ -13,33 +13,51 @@ import (
 )
 
 func GetAbsRepoPath(repo string) string {
-	cmd := exec.Command("ghq", "list", "--full-path", repo)
+	// Get ALL repos (no filtering argument)
+	cmd := exec.Command("ghq", "list", "--full-path")
 	out, err := cmd.Output()
-
 	if err != nil {
-		fmt.Println("Error getting repo path:", repo)
+		fmt.Println("Error getting repo list")
 		os.Exit(1)
 	}
 
-	/////////////////////////////////////
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 
-	path := strings.TrimSpace(string(out))
-	return path
+	var matches []string
+	for _, line := range lines {
+		// Exact suffix match
+		if strings.HasSuffix(line, repo) {
+			matches = append(matches, line)
+		}
+	}
+
+	switch len(matches) {
+	case 0:
+		fmt.Println("No repo found:", repo)
+		os.Exit(1)
+	case 1:
+		return matches[0]
+	default:
+		fmt.Println("Ambiguous repo name:", repo)
+		for _, m := range matches {
+			fmt.Println(" -", m)
+		}
+		os.Exit(1)
+	}
+
+	return ""
 }
 
 func ConvertToRepoType(i list.Item) domain.Repo {
 	if domainRepo, ok := i.(domain.Repo); ok {
 		return domainRepo
 	}
-
 	return domain.Repo{}
 }
 
 func AbsRepoPath(i list.Item) string {
 	domainRepo := ConvertToRepoType(i)
-	absRepoPath := GetAbsRepoPath(domainRepo.Path)
-
-	return absRepoPath
+	return GetAbsRepoPath(domainRepo.Path)
 }
 
 func SizeBuffer() (width, height int) {
