@@ -34,5 +34,8 @@ go.work.sum
 # I edit my Markdown in Obsidian, alright.
 .obsidian
 
-# Build Zips
-build
+# Binary Builds
+.builds/
+
+# Binary Builds for Testing
+.testing/

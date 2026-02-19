@@ -15,7 +15,7 @@ PLATFORMS=(
 )
 
 # Build output folder
-OUTPUT_DIR="build"
+OUTPUT_DIR=".builds"
 mkdir -p "$OUTPUT_DIR"
 
 for PLATFORM in "${PLATFORMS[@]}"; do
@@ -29,7 +29,7 @@ for PLATFORM in "${PLATFORMS[@]}"; do
   fi
 
   ZIP_NAME="${OUTPUT_DIR}/${OS}_${ARCH}.zip"
-  
+
   echo "Building $OS/$ARCH -> $ZIP_NAME"
 
   # Build binary
