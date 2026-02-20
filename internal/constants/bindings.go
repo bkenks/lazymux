@@ -98,20 +98,20 @@ type repoListKeyMap struct {
 
 var RepoListKeyMap = repoListKeyMap{
 	Select: key.NewBinding(
-		key.WithKeys("u"),            // actual keybindings
-		key.WithHelp("u", unsetText), // corresponding help text
+		key.WithKeys(tea.KeyCtrlU.String()),            // actual keybindings
+		key.WithHelp(tea.KeyCtrlU.String(), unsetText), // corresponding help text
 	),
 	Clone: key.NewBinding(
-		key.WithKeys("c"),
-		key.WithHelp("c", unsetText),
+		key.WithKeys(tea.KeyCtrlI.String()),
+		key.WithHelp(tea.KeyCtrlI.String(), unsetText),
 	),
 	Delete: key.NewBinding(
-		key.WithKeys("d"),
-		key.WithHelp("d", unsetText),
+		key.WithKeys(tea.KeyCtrlY.String()),
+		key.WithHelp(tea.KeyCtrlY.String(), unsetText),
 	),
 	VSCode: key.NewBinding(
-		key.WithKeys("v"),
-		key.WithHelp("v", unsetText),
+		key.WithKeys(tea.KeyCtrlO.String()),
+		key.WithHelp(tea.KeyCtrlO.String(), unsetText),
 	),
 }
 
