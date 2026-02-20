@@ -98,16 +98,16 @@ type repoListKeyMap struct {
 
 var RepoListKeyMap = repoListKeyMap{
 	Select: key.NewBinding(
-		key.WithKeys(tea.KeyCtrlU.String()),            // actual keybindings
-		key.WithHelp(tea.KeyCtrlU.String(), unsetText), // corresponding help text
+		key.WithKeys(tea.KeyTab.String()),            // actual keybindings
+		key.WithHelp(tea.KeyTab.String(), unsetText), // corresponding help text
 	),
 	Clone: key.NewBinding(
-		key.WithKeys(tea.KeyCtrlI.String()),
-		key.WithHelp(tea.KeyCtrlI.String(), unsetText),
+		key.WithKeys(tea.KeyCtrlN.String()),
+		key.WithHelp(tea.KeyCtrlN.String(), unsetText),
 	),
 	Delete: key.NewBinding(
-		key.WithKeys(tea.KeyCtrlY.String()),
-		key.WithHelp(tea.KeyCtrlY.String(), unsetText),
+		key.WithKeys(tea.KeyCtrlM.String()),
+		key.WithHelp(tea.KeyCtrlM.String(), unsetText),
 	),
 	VSCode: key.NewBinding(
 		key.WithKeys(tea.KeyCtrlO.String()),
