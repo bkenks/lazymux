@@ -8,7 +8,7 @@ import (
 )
 
 func OpenInVSCode(repoFullPath string) tea.Cmd {
-	cmdBuilder := exec.Command("code", repoFullPath) // build shell command
+	cmdBuilder := exec.Command("codium", repoFullPath) // build shell command
 
 	cmd := tea.ExecProcess(
 		cmdBuilder, // insert prior command

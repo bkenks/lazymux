@@ -106,8 +106,8 @@ var RepoListKeyMap = repoListKeyMap{
 		key.WithHelp(tea.KeyCtrlN.String(), unsetText),
 	),
 	Delete: key.NewBinding(
-		key.WithKeys(tea.KeyBackspace.String()),
-		key.WithHelp(tea.KeyBackspace.String(), unsetText),
+		key.WithKeys(tea.KeyCtrlBackslash.String()),
+		key.WithHelp(tea.KeyCtrlBackslash.String(), unsetText),
 	),
 	VSCode: key.NewBinding(
 		key.WithKeys(tea.KeyCtrlO.String()),
