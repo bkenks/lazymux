@@ -90,10 +90,11 @@ func (k defaultKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 // Repo List Key Map
 
 type repoListKeyMap struct {
-	Select key.Binding
-	Clone  key.Binding
-	Delete key.Binding
-	VSCode key.Binding
+	Select   key.Binding
+	Clone    key.Binding
+	Delete   key.Binding
+	VSCode   key.Binding
+	Settings key.Binding
 }
 
 var RepoListKeyMap = repoListKeyMap{
@@ -112,6 +113,10 @@ var RepoListKeyMap = repoListKeyMap{
 	VSCode: key.NewBinding(
 		key.WithKeys(tea.KeyCtrlO.String()),
 		key.WithHelp(tea.KeyCtrlO.String(), unsetText),
+	),
+	Settings: key.NewBinding(
+		key.WithKeys(tea.KeyCtrlS.String()),
+		key.WithHelp(tea.KeyCtrlS.String(), unsetText),
 	),
 }
 
@@ -140,6 +145,12 @@ func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 			RepoListKeyMap.VSCode,
 			"vscode",
 			"open in vscode",
+		),
+		SetOnHelpType(
+			helpType,
+			RepoListKeyMap.Settings,
+			"settings",
+			"open settings",
 		),
 	}
 

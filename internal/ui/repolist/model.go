@@ -75,6 +75,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds,
 				commands.OpenInVSCode(absoluteRepoPath),
 			)
+		case key.Matches(msg, constants.RepoListKeyMap.Settings):
+			cmds = append(cmds,
+				commands.SetState(domain.StateSettings),
+			)
 		}
 	}
 	/////////////////////////////////////

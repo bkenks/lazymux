@@ -9,6 +9,7 @@ import (
 	"github.com/bkenks/lazymux/internal/ui/clonerepos"
 	"github.com/bkenks/lazymux/internal/ui/confirm"
 	"github.com/bkenks/lazymux/internal/ui/repolist"
+	"github.com/bkenks/lazymux/pkg/settings"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -23,15 +24,22 @@ type ModelManager struct {
 	main          repolist.Model
 	confirmDelete confirm.Model
 	clonerepos    clonerepos.Model
+	settingsModel settings.Model
 
 	active tea.Model
 }
 
 func New() *ModelManager {
+	x, y := styles.DocStyle.GetFrameSize()
+	settingsItems := []settings.Setting{
+		settings.NewSelect("editor", "Editor", []string{"codium", "code"}, 0),
+	}
+
 	m := &ModelManager{
 		main:          *repolist.New(), // Main Model (List)
 		confirmDelete: *confirm.New(),  // Delete Repo Confirmation (Dialog)
 		clonerepos:    *clonerepos.New(),
+		settingsModel: settings.New("Settings", settingsItems, constants.WindowSize.Width, constants.WindowSize.Height, x, y),
 	}
 
 	m.active = &m.main
@@ -76,6 +84,9 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case domain.StateCloneRepo:
 				m.clonerepos = *clonerepos.New()
 				m.active = &m.clonerepos
+
+			case domain.StateSettings:
+				m.active = &m.settingsModel
 			}
 
 		//// Trigger: Repos are being cloned.
@@ -106,6 +117,14 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				commands.SetState(domain.StateMain),
 			)
 		}
+	case settings.SettingChanged:
+		switch msg.Key {
+		case "editor":
+			constants.EditorCmd = msg.Setting.ValueString()
+		}
+
+	case settings.Exited:
+		cmds = append(cmds, commands.SetState(domain.StateMain))
 	}
 	// End "UI Manager"
 	/////////////////////////////////////

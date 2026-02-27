@@ -6,4 +6,5 @@ const (
 	StateMain SessionState = iota
 	StateConfirmDelete
 	StateCloneRepo
+	StateSettings
 )

@@ -3,12 +3,13 @@ package commands
 import (
 	"os/exec"
 
+	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/events"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 func OpenInVSCode(repoFullPath string) tea.Cmd {
-	cmdBuilder := exec.Command("codium", repoFullPath) // build shell command
+	cmdBuilder := exec.Command(constants.EditorCmd, repoFullPath) // build shell command
 
 	cmd := tea.ExecProcess(
 		cmdBuilder, // insert prior command

@@ -11,6 +11,7 @@ import (
 var (
 	WindowSize tea.WindowSizeMsg
 	RepoList   []list.Item
+	EditorCmd  = "codium"
 )
 
 // End "Global Variables"
