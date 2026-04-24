@@ -4,6 +4,7 @@ import (
 	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
+	"github.com/bkenks/lazymux/internal/events"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -50,9 +51,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		w, h := SizeBuffer()
 		m.List.SetSize(w, h)
 
+	case events.CmdComplete:
+		// Fired when lazygit exits — re-sort the list with the updated interaction timestamp
+		cmds = append(cmds, commands.RefreshReposCmd())
+
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, constants.RepoListKeyMap.Select):
+			repo := ConvertToRepoType(m.List.SelectedItem())
+			domain.SaveInteraction(repo.Path)
 			absoluteRepoPath := AbsRepoPath(m.List.SelectedItem())
 
 			cmds = append(
@@ -70,6 +77,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				commands.SetState(domain.StateConfirmDelete),
 			)
 		case key.Matches(msg, constants.RepoListKeyMap.VSCode):
+			repo := ConvertToRepoType(m.List.SelectedItem())
+			domain.SaveInteraction(repo.Path)
 			absoluteRepoPath := AbsRepoPath(m.List.SelectedItem())
 
 			cmds = append(cmds,

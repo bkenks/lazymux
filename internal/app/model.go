@@ -111,10 +111,11 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//// - Trigger: Completed pulling a list of repos from ghq
 		case events.ReposRefreshed:
 			m.main.UpdateRepoList(msg.RepoList)
-		//// Return to Main menu after VSCode has been opened
+		//// Return to Main menu after VSCode has been opened; re-sort with updated timestamp
 		case events.OpenInVSCodeComplete:
 			cmds = append(cmds,
 				commands.SetState(domain.StateMain),
+				commands.RefreshReposCmd(),
 			)
 		}
 	case settings.SettingChanged:

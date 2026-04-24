@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Interface
 //
@@ -7,7 +9,8 @@ package domain
 //	- Represents a repository
 
 type Repo struct {
-	Name, Path string
+	Name, Path     string
+	LastInteracted time.Time
 }
 
 func (r Repo) Title() string       { return r.Name }

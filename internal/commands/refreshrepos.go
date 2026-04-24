@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 
 	"github.com/bkenks/lazymux/internal/domain"
@@ -29,6 +30,8 @@ func RefreshReposCmd() tea.Cmd {
 
 	repos := make([]list.Item, 0, len(lines)) // preallocate slice (i.e. set array size)
 
+	interactions := domain.LoadInteractions()
+
 	/////////////////////////////////////
 	// Format lines (list of repos like "github.com/user/Repo1") into a []list.Item
 	for _, line := range lines {
@@ -40,12 +43,20 @@ func RefreshReposCmd() tea.Cmd {
 		nameFromSplit := parts[len(parts)-1] // grab the last element from the split (which is the repo name)
 
 		repos = append(repos, domain.Repo{ // Add to a []list.Item (array of `list.Item`s)
-			Name: nameFromSplit,
-			Path: line,
+			Name:           nameFromSplit,
+			Path:           line,
+			LastInteracted: interactions[line],
 		})
 	}
 	//
 	/////////////////////////////////////
+
+	// Sort most recently interacted first; repos with no interaction sort to the end
+	sort.SliceStable(repos, func(i, j int) bool {
+		ri := repos[i].(domain.Repo)
+		rj := repos[j].(domain.Repo)
+		return ri.LastInteracted.After(rj.LastInteracted)
+	})
 
 	return func() tea.Msg {
 		return events.ReposRefreshed{RepoList: repos}
