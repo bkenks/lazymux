@@ -8,10 +8,6 @@
 
 ---
 
-![Lazymux Demo](assets/Lazymux%20Demo.gif)
-
----
-
 ## What is lazymux?
 
 **lazymux** is a TUI (Terminal User Interface) application built with [Bubbletea](https://github.com/charmbracelet/bubbletea) that combines `ghq` and `lazygit` into a single, unified workflow. It gives you a searchable list of all your repositories, and from there you can jump into git history, clone new repos, delete old ones, or open projects directly in VSCodium — all with a keystroke.
