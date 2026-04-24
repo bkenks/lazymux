@@ -14,14 +14,14 @@ A TUI application combining `ghq` (repository manager) and `lazygit` (git TUI) i
 # Run locally (builds to ./testing/ and installs to ~/.local/bin)
 ./devinstall.sh
 
-# Build release binaries for all platforms (output to .builds/)
-./build.sh
-
 # Run directly without installing
 go run .
 
 # Build for current platform
 go build -o ./testing/lazymux
+
+# Cut a new release: commits, tags, pushes. Users install via `go install`.
+./newtag.sh "lazymux" "vX.Y.Z"
 ```
 
 There are no automated tests in this project.

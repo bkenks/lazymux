@@ -39,3 +39,6 @@ go.work.sum
 
 # Binary Builds for Testing
 .testing/
+
+# macOS
+.DS_Store
