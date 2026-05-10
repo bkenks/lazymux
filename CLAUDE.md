@@ -11,7 +11,7 @@ A TUI application combining `ghq` (repository manager) and `lazygit` (git TUI) i
 ## Commands
 
 ```bash
-# Run locally (builds to ./testing/ and installs to ~/.local/bin)
+# Install the current working tree to $GOPATH/bin (same path as `go install`).
 ./devinstall.sh
 
 # Run directly without installing

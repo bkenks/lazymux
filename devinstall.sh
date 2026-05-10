@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-TEST_DIR="./testing"
-mkdir -p $TEST_DIR
-go build -o $TEST_DIR
-cp -f $TEST_DIR/lazymux ~/.local/bin
+# Installs the current working tree to $GOPATH/bin (same path as
+# `go install github.com/bkenks/lazymux@latest`) so dev builds and
+# released builds live in one place.
+go install .
