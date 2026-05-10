@@ -20,8 +20,11 @@ go run .
 # Build for current platform
 go build -o ./testing/lazymux
 
-# Cut a new release: commits, tags, pushes. Users install via `go install`.
-./newtag.sh "lazymux" "vX.Y.Z"
+# Cut a new release. Commits any pending changes, pushes, bumps the
+# tag from the latest, and pushes the tag. Users install via
+# `go install github.com/bkenks/lazymux@<tag>`.
+./newtag.sh             # patch bump (default)
+./newtag.sh minor       # or major / patch / explicit vX.Y.Z
 ```
 
 There are no automated tests in this project.
