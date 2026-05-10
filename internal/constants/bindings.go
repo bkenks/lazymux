@@ -95,6 +95,7 @@ type repoListKeyMap struct {
 	Delete   key.Binding
 	VSCode   key.Binding
 	Settings key.Binding
+	PullAll  key.Binding
 }
 
 var RepoListKeyMap = repoListKeyMap{
@@ -117,6 +118,10 @@ var RepoListKeyMap = repoListKeyMap{
 	Settings: key.NewBinding(
 		key.WithKeys(tea.KeyCtrlS.String()),
 		key.WithHelp(tea.KeyCtrlS.String(), unsetText),
+	),
+	PullAll: key.NewBinding(
+		key.WithKeys(tea.KeyCtrlP.String()),
+		key.WithHelp("ctrl+p", unsetText),
 	),
 }
 
@@ -151,6 +156,12 @@ func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 			RepoListKeyMap.Settings,
 			"settings",
 			"open settings",
+		),
+		SetOnHelpType(
+			helpType,
+			RepoListKeyMap.PullAll,
+			"pull all",
+			"git pull every repo (skips conflicts)",
 		),
 	}
 

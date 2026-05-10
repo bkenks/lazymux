@@ -108,6 +108,9 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		/// Trigger: A repo has been deleted.
 		case events.RepoDeleted:
 			cmds = append(cmds, commands.RefreshReposCmd())
+		//// Trigger: Pull-all finished — refresh in case branches advanced.
+		case events.PullAllReposComplete:
+			cmds = append(cmds, commands.RefreshReposCmd())
 		//// - Trigger: Completed pulling a list of repos from ghq
 		case events.ReposRefreshed:
 			m.main.UpdateRepoList(msg.RepoList)

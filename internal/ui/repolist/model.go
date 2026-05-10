@@ -88,7 +88,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds,
 				commands.SetState(domain.StateSettings),
 			)
+		case key.Matches(msg, constants.RepoListKeyMap.PullAll):
+			cmds = append(cmds,
+				m.List.NewStatusMessage("Pulling all repos…"),
+				commands.PullAllReposCmd(),
+			)
 		}
+
+	case events.PullAllReposComplete:
+		cmds = append(cmds, m.List.NewStatusMessage(formatPullSummary(msg)))
 	}
 	/////////////////////////////////////
 
