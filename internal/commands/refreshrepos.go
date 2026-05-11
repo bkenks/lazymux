@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"sort"
 	"strings"
@@ -14,51 +13,71 @@ import (
 )
 
 func RefreshReposCmd() tea.Cmd {
+	return func() tea.Msg {
+		c := cfg()
 
-	cmd := exec.Command("ghq", "list") // Call ghq to list repositories
-	out, err := cmd.Output()
-
-	if err != nil { // Fail-Safe
-		fmt.Println("Error getting Repo List:", err)
-		os.Exit(1)
-	}
-
-	// string(out) → "github.com/user/Repo1\ngithub.com/user/Repo2\n"
-	// strings.TrimSpace(...) → removes the final \n, giving "github.com/user/Repo1\ngithub.com/user/Repo2"
-	// strings.Split(..., "\n") → splits into strings on "\n"
-	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-
-	repos := make([]list.Item, 0, len(lines)) // preallocate slice (i.e. set array size)
-
-	interactions := domain.LoadInteractions()
-
-	/////////////////////////////////////
-	// Format lines (list of repos like "github.com/user/Repo1") into a []list.Item
-	for _, line := range lines {
-		if line == "" { // Fail-Safe
-			continue
+		// `ghq list` gives the short paths shown to the user;
+		// `ghq list --full-path` gives the on-disk absolute paths in the same order.
+		shortOut, err := exec.Command(c.Tools.Ghq, "list").Output()
+		if err != nil {
+			return events.Toast{Level: events.ToastError, Msg: fmt.Sprintf("ghq list failed: %v", err)}
+		}
+		fullOut, err := exec.Command(c.Tools.Ghq, "list", "--full-path").Output()
+		if err != nil {
+			return events.Toast{Level: events.ToastError, Msg: fmt.Sprintf("ghq list --full-path failed: %v", err)}
 		}
 
-		parts := strings.Split(line, "/")    // split path ("github.com/user/Repo1") by "/"
-		nameFromSplit := parts[len(parts)-1] // grab the last element from the split (which is the repo name)
+		shortLines := splitNonEmpty(string(shortOut))
+		fullLines := splitNonEmpty(string(fullOut))
 
-		repos = append(repos, domain.Repo{ // Add to a []list.Item (array of `list.Item`s)
-			Name:           nameFromSplit,
-			Path:           line,
-			LastInteracted: interactions[line],
+		// Defensive: if the two listings disagree in length, fall back to mapping by suffix.
+		absByShort := make(map[string]string, len(shortLines))
+		if len(shortLines) == len(fullLines) {
+			for i, s := range shortLines {
+				absByShort[s] = fullLines[i]
+			}
+		} else {
+			for _, s := range shortLines {
+				for _, full := range fullLines {
+					if strings.HasSuffix(full, s) {
+						absByShort[s] = full
+						break
+					}
+				}
+			}
+		}
+
+		interactions := domain.LoadInteractions()
+		repos := make([]list.Item, 0, len(shortLines))
+		for _, line := range shortLines {
+			parts := strings.Split(line, "/")
+			repos = append(repos, domain.Repo{
+				Name:           parts[len(parts)-1],
+				Path:           line,
+				AbsPath:        absByShort[line],
+				LastInteracted: interactions[line],
+			})
+		}
+
+		// Most recently interacted first; never-interacted fall to the end.
+		sort.SliceStable(repos, func(i, j int) bool {
+			ri := repos[i].(domain.Repo)
+			rj := repos[j].(domain.Repo)
+			return ri.LastInteracted.After(rj.LastInteracted)
 		})
-	}
-	//
-	/////////////////////////////////////
 
-	// Sort most recently interacted first; repos with no interaction sort to the end
-	sort.SliceStable(repos, func(i, j int) bool {
-		ri := repos[i].(domain.Repo)
-		rj := repos[j].(domain.Repo)
-		return ri.LastInteracted.After(rj.LastInteracted)
-	})
-
-	return func() tea.Msg {
 		return events.ReposRefreshed{RepoList: repos}
 	}
+}
+
+func splitNonEmpty(s string) []string {
+	raw := strings.Split(strings.TrimSpace(s), "\n")
+	out := make([]string, 0, len(raw))
+	for _, l := range raw {
+		if l == "" {
+			continue
+		}
+		out = append(out, l)
+	}
+	return out
 }

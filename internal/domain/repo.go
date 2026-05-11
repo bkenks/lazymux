@@ -10,6 +10,7 @@ import "time"
 
 type Repo struct {
 	Name, Path     string
+	AbsPath        string
 	LastInteracted time.Time
 }
 

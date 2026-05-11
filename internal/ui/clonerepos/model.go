@@ -1,6 +1,8 @@
 package clonerepos
 
 import (
+	"fmt"
+
 	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
@@ -11,20 +13,14 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// reposRaw	[]string
-// RepoCount	int
-
-// TODO: CHANGE THIS TO USE ANOTHER LIST
-
-type errMsg error
-
 type Model struct {
 	textarea    textarea.Model
-	adjHeight   int // Something weird occurs in the textarea model so we have
-	adjWidth    int // to set these two to obscure values to fill the window properly
+	adjHeight   int
+	adjWidth    int
 	err         error
 	RepoCounter int
 	TotalRepos  int
+	Failures    int
 }
 
 func New() *Model {
@@ -61,18 +57,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, constants.CloneRepoKeyMap.Exit):
-			cmds = append(cmds,
-				commands.SetState(domain.StateMain),
-			)
+			cmds = append(cmds, commands.SetState(domain.StateMain))
 		case key.Matches(msg, constants.CloneRepoKeyMap.Proceed):
-			cmds = append(cmds,
-				commands.StartCloneReposCmd(m.textarea.Value()),
-			)
+			cmds = append(cmds, commands.StartCloneReposCmd(m.textarea.Value()))
 		}
-	// We handle errors just like any other message
-	case errMsg:
-		m.err = msg
-		return m, nil
 	}
 
 	var cmd tea.Cmd
@@ -86,11 +74,24 @@ func headerView() string {
 		lipgloss.Left,
 		"\n\n\n\n",
 		styles.MenuTitle.Render("Repository Clone"),
-		styles.MenuSubStyle.
-			Render("paste repository URLs here"),
+		styles.MenuSubStyle.Render("paste repository URLs here"),
 	)
-
 	return title
+}
+
+func (m *Model) progressView() string {
+	if m.TotalRepos == 0 {
+		return ""
+	}
+	if m.RepoCounter >= m.TotalRepos {
+		return styles.MenuSubStyle.Render(
+			fmt.Sprintf("done — %d cloned, %d failed",
+				m.TotalRepos-m.Failures, m.Failures),
+		)
+	}
+	return styles.MenuSubStyle.Render(
+		fmt.Sprintf("[%d/%d] cloning…", m.RepoCounter+1, m.TotalRepos),
+	)
 }
 
 func footerView() string {
@@ -100,7 +101,6 @@ func footerView() string {
 				constants.CloneRepoKeyMap.HelpBinds(constants.Short),
 			),
 		)
-
 	return helpKeys
 }
 
@@ -108,19 +108,18 @@ func sizeBuffer() (w, h int) {
 	headerHeight := lipgloss.Height(headerView())
 	footerHeight := lipgloss.Height(footerView())
 
-	heightBuffer := 0
 	widthBuffer := 2
 
-	return (constants.WindowSize.Width - widthBuffer),
-		(constants.WindowSize.Height - headerHeight - footerHeight - heightBuffer)
+	return constants.WindowSize.Width - widthBuffer,
+		constants.WindowSize.Height - headerHeight - footerHeight - constants.FooterReservedLines
 }
 
 func (m *Model) View() string {
-
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
 		headerView(),
 		m.textarea.View(),
+		m.progressView(),
 		footerView(),
 	)
 
@@ -129,6 +128,5 @@ func (m *Model) View() string {
 		lipgloss.Center,
 		content,
 	)
-
 	return placedContent
 }

@@ -10,25 +10,18 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Interface
-//
-// uiMain (tea.Model):
-//	- Model (UI) for listing the repos from ghq and allowing the user to open them with Lazygit
-
 type Model struct {
 	List     list.Model
 	RepoList []list.Item
 }
 
 func New() *Model {
-	commands.RefreshReposCmd()
-
 	w, h := SizeBuffer()
 	newList := list.New(
-		[]list.Item{},             // []list.Item containing the parsed list of repos from ghq
-		list.NewDefaultDelegate(), // Default list.Item styling
-		w, h)                      // Width & Height
+		[]list.Item{},
+		list.NewDefaultDelegate(),
+		w, h,
+	)
 	newList.Title = "Repositories"
 	newList.AdditionalShortHelpKeys = constants.RepoListKeyMap.HelpBinds(constants.Short)
 	newList.AdditionalFullHelpKeys = constants.RepoListKeyMap.HelpBinds(constants.Full)
@@ -44,50 +37,62 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
-	/////////////////////////////////////
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
 		w, h := SizeBuffer()
 		m.List.SetSize(w, h)
 
-	case events.CmdComplete:
-		// Fired when lazygit exits — re-sort the list with the updated interaction timestamp
-		cmds = append(cmds, commands.RefreshReposCmd())
-
 	case tea.KeyMsg:
+		// Suppress repo-action keybinds while the list's filter input has focus —
+		// otherwise typing "r" in a search filter triggers a refresh.
+		if m.List.FilterState() == list.Filtering {
+			break
+		}
+
 		switch {
 		case key.Matches(msg, constants.RepoListKeyMap.Select):
 			repo := ConvertToRepoType(m.List.SelectedItem())
+			if repo.AbsPath == "" {
+				break
+			}
 			domain.SaveInteraction(repo.Path)
-			absoluteRepoPath := AbsRepoPath(m.List.SelectedItem())
+			cmds = append(cmds, commands.LazygitCmd(repo.AbsPath))
 
-			cmds = append(
-				cmds,
-				commands.TeaCmdBuilder("lazygit", "-p", absoluteRepoPath),
-			)
 		case key.Matches(msg, constants.RepoListKeyMap.Clone):
-			cmds = append(
-				cmds,
-				commands.SetState(domain.StateCloneRepo),
-			)
+			cmds = append(cmds, commands.SetState(domain.StateCloneRepo))
+
 		case key.Matches(msg, constants.RepoListKeyMap.Delete):
-			cmds = append(
-				cmds,
-				commands.SetState(domain.StateConfirmDelete),
-			)
+			if ConvertToRepoType(m.List.SelectedItem()).AbsPath == "" {
+				break
+			}
+			cmds = append(cmds, commands.SetState(domain.StateConfirmDelete))
+
 		case key.Matches(msg, constants.RepoListKeyMap.VSCode):
 			repo := ConvertToRepoType(m.List.SelectedItem())
+			if repo.AbsPath == "" {
+				break
+			}
 			domain.SaveInteraction(repo.Path)
-			absoluteRepoPath := AbsRepoPath(m.List.SelectedItem())
+			cmds = append(cmds, commands.OpenInVSCode(repo.AbsPath))
 
-			cmds = append(cmds,
-				commands.OpenInVSCode(absoluteRepoPath),
-			)
 		case key.Matches(msg, constants.RepoListKeyMap.Settings):
-			cmds = append(cmds,
-				commands.SetState(domain.StateSettings),
-			)
+			cmds = append(cmds, commands.SetState(domain.StateSettings))
+
+		case key.Matches(msg, constants.RepoListKeyMap.Refresh):
+			cmds = append(cmds, commands.RefreshReposCmd())
+
+		case key.Matches(msg, constants.RepoListKeyMap.CopyPath):
+			cmds = append(cmds, commands.CopyPathCmd(AbsRepoPath(m.List.SelectedItem())))
+
+		case key.Matches(msg, constants.RepoListKeyMap.Shell):
+			repo := ConvertToRepoType(m.List.SelectedItem())
+			if repo.AbsPath == "" {
+				break
+			}
+			domain.SaveInteraction(repo.Path)
+			cmds = append(cmds, commands.OpenShellCmd(repo.AbsPath))
+
 		case key.Matches(msg, constants.RepoListKeyMap.PullAll):
 			cmds = append(cmds,
 				m.List.NewStatusMessage("Pulling all repos…"),
@@ -98,15 +103,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case events.PullAllReposComplete:
 		cmds = append(cmds, m.List.NewStatusMessage(formatPullSummary(msg)))
 	}
-	/////////////////////////////////////
 
-	/////////////////////////////////////
-	// Output
 	m.List, cmd = m.List.Update(msg)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
-	// End "Output"
-	/////////////////////////////////////
 }
 
 func (m *Model) View() string { return m.List.View() }
@@ -114,6 +114,3 @@ func (m *Model) View() string { return m.List.View() }
 func (m *Model) UpdateRepoList(repoList []list.Item) {
 	m.List.SetItems(repoList)
 }
-
-// End "Interface"
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////

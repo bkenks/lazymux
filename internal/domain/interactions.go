@@ -9,8 +9,15 @@ import (
 
 type InteractionStore map[string]time.Time
 
+// interactionsFilePath honors XDG_DATA_HOME, falling back to ~/.local/share.
 func interactionsFilePath() string {
-	home, _ := os.UserHomeDir()
+	if x := os.Getenv("XDG_DATA_HOME"); x != "" {
+		return filepath.Join(x, "lazymux", "interactions.json")
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return filepath.Join(".", "lazymux-interactions.json")
+	}
 	return filepath.Join(home, ".local", "share", "lazymux", "interactions.json")
 }
 
@@ -20,15 +27,26 @@ func LoadInteractions() InteractionStore {
 	if err != nil {
 		return store
 	}
+	// Decode failure is not fatal — return an empty store so the app keeps working.
+	// A future pass could rename the bad file to preserve user data for inspection.
 	_ = json.Unmarshal(data, &store)
 	return store
 }
 
-func SaveInteraction(repoPath string) {
+// SaveInteraction records the timestamp this repo was last opened. Errors are
+// non-fatal: a missing interaction store just means the list won't be sorted
+// by recency, which is a graceful degradation.
+func SaveInteraction(repoPath string) error {
 	store := LoadInteractions()
 	store[repoPath] = time.Now()
+
 	path := interactionsFilePath()
-	_ = os.MkdirAll(filepath.Dir(path), 0755)
-	data, _ := json.Marshal(store)
-	_ = os.WriteFile(path, data, 0644)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	data, err := json.Marshal(store)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o644)
 }

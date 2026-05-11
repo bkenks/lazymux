@@ -9,13 +9,11 @@ import (
 )
 
 func DeleteRepoCmd(repoGhqPath string) tea.Cmd {
-	cmdBuilder := exec.Command("ghq", "rm", repoGhqPath) // build shell command
-	cmdBuilder.Stdin = strings.NewReader("y")            // pipe "y" to terminal to accept ghq prompt asking if sure to remove repo
+	cmdBuilder := exec.Command(cfg().Tools.Ghq, "rm", repoGhqPath)
+	cmdBuilder.Stdin = strings.NewReader("y") // ghq prompts to confirm; pipe "y"
 
-	cmd := tea.ExecProcess(
-		cmdBuilder, // insert prior command
-		func(err error) tea.Msg { return events.RepoDeleted{Err: err} }, // run this function when done (i.e. emit Msg)
+	return tea.ExecProcess(
+		cmdBuilder,
+		func(err error) tea.Msg { return events.RepoDeleted{Err: err} },
 	)
-
-	return cmd
 }

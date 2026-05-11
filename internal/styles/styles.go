@@ -7,14 +7,14 @@ import (
 var (
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Colors
-	DarkPink         = lipgloss.AdaptiveColor{Light: "#EE6FF8", Dark: "#EE6FF8"}
-	DullGrey         = lipgloss.AdaptiveColor{Light: "#C2B8C2", Dark: "#4D4D4D"}
-	Purple           = lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}
-	VerySubduedColor = lipgloss.AdaptiveColor{Light: "#DDDADA", Dark: "#4b4b4b"}
-	SubduedColor     = lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
-	MediumGrey       = lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#777777"}
-	DarkPurple       = lipgloss.Color("62")
-	White            = lipgloss.Color("230")
+	DarkPink         lipgloss.TerminalColor = lipgloss.AdaptiveColor{Light: "#EE6FF8", Dark: "#EE6FF8"}
+	DullGrey         lipgloss.TerminalColor = lipgloss.AdaptiveColor{Light: "#C2B8C2", Dark: "#4D4D4D"}
+	Purple           lipgloss.TerminalColor = lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}
+	VerySubduedColor lipgloss.TerminalColor = lipgloss.AdaptiveColor{Light: "#DDDADA", Dark: "#4b4b4b"}
+	SubduedColor     lipgloss.TerminalColor = lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
+	MediumGrey       lipgloss.TerminalColor = lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#777777"}
+	DarkPurple       lipgloss.TerminalColor = lipgloss.Color("62")
+	White            lipgloss.TerminalColor = lipgloss.Color("230")
 
 	// End "Colors"
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -92,5 +92,23 @@ var (
 			Foreground(DarkPink)
 
 	// End "Dialog"
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Status footer / toasts
+
+	ToastIdleStyle = lipgloss.NewStyle().
+			Padding(0, 1)
+
+	ToastInfoStyle = lipgloss.NewStyle().
+			Padding(0, 1).
+			Foreground(SubduedColor)
+
+	ToastErrorStyle = lipgloss.NewStyle().
+			Padding(0, 1).
+			Foreground(DarkPink).
+			Bold(true)
+
+	// End "Status footer / toasts"
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 )

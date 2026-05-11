@@ -15,8 +15,6 @@ const (
 	Full
 )
 
-var unsetText = "not set"
-
 type keyMap interface {
 	HelpBinds()
 }
@@ -52,34 +50,20 @@ var DefaultKeyMap = defaultKeyMap{
 		),
 		key.WithHelp(
 			tea.KeyEnter.String()+"/"+tea.KeySpace.String(),
-			unsetText,
+			"select",
 		),
 	),
 	Exit: key.NewBinding(
 		key.WithKeys(tea.KeyEsc.String()),
-		key.WithHelp(
-			tea.KeyEsc.String(),
-			unsetText,
-		),
+		key.WithHelp(tea.KeyEsc.String(), "exit"),
 	),
 }
 
 func (k defaultKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 	bindsWithHelp := []key.Binding{
-		SetOnHelpType(
-			helpType,             // Short or Full Help
-			DefaultKeyMap.Select, // key.Binding
-			"select",             // Short Help
-			"select",             // Full Help
-		),
-		SetOnHelpType(
-			helpType,
-			DefaultKeyMap.Exit,
-			"exit",
-			"exit",
-		),
+		SetOnHelpType(helpType, DefaultKeyMap.Select, "select", "select"),
+		SetOnHelpType(helpType, DefaultKeyMap.Exit, "exit", "exit"),
 	}
-
 	return func() []key.Binding { return bindsWithHelp }
 }
 
@@ -95,76 +79,69 @@ type repoListKeyMap struct {
 	Delete   key.Binding
 	VSCode   key.Binding
 	Settings key.Binding
+	Refresh  key.Binding
+	CopyPath key.Binding
+	Shell    key.Binding
+	Quit     key.Binding
 	PullAll  key.Binding
 }
 
 var RepoListKeyMap = repoListKeyMap{
 	Select: key.NewBinding(
-		key.WithKeys(tea.KeyTab.String()),            // actual keybindings
-		key.WithHelp(tea.KeyTab.String(), unsetText), // corresponding help text
+		key.WithKeys(tea.KeyTab.String()),
+		key.WithHelp(tea.KeyTab.String(), "lazygit"),
 	),
 	Clone: key.NewBinding(
 		key.WithKeys(tea.KeyCtrlN.String()),
-		key.WithHelp(tea.KeyCtrlN.String(), unsetText),
+		key.WithHelp("ctrl+n", "clone"),
 	),
 	Delete: key.NewBinding(
 		key.WithKeys(tea.KeyCtrlBackslash.String()),
-		key.WithHelp(tea.KeyCtrlBackslash.String(), unsetText),
+		key.WithHelp("ctrl+\\", "delete"),
 	),
 	VSCode: key.NewBinding(
 		key.WithKeys(tea.KeyCtrlO.String()),
-		key.WithHelp(tea.KeyCtrlO.String(), unsetText),
+		key.WithHelp("ctrl+o", "editor"),
 	),
 	Settings: key.NewBinding(
 		key.WithKeys(tea.KeyCtrlS.String()),
-		key.WithHelp(tea.KeyCtrlS.String(), unsetText),
+		key.WithHelp("ctrl+s", "settings"),
+	),
+	Refresh: key.NewBinding(
+		key.WithKeys("r"),
+		key.WithHelp("r", "refresh"),
+	),
+	CopyPath: key.NewBinding(
+		key.WithKeys("y"),
+		key.WithHelp("y", "copy path"),
+	),
+	Shell: key.NewBinding(
+		key.WithKeys("s"),
+		key.WithHelp("s", "shell"),
+	),
+	Quit: key.NewBinding(
+		key.WithKeys("q", tea.KeyCtrlC.String()),
+		key.WithHelp("q", "quit"),
 	),
 	PullAll: key.NewBinding(
 		key.WithKeys(tea.KeyCtrlP.String()),
-		key.WithHelp("ctrl+p", unsetText),
+		key.WithHelp("ctrl+p", "pull all"),
 	),
 }
 
 func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 	bindsWithHelp := []key.Binding{
-		SetOnHelpType(
-			helpType,              // Short or Full Help
-			RepoListKeyMap.Select, // key.Binding
-			"lazygit",             // Short Help
-			"open with lazygit",   // Full Help
-		),
-		SetOnHelpType(
-			helpType,
-			RepoListKeyMap.Clone,
-			"clone",
-			"clone new repos",
-		),
-		SetOnHelpType(
-			helpType,
-			RepoListKeyMap.Delete,
-			"delete",
-			"delete repo",
-		),
-		SetOnHelpType(
-			helpType,
-			RepoListKeyMap.VSCode,
-			"vscode",
-			"open in vscode",
-		),
-		SetOnHelpType(
-			helpType,
-			RepoListKeyMap.Settings,
-			"settings",
-			"open settings",
-		),
-		SetOnHelpType(
-			helpType,
-			RepoListKeyMap.PullAll,
-			"pull all",
-			"git pull every repo (skips conflicts)",
-		),
+		SetOnHelpType(helpType, RepoListKeyMap.Select, "lazygit", "open with lazygit"),
+		SetOnHelpType(helpType, RepoListKeyMap.VSCode, "editor", "open in editor"),
+		SetOnHelpType(helpType, RepoListKeyMap.Shell, "shell", "shell in repo dir"),
+		SetOnHelpType(helpType, RepoListKeyMap.CopyPath, "copy", "copy path"),
+		SetOnHelpType(helpType, RepoListKeyMap.Refresh, "refresh", "refresh list"),
+		SetOnHelpType(helpType, RepoListKeyMap.Clone, "clone", "clone new repos"),
+		SetOnHelpType(helpType, RepoListKeyMap.PullAll, "pull all", "git pull every repo (skips conflicts)"),
+		SetOnHelpType(helpType, RepoListKeyMap.Delete, "delete", "delete repo"),
+		SetOnHelpType(helpType, RepoListKeyMap.Settings, "settings", "open settings"),
+		SetOnHelpType(helpType, RepoListKeyMap.Quit, "quit", "quit"),
 	}
-
 	return func() []key.Binding { return bindsWithHelp }
 }
 
@@ -182,30 +159,19 @@ type confirmKeyMap struct {
 var ConfirmKeyMap = confirmKeyMap{
 	Proceed: key.NewBinding(
 		key.WithKeys(tea.KeyCtrlP.String()),
-		key.WithHelp("ctrl+p", unsetText),
+		key.WithHelp("ctrl+p", "proceed"),
 	),
 	Exit: key.NewBinding(
 		key.WithKeys(tea.KeyEsc.String()),
-		key.WithHelp(tea.KeyEsc.String(), unsetText),
+		key.WithHelp(tea.KeyEsc.String(), "back"),
 	),
 }
 
 func (k confirmKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 	bindsWithHelp := []key.Binding{
-		SetOnHelpType(
-			helpType,                // Short or Full Help
-			ConfirmKeyMap.Proceed,   // key.Binding
-			"proceed",               // Short Help
-			"proceed with deleting", // Full Help
-		),
-		SetOnHelpType(
-			helpType,
-			ConfirmKeyMap.Exit,
-			"back",
-			"back to menu",
-		),
+		SetOnHelpType(helpType, ConfirmKeyMap.Proceed, "proceed", "proceed with deleting"),
+		SetOnHelpType(helpType, ConfirmKeyMap.Exit, "back", "back to menu"),
 	}
-
 	return func() []key.Binding { return bindsWithHelp }
 }
 
@@ -233,20 +199,9 @@ var CloneRepoKeyMap = cloneRepoKeyMap{
 
 func (k cloneRepoKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 	bindsWithHelp := []key.Binding{
-		SetOnHelpType(
-			helpType,                // Short or Full Help
-			CloneRepoKeyMap.Proceed, // key.Binding
-			"proceed",               // Short Help
-			"proceed with cloning",  // Full Help
-		),
-		SetOnHelpType(
-			helpType,
-			CloneRepoKeyMap.Exit,
-			"back",
-			"back to menu",
-		),
+		SetOnHelpType(helpType, CloneRepoKeyMap.Proceed, "proceed", "proceed with cloning"),
+		SetOnHelpType(helpType, CloneRepoKeyMap.Exit, "back", "back to menu"),
 	}
-
 	return func() []key.Binding { return bindsWithHelp }
 }
 

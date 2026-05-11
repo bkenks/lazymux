@@ -9,10 +9,11 @@ import (
 
 func CloneReposExecCmd(repoUrls []string) tea.Cmd {
 	var cmds []tea.Cmd
+	ghqBin := cfg().Tools.Ghq
 
 	for _, r := range repoUrls {
 		cmds = append(cmds, tea.ExecProcess(
-			exec.Command("ghq", "get", r),
+			exec.Command(ghqBin, "get", r),
 			func(err error) tea.Msg {
 				return events.CloneRepoExec{Err: err}
 			},

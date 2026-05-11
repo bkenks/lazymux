@@ -8,6 +8,7 @@ type Setting interface {
 	Key() string
 	Label() string
 	ValueString() string
+	Value() any
 	Next() Setting
 	Prev() Setting
 }
@@ -32,6 +33,7 @@ func (t Toggle) ValueString() string {
 	}
 	return "off"
 }
+func (t Toggle) Value() any    { return t.value }
 func (t Toggle) Next() Setting { return Toggle{key: t.key, label: t.label, value: !t.value} }
 func (t Toggle) Prev() Setting { return Toggle{key: t.key, label: t.label, value: !t.value} }
 
@@ -51,6 +53,7 @@ func (s Select) Key() string         { return s.key }
 func (s Select) Label() string       { return s.label }
 func (s Select) FilterValue() string { return s.label }
 func (s Select) ValueString() string { return s.options[s.index] }
+func (s Select) Value() any          { return s.options[s.index] }
 func (s Select) Next() Setting {
 	return Select{key: s.key, label: s.label, options: s.options, index: (s.index + 1) % len(s.options)}
 }

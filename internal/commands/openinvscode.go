@@ -3,18 +3,15 @@ package commands
 import (
 	"os/exec"
 
-	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/events"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 func OpenInVSCode(repoFullPath string) tea.Cmd {
-	cmdBuilder := exec.Command(constants.EditorCmd, repoFullPath) // build shell command
+	cmdBuilder := exec.Command(cfg().Tools.Editor, repoFullPath)
 
-	cmd := tea.ExecProcess(
-		cmdBuilder, // insert prior command
-		func(err error) tea.Msg { return events.OpenInVSCodeComplete{Err: err} }, // run this function when done (i.e. emit Msg)
+	return tea.ExecProcess(
+		cmdBuilder,
+		func(err error) tea.Msg { return events.OpenInVSCodeComplete{Err: err} },
 	)
-
-	return cmd
 }

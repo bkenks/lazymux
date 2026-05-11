@@ -1,18 +1,15 @@
 package constants
 
 import (
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Global Variables
+// WindowSize tracks the latest tea.WindowSizeMsg so views that compute their
+// own layout can read terminal dimensions without each one subscribing
+// independently.
+var WindowSize tea.WindowSizeMsg
 
-var (
-	WindowSize tea.WindowSizeMsg
-	RepoList   []list.Item
-	EditorCmd  = "codium"
-)
-
-// End "Global Variables"
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// FooterReservedLines is the number of rows ModelManager renders below the
+// active view (status footer / toast). Sub-models that compute their own
+// height must subtract this so their content doesn't overflow.
+const FooterReservedLines = 1
