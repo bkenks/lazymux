@@ -129,7 +129,7 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, commands.RefreshReposCmd())
 
 		case events.ReposRefreshed:
-			m.main.UpdateRepoList(msg.RepoList)
+			cmds = append(cmds, m.main.UpdateRepoList(msg.RepoList))
 
 		case events.OpenInVSCodeComplete:
 			if msg.Err != nil {

@@ -111,6 +111,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Model) View() string { return m.List.View() }
 
-func (m *Model) UpdateRepoList(repoList []list.Item) {
-	m.List.SetItems(repoList)
+// UpdateRepoList replaces the list's items. It returns the command from
+// list.SetItems, which must be run so the filtered view is recomputed when a
+// filter is applied — dropping it leaves the filter phrase set but the results
+// empty ("0 results found") after a refresh (e.g. returning from lazygit).
+func (m *Model) UpdateRepoList(repoList []list.Item) tea.Cmd {
+	return m.List.SetItems(repoList)
 }
