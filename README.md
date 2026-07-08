@@ -131,6 +131,8 @@ After entering one or more clone URLs, lazymux steps through each repo so you ca
 | `Tab` | Switch between name / host fields (while editing) |
 | `Esc` | Save & back |
 
+Forges still linked by one or more repos can't be deleted — repoint those repos (`f`) first. Each row shows how many repos link it.
+
 ### Repo Forges (`f`)
 
 | Key | Action |

@@ -35,6 +35,10 @@ type Model struct {
 	forges []config.Forge
 	cursor int
 
+	// inUse maps a forge name to how many repos link it, so deletion of a
+	// forge still referenced by repos can be blocked.
+	inUse map[string]int
+
 	editing    bool
 	editIdx    int // -1 = adding new
 	nameInput  textinput.Model
@@ -47,6 +51,13 @@ func New(cfg config.Config) *Model {
 	forges := make([]config.Forge, len(cfg.Forges))
 	copy(forges, cfg.Forges)
 
+	inUse := map[string]int{}
+	for _, link := range cfg.Repos {
+		for _, f := range link.Forges {
+			inUse[f]++
+		}
+	}
+
 	name := textinput.New()
 	name.Placeholder = "name (e.g. github)"
 	name.CharLimit = 40
@@ -54,7 +65,7 @@ func New(cfg config.Config) *Model {
 	host.Placeholder = "host (e.g. github.com)"
 	host.CharLimit = 100
 
-	return &Model{forges: forges, editIdx: -1, nameInput: name, hostInput: host}
+	return &Model{forges: forges, inUse: inUse, editIdx: -1, nameInput: name, hostInput: host}
 }
 
 func (m *Model) Init() tea.Cmd { return nil }
@@ -91,10 +102,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case key.Matches(km, keys.Delete):
 		if len(m.forges) > 0 {
+			name := m.forges[m.cursor].Name
+			if n := m.inUse[name]; n > 0 {
+				m.err = fmt.Sprintf("%q is linked by %d repo(s) — repoint them (f) first", name, n)
+				break
+			}
 			m.forges = append(m.forges[:m.cursor], m.forges[m.cursor+1:]...)
 			if m.cursor >= len(m.forges) && m.cursor > 0 {
 				m.cursor--
 			}
+			m.err = ""
 		}
 	}
 	return m, nil
@@ -180,6 +197,9 @@ func (m *Model) View() string {
 	}
 	for i, f := range m.forges {
 		line := fmt.Sprintf("  %s  (%s)", f.Name, f.Host)
+		if n := m.inUse[f.Name]; n > 0 {
+			line += fmt.Sprintf("  · %d repo(s)", n)
+		}
 		if i == m.cursor && !m.editing {
 			line = lipgloss.NewStyle().Bold(true).Render(line + "  ◄")
 		}
