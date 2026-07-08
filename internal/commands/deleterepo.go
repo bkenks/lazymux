@@ -1,19 +1,16 @@
 package commands
 
 import (
-	"os/exec"
-	"strings"
-
 	"github.com/bkenks/lazymux/internal/events"
+	"github.com/bkenks/lazymux/internal/repomgr"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func DeleteRepoCmd(repoGhqPath string) tea.Cmd {
-	cmdBuilder := exec.Command(cfg().Tools.Ghq, "rm", repoGhqPath)
-	cmdBuilder.Stdin = strings.NewReader("y") // ghq prompts to confirm; pipe "y"
-
-	return tea.ExecProcess(
-		cmdBuilder,
-		func(err error) tea.Msg { return events.RepoDeleted{Err: err} },
-	)
+// DeleteRepoCmd removes a repo directory (and now-empty namespace parents).
+func DeleteRepoCmd(absPath string) tea.Cmd {
+	baseDir := cfg().BaseDir
+	return func() tea.Msg {
+		err := repomgr.Remove(baseDir, absPath)
+		return events.RepoDeleted{Err: err}
+	}
 }

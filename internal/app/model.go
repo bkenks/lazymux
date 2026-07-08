@@ -9,9 +9,13 @@ import (
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
+	"github.com/bkenks/lazymux/internal/repomgr"
 	"github.com/bkenks/lazymux/internal/styles"
 	"github.com/bkenks/lazymux/internal/ui/clonerepos"
 	"github.com/bkenks/lazymux/internal/ui/confirm"
+	"github.com/bkenks/lazymux/internal/ui/forgeregistry"
+	"github.com/bkenks/lazymux/internal/ui/forgeselect"
+	"github.com/bkenks/lazymux/internal/ui/repoforges"
 	"github.com/bkenks/lazymux/internal/ui/repolist"
 	"github.com/bkenks/lazymux/pkg/settings"
 	tea "github.com/charmbracelet/bubbletea"
@@ -28,8 +32,18 @@ type ModelManager struct {
 	confirmDelete confirm.Model
 	clonerepos    clonerepos.Model
 	settingsModel settings.Model
+	forgeSelect   *forgeselect.Model
+	forgeRegistry *forgeregistry.Model
+	repoForges    *repoforges.Model
 
 	active tea.Model
+
+	// clone batch progress (cloning runs after the forge-select step)
+	cloneTotal int
+	cloneDone  int
+	cloneFail  int
+
+	pendingDeleteKey string
 
 	toast      string
 	toastLevel events.ToastLevel
@@ -84,6 +98,8 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.confirmDelete = *confirm.New()
 				if repo, ok := m.main.List.SelectedItem().(domain.Repo); ok {
 					m.confirmDelete.RepoPath = repo.Path
+					m.confirmDelete.AbsPath = repo.AbsPath
+					m.pendingDeleteKey = repo.Path
 				}
 				m.active = &m.confirmDelete
 
@@ -93,34 +109,136 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case domain.StateSettings:
 				m.active = &m.settingsModel
+
+			case domain.StateForgeSelect:
+				// m.forgeSelect is built in the StartRepoClone handler.
+				if m.forgeSelect != nil {
+					m.active = m.forgeSelect
+				}
+
+			case domain.StateForgeRegistry:
+				m.forgeRegistry = forgeregistry.New(m.cfg)
+				m.active = m.forgeRegistry
+
+			case domain.StateRepoForges:
+				// m.repoForges is built in the OpenRepoForges handler.
+				if m.repoForges != nil {
+					m.active = m.repoForges
+				}
 			}
 
 		case events.StartRepoClone:
-			m.clonerepos.RepoCounter = 0
-			m.clonerepos.Failures = 0
-			m.clonerepos.TotalRepos = len(msg.RepoUrls)
-			cmds = append(cmds, commands.CloneReposExecCmd(msg.RepoUrls))
+			// Parse each pasted URL and pre-select its matching forge, then
+			// hand off to the forge-select screen before cloning.
+			var pending []repomgr.PendingClone
+			var bad int
+			for _, raw := range msg.RepoUrls {
+				if raw == "" {
+					continue
+				}
+				p, err := repomgr.NewPendingClone(m.cfg, raw)
+				if err != nil {
+					bad++
+					continue
+				}
+				pending = append(pending, p)
+			}
+			if bad > 0 {
+				cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("%d url(s) couldn't be parsed", bad)))
+			}
+			if len(pending) == 0 {
+				cmds = append(cmds, commands.SetState(domain.StateMain))
+				break
+			}
+			m.forgeSelect = forgeselect.New(m.cfg, pending)
+			cmds = append(cmds, commands.SetState(domain.StateForgeSelect))
+
+		case events.ForgeSelectComplete:
+			// Persist any inline-added forges, then start the clones.
+			if len(msg.NewForges) > 0 {
+				m.cfg.Forges = append(m.cfg.Forges, msg.NewForges...)
+				commands.SetDeps(m.cfg)
+				if err := config.Save(m.cfg); err != nil {
+					cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("couldn't save forges: %v", err)))
+				}
+			}
+			m.cloneTotal = len(msg.Clones)
+			m.cloneDone = 0
+			m.cloneFail = 0
+			if m.cloneTotal == 0 {
+				cmds = append(cmds, commands.SetState(domain.StateMain))
+				break
+			}
+			cmds = append(cmds,
+				commands.SetState(domain.StateMain),
+				commands.CloneReposExecCmd(msg.Clones),
+			)
 
 		case events.CloneRepoExec:
 			if msg.Err != nil {
-				m.clonerepos.Failures++
+				m.cloneFail++
+			} else if msg.Clone.Primary != "" {
+				// Clone succeeded: record the link and rewrite the repo to a
+				// placeholder origin resolved to its primary forge.
+				key := msg.Clone.URL.Key()
+				link := msg.Clone.Link()
+				m.cfg.Repos[key] = link
+				if err := repomgr.RenderGitConfig(m.cfg, key, link); err != nil {
+					cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("%s: %v", key, err)))
+				}
 			}
-			if m.clonerepos.RepoCounter < m.clonerepos.TotalRepos {
-				m.clonerepos.RepoCounter++
+			if m.cloneDone < m.cloneTotal {
+				m.cloneDone++
 			}
-			if m.clonerepos.RepoCounter == m.clonerepos.TotalRepos {
-				summary := fmt.Sprintf("cloned %d/%d", m.clonerepos.TotalRepos-m.clonerepos.Failures, m.clonerepos.TotalRepos)
+			if m.cloneDone == m.cloneTotal {
+				if err := config.Save(m.cfg); err != nil {
+					cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("couldn't save config: %v", err)))
+				}
+				summary := fmt.Sprintf("cloned %d/%d", m.cloneTotal-m.cloneFail, m.cloneTotal)
 				cmds = append(cmds,
 					commands.RefreshReposCmd(),
-					commands.SetState(domain.StateMain),
 					m.toastCmd(events.ToastInfo, summary),
 				)
 			}
+
+		case events.ForgesChanged:
+			m.cfg.Forges = msg.Forges
+			commands.SetDeps(m.cfg)
+			if err := config.Save(m.cfg); err != nil {
+				cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("couldn't save forges: %v", err)))
+			}
+
+		case events.OpenRepoForges:
+			m.repoForges = repoforges.New(m.cfg, msg.Key)
+			cmds = append(cmds, commands.SetState(domain.StateRepoForges))
+
+		case events.RepoLinkChanged:
+			if len(msg.Link.Forges) == 0 {
+				delete(m.cfg.Repos, msg.Key)
+			} else {
+				m.cfg.Repos[msg.Key] = msg.Link
+				if msg.Link.Primary != "" {
+					if err := repomgr.RenderGitConfig(m.cfg, msg.Key, msg.Link); err != nil {
+						cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("%s: %v", msg.Key, err)))
+					}
+				}
+			}
+			commands.SetDeps(m.cfg)
+			if err := config.Save(m.cfg); err != nil {
+				cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("couldn't save config: %v", err)))
+			}
+			cmds = append(cmds, commands.RefreshReposCmd())
 
 		case events.RepoDeleted:
 			if msg.Err != nil {
 				cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("delete failed: %v", msg.Err)))
 			} else {
+				if m.pendingDeleteKey != "" {
+					delete(m.cfg.Repos, m.pendingDeleteKey)
+					m.pendingDeleteKey = ""
+					_ = config.Save(m.cfg)
+					commands.SetDeps(m.cfg)
+				}
 				cmds = append(cmds, m.toastCmd(events.ToastInfo, "repo deleted"))
 			}
 			cmds = append(cmds, commands.RefreshReposCmd())

@@ -84,6 +84,8 @@ type repoListKeyMap struct {
 	Shell    key.Binding
 	Quit     key.Binding
 	PullAll  key.Binding
+	Forges   key.Binding
+	Registry key.Binding
 }
 
 var RepoListKeyMap = repoListKeyMap{
@@ -127,6 +129,14 @@ var RepoListKeyMap = repoListKeyMap{
 		key.WithKeys(tea.KeyCtrlP.String()),
 		key.WithHelp("ctrl+p", "pull all"),
 	),
+	Forges: key.NewBinding(
+		key.WithKeys("f"),
+		key.WithHelp("f", "forges"),
+	),
+	Registry: key.NewBinding(
+		key.WithKeys("F"),
+		key.WithHelp("F", "registry"),
+	),
 }
 
 func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
@@ -138,6 +148,8 @@ func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 		SetOnHelpType(helpType, RepoListKeyMap.Refresh, "refresh", "refresh list"),
 		SetOnHelpType(helpType, RepoListKeyMap.Clone, "clone", "clone new repos"),
 		SetOnHelpType(helpType, RepoListKeyMap.PullAll, "pull all", "git pull every repo (skips conflicts)"),
+		SetOnHelpType(helpType, RepoListKeyMap.Forges, "forges", "edit repo's forge links"),
+		SetOnHelpType(helpType, RepoListKeyMap.Registry, "registry", "manage forge registry"),
 		SetOnHelpType(helpType, RepoListKeyMap.Delete, "delete", "delete repo"),
 		SetOnHelpType(helpType, RepoListKeyMap.Settings, "settings", "open settings"),
 		SetOnHelpType(helpType, RepoListKeyMap.Quit, "quit", "quit"),
