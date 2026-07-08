@@ -9,38 +9,67 @@ import (
 	"strings"
 
 	"github.com/bkenks/lazymux/internal/config"
+	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/repomgr"
 	"github.com/bkenks/lazymux/internal/styles"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 type keyMap struct {
-	Up, Down, Toggle, Primary, Scheme, Add, Confirm, Exit key.Binding
+	Toggle, Primary, Scheme, Add, Confirm, Exit key.Binding
 }
 
 var keys = keyMap{
-	Up:      key.NewBinding(key.WithKeys("up", "k")),
-	Down:    key.NewBinding(key.WithKeys("down", "j")),
-	Toggle:  key.NewBinding(key.WithKeys(" ")),
-	Primary: key.NewBinding(key.WithKeys("p")),
-	Scheme:  key.NewBinding(key.WithKeys("s")),
-	Add:     key.NewBinding(key.WithKeys("a")),
-	Confirm: key.NewBinding(key.WithKeys("enter", "ctrl+p")),
-	Exit:    key.NewBinding(key.WithKeys("esc")),
+	Toggle:  key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "toggle")),
+	Primary: key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "primary")),
+	Scheme:  key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "scheme")),
+	Add:     key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "add forge")),
+	Confirm: key.NewBinding(key.WithKeys("enter", "ctrl+p"), key.WithHelp("enter", "next")),
+	Exit:    key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
 }
 
+func helpKeys() []key.Binding {
+	return []key.Binding{keys.Toggle, keys.Primary, keys.Scheme, keys.Add, keys.Confirm, keys.Exit}
+}
+
+// forgeItem is a registry forge as shown in the selection list.
+type forgeItem struct {
+	name, host       string
+	checked, primary bool
+}
+
+func (i forgeItem) Title() string {
+	box := styles.GlyphCheckOff
+	if i.checked {
+		box = styles.GlyphCheckOn
+	}
+	t := box + " " + i.name
+	if i.primary {
+		t += " " + styles.GlyphPrimary
+	}
+	return t
+}
+func (i forgeItem) Description() string {
+	if i.primary {
+		return i.host + "  · primary"
+	}
+	return i.host
+}
+func (i forgeItem) FilterValue() string { return i.name }
+
 type Model struct {
+	list      list.Model
 	forges    []config.Forge // working registry (base + inline-added)
 	newForges []config.Forge // inline-added, persisted on completion
 
 	pending []repomgr.PendingClone
 	idx     int
-	cursor  int
 
 	adding    bool
 	nameInput textinput.Model
@@ -56,12 +85,16 @@ func New(cfg config.Config, pending []repomgr.PendingClone) *Model {
 	forges := make([]config.Forge, len(cfg.Forges))
 	copy(forges, cfg.Forges)
 
-	m := &Model{
-		forges:    forges,
-		pending:   pending,
-		nameInput: ti,
-	}
-	m.syncCursorToPrimary()
+	w, h := sizeBuffer()
+	l := list.New(nil, list.NewDefaultDelegate(), w, h)
+	l.SetFilteringEnabled(false)
+	l.SetShowHelp(true)
+	l.AdditionalShortHelpKeys = helpKeys
+	l.AdditionalFullHelpKeys = helpKeys
+
+	m := &Model{forges: forges, pending: pending, nameInput: ti, list: l}
+	m.refresh()
+	m.selectPrimary()
 	return m
 }
 
@@ -69,18 +102,31 @@ func (m *Model) Init() tea.Cmd { return nil }
 
 func (m *Model) cur() *repomgr.PendingClone { return &m.pending[m.idx] }
 
-// syncCursorToPrimary parks the cursor on the current pending's primary forge.
-func (m *Model) syncCursorToPrimary() {
+// refresh rebuilds the list items + title from the current pending selection,
+// preserving the cursor position.
+func (m *Model) refresh() {
 	if len(m.pending) == 0 {
 		return
 	}
+	p := m.cur()
+	items := make([]list.Item, len(m.forges))
+	for i, f := range m.forges {
+		items[i] = forgeItem{name: f.Name, host: f.Host, checked: p.HasForge(f.Name), primary: p.Primary == f.Name}
+	}
+	idx := m.list.Index()
+	m.list.SetItems(items)
+	m.list.Select(idx)
+	m.list.Title = fmt.Sprintf("Link Forges · repo %d/%d · %s · %s",
+		m.idx+1, len(m.pending), p.URL.Key(), schemeLabel(p.Scheme))
+}
+
+func (m *Model) selectPrimary() {
 	for i, f := range m.forges {
 		if f.Name == m.cur().Primary {
-			m.cursor = i
+			m.list.Select(i)
 			return
 		}
 	}
-	m.cursor = 0
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -88,9 +134,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg { return events.ForgeSelectComplete{} }
 	}
 
+	if _, ok := msg.(tea.WindowSizeMsg); ok {
+		w, h := sizeBuffer()
+		m.list.SetSize(w, h)
+	}
+
 	km, ok := msg.(tea.KeyMsg)
 	if !ok {
-		return m, nil
+		var cmd tea.Cmd
+		m.list, cmd = m.list.Update(msg)
+		return m, cmd
 	}
 
 	if m.adding {
@@ -100,71 +153,74 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(km, keys.Exit):
 		return m, func() tea.Msg { return events.SetState{State: domain.StateMain} }
-
-	case key.Matches(km, keys.Up):
-		if m.cursor > 0 {
-			m.cursor--
-		}
-	case key.Matches(km, keys.Down):
-		if m.cursor < len(m.forges)-1 {
-			m.cursor++
-		}
-
 	case key.Matches(km, keys.Toggle):
-		m.toggleCursor()
-
+		m.toggleSelected()
+		m.refresh()
+		return m, nil
 	case key.Matches(km, keys.Primary):
-		m.setPrimaryCursor()
-
+		m.setPrimarySelected()
+		m.refresh()
+		return m, nil
 	case key.Matches(km, keys.Scheme):
 		if m.cur().Scheme == repomgr.SchemeSSH {
 			m.cur().Scheme = repomgr.SchemeHTTPS
 		} else {
 			m.cur().Scheme = repomgr.SchemeSSH
 		}
-
+		m.refresh()
+		return m, nil
 	case key.Matches(km, keys.Add):
 		return m.startAdd()
-
 	case key.Matches(km, keys.Confirm):
 		return m.confirm()
 	}
-	return m, nil
+
+	var cmd tea.Cmd
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd
 }
 
-func (m *Model) toggleCursor() {
-	if m.cursor >= len(m.forges) {
+func (m *Model) selectedForge() (config.Forge, bool) {
+	i := m.list.Index()
+	if i < 0 || i >= len(m.forges) {
+		return config.Forge{}, false
+	}
+	return m.forges[i], true
+}
+
+func (m *Model) toggleSelected() {
+	f, ok := m.selectedForge()
+	if !ok {
 		return
 	}
-	name := m.forges[m.cursor].Name
 	p := m.cur()
-	if p.HasForge(name) {
-		p.Forges = removeStr(p.Forges, name)
-		if p.Primary == name {
+	if p.HasForge(f.Name) {
+		p.Forges = removeStr(p.Forges, f.Name)
+		if p.Primary == f.Name {
 			p.Primary = ""
 			if len(p.Forges) > 0 {
 				p.Primary = p.Forges[0]
 			}
 		}
 	} else {
-		p.Forges = append(p.Forges, name)
+		p.Forges = append(p.Forges, f.Name)
 		if p.Primary == "" {
-			p.Primary = name
+			p.Primary = f.Name
 		}
 	}
 	m.err = ""
 }
 
-func (m *Model) setPrimaryCursor() {
-	if m.cursor >= len(m.forges) {
+func (m *Model) setPrimarySelected() {
+	f, ok := m.selectedForge()
+	if !ok {
 		return
 	}
-	name := m.forges[m.cursor].Name
 	p := m.cur()
-	if !p.HasForge(name) {
-		p.Forges = append(p.Forges, name)
+	if !p.HasForge(f.Name) {
+		p.Forges = append(p.Forges, f.Name)
 	}
-	p.Primary = name
+	p.Primary = f.Name
 	m.err = ""
 }
 
@@ -176,7 +232,8 @@ func (m *Model) confirm() (tea.Model, tea.Cmd) {
 	if m.idx < len(m.pending)-1 {
 		m.idx++
 		m.err = ""
-		m.syncCursorToPrimary()
+		m.refresh()
+		m.selectPrimary()
 		return m, nil
 	}
 	clones := m.pending
@@ -192,8 +249,9 @@ func (m *Model) startAdd() (tea.Model, tea.Cmd) {
 	host := m.cur().URL.Host
 	for i, f := range m.forges {
 		if strings.EqualFold(f.Host, host) {
-			m.cursor = i
-			m.setPrimaryCursor()
+			m.list.Select(i)
+			m.setPrimarySelected()
+			m.refresh()
 			return m, nil
 		}
 	}
@@ -225,8 +283,10 @@ func (m *Model) updateAdding(km tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.newForges = append(m.newForges, f)
 		m.adding = false
 		m.nameInput.Blur()
-		m.cursor = len(m.forges) - 1
-		m.setPrimaryCursor()
+		m.refresh()
+		m.list.Select(len(m.forges) - 1)
+		m.setPrimarySelected()
+		m.refresh()
 		return m, nil
 	}
 	var cmd tea.Cmd
@@ -238,59 +298,37 @@ func (m *Model) View() string {
 	if len(m.pending) == 0 {
 		return ""
 	}
-	p := m.cur()
+	view := m.list.View()
 
-	meta := styles.Subtle(fmt.Sprintf("repo %d/%d   ", m.idx+1, len(m.pending))) + styles.Strong(p.URL.Key()) + "\n" +
-		styles.Subtle("from    "+p.RealURL) + "\n" +
-		styles.Subtle("scheme  ") + styles.Accent(schemeLabel(p.Scheme))
-	header := lipgloss.JoinVertical(lipgloss.Left,
-		styles.MenuTitle.Render("Link Forges"),
-		styles.MenuSubStyle.Render(meta),
-	)
-
-	nameW := nameWidth(m.forges)
-	var rows []string
-	if len(m.forges) == 0 {
-		rows = append(rows, styles.Subtle("   no forges yet — press ")+styles.Accent("a")+styles.Subtle(" to add one from this URL"))
-	}
-	for i, f := range m.forges {
-		rows = append(rows, styles.ForgeRow(i == m.cursor, p.HasForge(f.Name), p.Primary == f.Name, f.Name, f.Host, nameW))
-	}
-	body := lipgloss.NewStyle().MarginLeft(2).Render(strings.Join(rows, "\n"))
-
-	var footer string
-	if m.adding {
-		footer = styles.MenuHelpStyle.Render(
-			styles.Subtle("add forge name  ") + m.nameInput.View() + "\n" +
-				styles.Help("enter", "confirm", "esc", "cancel"))
-	} else {
-		footer = styles.MenuHelpStyle.Render(styles.Help(
-			"↑/↓", "move", "space", "toggle", "p", "primary",
-			"s", "scheme", "a", "add-forge", "enter", "next", "esc", "cancel"))
-	}
+	var extra []string
 	if m.err != "" {
-		footer = styles.ToastErrorStyle.Render(m.err) + "\n" + footer
+		extra = append(extra, styles.ToastErrorStyle.Render(m.err))
 	}
-
-	return lipgloss.JoinVertical(lipgloss.Left, header, "", body, "", footer)
-}
-
-// nameWidth is the padding column for aligning forge names.
-func nameWidth(forges []config.Forge) int {
-	w := 6
-	for _, f := range forges {
-		if n := len([]rune(f.Name)); n > w {
-			w = n
-		}
+	if m.adding {
+		extra = append(extra, styles.Subtle("add forge name  ")+m.nameInput.View()+
+			"   "+styles.Subtle("enter save · esc cancel"))
 	}
-	return w
+	if len(extra) > 0 {
+		return lipgloss.JoinVertical(lipgloss.Left, view, lipgloss.JoinVertical(lipgloss.Left, extra...))
+	}
+	return view
 }
 
 // helpers
 
+func sizeBuffer() (w, h int) {
+	x, y := styles.DocStyle.GetFrameSize()
+	w = constants.WindowSize.Width - x
+	h = constants.WindowSize.Height - y - constants.FooterReservedLines
+	if h < 1 {
+		h = 1
+	}
+	return
+}
+
 func schemeLabel(s string) string {
 	if s == repomgr.SchemeSSH {
-		return "ssh (git@…)"
+		return "ssh"
 	}
 	return "https"
 }

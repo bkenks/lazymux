@@ -22,7 +22,7 @@ type Repo struct {
 func (r Repo) Title() string { return r.Name }
 func (r Repo) Description() string {
 	if r.Primary != "" {
-		return r.Path + "  ⟶ " + r.Primary
+		return r.Path + "\nforge: " + r.Primary
 	}
 	return r.Path
 }
