@@ -140,21 +140,34 @@ var RepoListKeyMap = repoListKeyMap{
 }
 
 func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
-	bindsWithHelp := []key.Binding{
-		SetOnHelpType(helpType, RepoListKeyMap.Select, "lazygit", "open with lazygit"),
-		SetOnHelpType(helpType, RepoListKeyMap.VSCode, "editor", "open in editor"),
-		SetOnHelpType(helpType, RepoListKeyMap.Shell, "shell", "shell in repo dir"),
-		SetOnHelpType(helpType, RepoListKeyMap.CopyPath, "copy", "copy path"),
-		SetOnHelpType(helpType, RepoListKeyMap.Refresh, "refresh", "refresh list"),
-		SetOnHelpType(helpType, RepoListKeyMap.Clone, "clone", "clone new repos"),
-		SetOnHelpType(helpType, RepoListKeyMap.PullAll, "pull all", "git pull every repo (skips conflicts)"),
-		SetOnHelpType(helpType, RepoListKeyMap.Forges, "forges", "edit repo's forge links"),
-		SetOnHelpType(helpType, RepoListKeyMap.Registry, "registry", "manage forge registry"),
-		SetOnHelpType(helpType, RepoListKeyMap.Delete, "delete", "delete repo"),
-		SetOnHelpType(helpType, RepoListKeyMap.Settings, "settings", "open settings"),
-		SetOnHelpType(helpType, RepoListKeyMap.Quit, "quit", "quit"),
+	// Short help is the always-visible bar — keep it to the essentials.
+	// Everything shows in the full help (press ?).
+	if helpType == Short {
+		binds := []key.Binding{
+			SetOnHelpType(Short, RepoListKeyMap.Select, "lazygit", ""),
+			SetOnHelpType(Short, RepoListKeyMap.VSCode, "editor", ""),
+			SetOnHelpType(Short, RepoListKeyMap.Clone, "clone", ""),
+			SetOnHelpType(Short, RepoListKeyMap.Forges, "forges", ""),
+			SetOnHelpType(Short, RepoListKeyMap.Settings, "settings", ""),
+		}
+		return func() []key.Binding { return binds }
 	}
-	return func() []key.Binding { return bindsWithHelp }
+
+	binds := []key.Binding{
+		SetOnHelpType(Full, RepoListKeyMap.Select, "lazygit", "open with lazygit"),
+		SetOnHelpType(Full, RepoListKeyMap.VSCode, "editor", "open in editor"),
+		SetOnHelpType(Full, RepoListKeyMap.Shell, "shell", "shell in repo dir"),
+		SetOnHelpType(Full, RepoListKeyMap.CopyPath, "copy", "copy path"),
+		SetOnHelpType(Full, RepoListKeyMap.Refresh, "refresh", "refresh list"),
+		SetOnHelpType(Full, RepoListKeyMap.Clone, "clone", "clone new repos"),
+		SetOnHelpType(Full, RepoListKeyMap.PullAll, "pull all", "git pull every repo (skips conflicts)"),
+		SetOnHelpType(Full, RepoListKeyMap.Forges, "forges", "edit repo's forge links"),
+		SetOnHelpType(Full, RepoListKeyMap.Registry, "registry", "manage forge registry"),
+		SetOnHelpType(Full, RepoListKeyMap.Delete, "delete", "delete repo"),
+		SetOnHelpType(Full, RepoListKeyMap.Settings, "settings", "open settings"),
+		SetOnHelpType(Full, RepoListKeyMap.Quit, "quit", "quit"),
+	}
+	return func() []key.Binding { return binds }
 }
 
 // End "Repo List Key Map"

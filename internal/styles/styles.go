@@ -112,3 +112,24 @@ var (
 	// End "Status footer / toasts"
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 )
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Selection-list helpers
+//
+// Glyphs for the checkbox/selection screens (forge select, forge registry,
+// repo forges) — encoded in each list item's title so the bubbles default
+// delegate handles the row/selection styling. Subtle renders the small
+// muted labels those screens draw beneath their lists.
+
+const (
+	GlyphCheckOn  = "◉"
+	GlyphCheckOff = "○"
+	GlyphPrimary  = "★"
+)
+
+// Subtle renders muted secondary text (input labels, hints). It's a function
+// so it reads the current palette after styles.Apply swaps it for the theme.
+func Subtle(s string) string { return lipgloss.NewStyle().Foreground(MediumGrey).Render(s) }
+
+// End "Selection-list helpers"
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////

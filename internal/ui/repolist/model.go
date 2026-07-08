@@ -17,9 +17,12 @@ type Model struct {
 
 func New() *Model {
 	w, h := SizeBuffer()
+	// Height 3 so a row shows the repo name, its path, and the "forge:" line.
+	delegate := list.NewDefaultDelegate()
+	delegate.SetHeight(3)
 	newList := list.New(
 		[]list.Item{},
-		list.NewDefaultDelegate(),
+		delegate,
 		w, h,
 	)
 	newList.Title = "Repositories"
