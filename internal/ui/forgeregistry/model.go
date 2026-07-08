@@ -191,36 +191,46 @@ func (m *Model) saveEdit() (tea.Model, tea.Cmd) {
 func (m *Model) View() string {
 	header := styles.MenuTitle.Render("Forge Registry")
 
+	nameW := 6
+	for _, f := range m.forges {
+		if n := len([]rune(f.Name)); n > nameW {
+			nameW = n
+		}
+	}
+
 	var rows []string
 	if len(m.forges) == 0 {
-		rows = append(rows, styles.MenuSubStyle.Render("  no forges — press 'a' to add one"))
+		rows = append(rows, styles.Subtle("   no forges yet — press ")+styles.Accent("a")+styles.Subtle(" to add one"))
 	}
 	for i, f := range m.forges {
-		line := fmt.Sprintf("  %s  (%s)", f.Name, f.Host)
-		if n := m.inUse[f.Name]; n > 0 {
-			line += fmt.Sprintf("  · %d repo(s)", n)
+		active := i == m.cursor && !m.editing
+		nameCol := fmt.Sprintf("%-*s", nameW, f.Name)
+		if active {
+			nameCol = styles.Strong(nameCol)
 		}
-		if i == m.cursor && !m.editing {
-			line = lipgloss.NewStyle().Bold(true).Render(line + "  ◄")
+		line := " " + styles.Cursor(active) + " " + nameCol + "  " + styles.Subtle("("+f.Host+")")
+		if n := m.inUse[f.Name]; n > 0 {
+			line += "  " + styles.Subtle(fmt.Sprintf("· %d repo(s)", n))
 		}
 		rows = append(rows, line)
 	}
-	body := strings.Join(rows, "\n")
+	body := lipgloss.NewStyle().MarginLeft(2).Render(strings.Join(rows, "\n"))
 
 	var footer string
 	if m.editing {
-		verb := "edit"
+		verb := "edit forge"
 		if m.editIdx < 0 {
-			verb = "new"
+			verb = "new forge"
 		}
 		footer = lipgloss.JoinVertical(lipgloss.Left,
-			styles.MenuSubStyle.Render(verb+" forge"),
-			"name: "+m.nameInput.View(),
-			"host: "+m.hostInput.View(),
-			styles.MenuHelpStyle.Render("tab switch field • enter save • esc cancel"),
+			styles.Subtle(verb),
+			styles.Subtle("name  ")+m.nameInput.View(),
+			styles.Subtle("host  ")+m.hostInput.View(),
+			styles.MenuHelpStyle.Render(styles.Help("tab", "switch field", "enter", "save", "esc", "cancel")),
 		)
 	} else {
-		footer = styles.MenuHelpStyle.Render("↑/↓ move • a add • e edit • d delete • esc save & back")
+		footer = styles.MenuHelpStyle.Render(styles.Help(
+			"↑/↓", "move", "a", "add", "e", "edit", "d", "delete", "esc", "save & back"))
 	}
 	if m.err != "" {
 		footer = styles.ToastErrorStyle.Render(m.err) + "\n" + footer

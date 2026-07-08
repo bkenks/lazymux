@@ -35,9 +35,8 @@ var keys = keyMap{
 }
 
 type Model struct {
-	placeholderHost string
-	forges          []config.Forge // working registry (base + inline-added)
-	newForges       []config.Forge // inline-added, persisted on completion
+	forges    []config.Forge // working registry (base + inline-added)
+	newForges []config.Forge // inline-added, persisted on completion
 
 	pending []repomgr.PendingClone
 	idx     int
@@ -58,10 +57,9 @@ func New(cfg config.Config, pending []repomgr.PendingClone) *Model {
 	copy(forges, cfg.Forges)
 
 	m := &Model{
-		placeholderHost: cfg.PlaceholderHost,
-		forges:          forges,
-		pending:         pending,
-		nameInput:       ti,
+		forges:    forges,
+		pending:   pending,
+		nameInput: ti,
 	}
 	m.syncCursorToPrimary()
 	return m
@@ -242,47 +240,50 @@ func (m *Model) View() string {
 	}
 	p := m.cur()
 
+	meta := styles.Subtle(fmt.Sprintf("repo %d/%d   ", m.idx+1, len(m.pending))) + styles.Strong(p.URL.Key()) + "\n" +
+		styles.Subtle("from    "+p.RealURL) + "\n" +
+		styles.Subtle("scheme  ") + styles.Accent(schemeLabel(p.Scheme))
 	header := lipgloss.JoinVertical(lipgloss.Left,
 		styles.MenuTitle.Render("Link Forges"),
-		styles.MenuSubStyle.Render(fmt.Sprintf("repo %d/%d — %s", m.idx+1, len(m.pending), p.URL.Key())),
-		styles.MenuSubStyle.Render("from "+p.RealURL),
-		styles.MenuSubStyle.Render("scheme: "+schemeLabel(p.Scheme)),
+		styles.MenuSubStyle.Render(meta),
 	)
 
+	nameW := nameWidth(m.forges)
 	var rows []string
 	if len(m.forges) == 0 {
-		rows = append(rows, styles.MenuSubStyle.Render("  no forges yet — press 'a' to add one from this URL"))
+		rows = append(rows, styles.Subtle("   no forges yet — press ")+styles.Accent("a")+styles.Subtle(" to add one from this URL"))
 	}
 	for i, f := range m.forges {
-		check := "[ ]"
-		if p.HasForge(f.Name) {
-			check = "[x]"
-		}
-		star := " "
-		if p.Primary == f.Name {
-			star = "★"
-		}
-		line := fmt.Sprintf(" %s %s %s (%s)", star, check, f.Name, f.Host)
-		if i == m.cursor {
-			line = lipgloss.NewStyle().Bold(true).Render(line + "  ◄")
-		}
-		rows = append(rows, line)
+		rows = append(rows, styles.ForgeRow(i == m.cursor, p.HasForge(f.Name), p.Primary == f.Name, f.Name, f.Host, nameW))
 	}
-	body := strings.Join(rows, "\n")
+	body := lipgloss.NewStyle().MarginLeft(2).Render(strings.Join(rows, "\n"))
 
 	var footer string
 	if m.adding {
-		footer = "add forge name: " + m.nameInput.View() + "\n" +
-			styles.MenuHelpStyle.Render("enter confirm • esc cancel")
-	} else {
 		footer = styles.MenuHelpStyle.Render(
-			"↑/↓ move • space toggle • p primary • s scheme • a add-forge • enter next • esc cancel")
+			styles.Subtle("add forge name  ") + m.nameInput.View() + "\n" +
+				styles.Help("enter", "confirm", "esc", "cancel"))
+	} else {
+		footer = styles.MenuHelpStyle.Render(styles.Help(
+			"↑/↓", "move", "space", "toggle", "p", "primary",
+			"s", "scheme", "a", "add-forge", "enter", "next", "esc", "cancel"))
 	}
 	if m.err != "" {
 		footer = styles.ToastErrorStyle.Render(m.err) + "\n" + footer
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, "", body, "", footer)
+}
+
+// nameWidth is the padding column for aligning forge names.
+func nameWidth(forges []config.Forge) int {
+	w := 6
+	for _, f := range forges {
+		if n := len([]rune(f.Name)); n > w {
+			w = n
+		}
+	}
+	return w
 }
 
 // helpers

@@ -1,6 +1,8 @@
 package styles
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -112,3 +114,80 @@ var (
 	// End "Status footer / toasts"
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 )
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Selection-list helpers
+//
+// Shared glyphs + render helpers for the checkbox/selection screens (forge
+// select, forge registry, repo forges) so they match the rest of the app.
+// These are functions rather than pre-built styles so they read the current
+// palette after styles.Apply has swapped it for the active theme.
+
+const (
+	GlyphCheckOn  = "◉"
+	GlyphCheckOff = "○"
+	GlyphPrimary  = "★"
+	GlyphCursor   = "▸"
+	HelpSep       = "  ·  "
+)
+
+// Accent renders text in the theme's accent color (used for primary/cursor).
+func Accent(s string) string { return lipgloss.NewStyle().Foreground(DarkPink).Render(s) }
+
+// Subtle renders muted secondary text (hosts, hints).
+func Subtle(s string) string { return lipgloss.NewStyle().Foreground(MediumGrey).Render(s) }
+
+// Strong renders emphasized foreground text for the focused row.
+func Strong(s string) string { return lipgloss.NewStyle().Foreground(White).Bold(true).Render(s) }
+
+// Cursor renders the row-cursor glyph (accented) when active, else a blank.
+func Cursor(active bool) string {
+	if active {
+		return Accent(GlyphCursor)
+	}
+	return " "
+}
+
+// ForgeRow renders one selectable forge line, shared by the forge-select and
+// repo-forges screens: "▸ ★ ◉ name        host". The primary star and a
+// checked box are accented; the focused row's name is emphasized.
+func ForgeRow(active, checked, primary bool, name, host string, nameWidth int) string {
+	prim := " "
+	if primary {
+		prim = Accent(GlyphPrimary)
+	}
+	box := lipgloss.NewStyle().Foreground(MediumGrey).Render(GlyphCheckOff)
+	if checked {
+		box = Accent(GlyphCheckOn)
+	}
+	padded := name
+	if pad := nameWidth - len([]rune(name)); pad > 0 {
+		padded = name + spaces(pad)
+	}
+	label := padded
+	if active {
+		label = Strong(padded)
+	}
+	return " " + Cursor(active) + " " + prim + " " + box + "  " + label + "  " + Subtle(host)
+}
+
+func spaces(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = ' '
+	}
+	return string(b)
+}
+
+// Help renders alternating key/label pairs as a subdued, separated hint line:
+// Help("↑/↓", "move", "esc", "back") → "↑/↓ move  ·  esc back" (accented keys).
+func Help(pairs ...string) string {
+	var parts []string
+	for i := 0; i+1 < len(pairs); i += 2 {
+		parts = append(parts, Accent(pairs[i])+" "+Subtle(pairs[i+1]))
+	}
+	return strings.Join(parts, HelpSep)
+}
+
+// End "Selection-list helpers"
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////

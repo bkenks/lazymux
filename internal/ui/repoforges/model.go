@@ -4,7 +4,6 @@
 package repoforges
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/bkenks/lazymux/internal/config"
@@ -141,37 +140,37 @@ func (m *Model) setPrimary() {
 }
 
 func (m *Model) View() string {
+	meta := styles.Strong(m.repoKey) + "\n" +
+		styles.Subtle("scheme  ") + styles.Accent(schemeLabel(m.link.Scheme))
 	header := lipgloss.JoinVertical(lipgloss.Left,
 		styles.MenuTitle.Render("Repo Forges"),
-		styles.MenuSubStyle.Render(m.repoKey),
-		styles.MenuSubStyle.Render("scheme: "+schemeLabel(m.link.Scheme)),
+		styles.MenuSubStyle.Render(meta),
 	)
 
+	nameW := nameWidth(m.forges)
 	var rows []string
 	if len(m.forges) == 0 {
-		rows = append(rows, styles.MenuSubStyle.Render("  no forges in registry — add some in settings"))
+		rows = append(rows, styles.Subtle("   no forges in registry — add some with ")+styles.Accent("F"))
 	}
 	for i, f := range m.forges {
-		check := "[ ]"
-		if m.has(f.Name) {
-			check = "[x]"
-		}
-		star := " "
-		if m.link.Primary == f.Name {
-			star = "★"
-		}
-		line := fmt.Sprintf(" %s %s %s (%s)", star, check, f.Name, f.Host)
-		if i == m.cursor {
-			line = lipgloss.NewStyle().Bold(true).Render(line + "  ◄")
-		}
-		rows = append(rows, line)
+		rows = append(rows, styles.ForgeRow(i == m.cursor, m.has(f.Name), m.link.Primary == f.Name, f.Name, f.Host, nameW))
 	}
-	body := strings.Join(rows, "\n")
+	body := lipgloss.NewStyle().MarginLeft(2).Render(strings.Join(rows, "\n"))
 
-	footer := styles.MenuHelpStyle.Render(
-		"↑/↓ move • space toggle • p primary • s scheme • esc save & back")
+	footer := styles.MenuHelpStyle.Render(styles.Help(
+		"↑/↓", "move", "space", "toggle", "p", "primary", "s", "scheme", "esc", "save & back"))
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, "", body, "", footer)
+}
+
+func nameWidth(forges []config.Forge) int {
+	w := 6
+	for _, f := range forges {
+		if n := len([]rune(f.Name)); n > w {
+			w = n
+		}
+	}
+	return w
 }
 
 func schemeLabel(s string) string {
