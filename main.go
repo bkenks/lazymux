@@ -39,7 +39,7 @@ var buildVersion = "dev"
 func version() string { return buildVersion }
 
 func printHelp() {
-	fmt.Println(`lazymux — a TUI for ghq + lazygit + your editor
+	fmt.Println(`lazymux — a TUI git repo manager (clone + lazygit + your editor)
 
 Usage: lazymux [flags]
 
@@ -48,8 +48,9 @@ Flags:
   -v, --version  show version
 
 Configuration:
-  Edit ~/.config/lazymux/config.toml (or $XDG_CONFIG_HOME/lazymux/config.toml)
-  to change the editor, default protocol, theme, and tool paths.
+  All settings, the forge registry, and per-repo forge links live in a single
+  ~/lazymux/.lazymux.json (override the path with $LAZYMUX_CONFIG). Repos are
+  cloned into ~/lazymux/<namespace>/<repo>.
 
 Keybindings (repo list):
   tab       open with lazygit
@@ -58,6 +59,8 @@ Keybindings (repo list):
   y         copy absolute path
   r         refresh
   ctrl+n    clone new repos
+  f         edit selected repo's forge links
+  F         manage the forge registry
   ctrl+\    delete selected repo
   ctrl+s    settings
   q         quit`)

@@ -6,24 +6,28 @@ import (
 	"sync"
 
 	"github.com/bkenks/lazymux/internal/events"
+	"github.com/bkenks/lazymux/internal/repomgr"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// PullAllReposCmd runs `git pull --ff-only` against every ghq-managed repo
-// in parallel. Repos that can't be fast-forwarded (merge conflicts, divergent
+// PullAllReposCmd runs `git pull --ff-only` against every managed repo in
+// parallel. Repos that can't be fast-forwarded (merge conflicts, divergent
 // branches, dirty working tree, missing upstream) are skipped and reported
 // back via PullAllReposComplete. --ff-only guarantees we never leave a repo
 // in a half-merged state, so no cleanup is needed on failure.
 func PullAllReposCmd() tea.Cmd {
 	return func() tea.Msg {
-		out, err := exec.Command("ghq", "list", "--full-path").Output()
+		found, err := repomgr.List(cfg())
 		if err != nil {
 			return events.PullAllReposComplete{
-				Skipped: []events.SkippedPull{{Reason: "ghq list failed: " + err.Error()}},
+				Skipped: []events.SkippedPull{{Reason: "scan failed: " + err.Error()}},
 			}
 		}
 
-		paths := strings.Split(strings.TrimSpace(string(out)), "\n")
+		paths := make([]string, 0, len(found))
+		for _, r := range found {
+			paths = append(paths, r.AbsPath)
+		}
 
 		var (
 			mu      sync.Mutex

@@ -1,0 +1,210 @@
+// Package forgeregistry is the settings screen for managing the forge registry
+// — the list of git hosts (name + host) that repos can be linked to.
+package forgeregistry
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/bkenks/lazymux/internal/config"
+	"github.com/bkenks/lazymux/internal/domain"
+	"github.com/bkenks/lazymux/internal/events"
+	"github.com/bkenks/lazymux/internal/styles"
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+type keyMap struct {
+	Up, Down, Add, Edit, Delete, Save, Field, Exit key.Binding
+}
+
+var keys = keyMap{
+	Up:     key.NewBinding(key.WithKeys("up", "k")),
+	Down:   key.NewBinding(key.WithKeys("down", "j")),
+	Add:    key.NewBinding(key.WithKeys("a")),
+	Edit:   key.NewBinding(key.WithKeys("e", "enter")),
+	Delete: key.NewBinding(key.WithKeys("d")),
+	Save:   key.NewBinding(key.WithKeys("enter")),
+	Field:  key.NewBinding(key.WithKeys("tab")),
+	Exit:   key.NewBinding(key.WithKeys("esc")),
+}
+
+type Model struct {
+	forges []config.Forge
+	cursor int
+
+	editing    bool
+	editIdx    int // -1 = adding new
+	nameInput  textinput.Model
+	hostInput  textinput.Model
+	nameActive bool
+	err        string
+}
+
+func New(cfg config.Config) *Model {
+	forges := make([]config.Forge, len(cfg.Forges))
+	copy(forges, cfg.Forges)
+
+	name := textinput.New()
+	name.Placeholder = "name (e.g. github)"
+	name.CharLimit = 40
+	host := textinput.New()
+	host.Placeholder = "host (e.g. github.com)"
+	host.CharLimit = 100
+
+	return &Model{forges: forges, editIdx: -1, nameInput: name, hostInput: host}
+}
+
+func (m *Model) Init() tea.Cmd { return nil }
+
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	km, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+	if m.editing {
+		return m.updateEditing(km)
+	}
+
+	switch {
+	case key.Matches(km, keys.Exit):
+		forges := m.forges
+		return m, tea.Batch(
+			func() tea.Msg { return events.ForgesChanged{Forges: forges} },
+			func() tea.Msg { return events.SetState{State: domain.StateMain} },
+		)
+	case key.Matches(km, keys.Up):
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	case key.Matches(km, keys.Down):
+		if m.cursor < len(m.forges)-1 {
+			m.cursor++
+		}
+	case key.Matches(km, keys.Add):
+		return m.startEdit(-1)
+	case key.Matches(km, keys.Edit):
+		if len(m.forges) > 0 {
+			return m.startEdit(m.cursor)
+		}
+	case key.Matches(km, keys.Delete):
+		if len(m.forges) > 0 {
+			m.forges = append(m.forges[:m.cursor], m.forges[m.cursor+1:]...)
+			if m.cursor >= len(m.forges) && m.cursor > 0 {
+				m.cursor--
+			}
+		}
+	}
+	return m, nil
+}
+
+func (m *Model) startEdit(idx int) (tea.Model, tea.Cmd) {
+	m.editing = true
+	m.editIdx = idx
+	m.err = ""
+	if idx >= 0 {
+		m.nameInput.SetValue(m.forges[idx].Name)
+		m.hostInput.SetValue(m.forges[idx].Host)
+	} else {
+		m.nameInput.SetValue("")
+		m.hostInput.SetValue("")
+	}
+	m.nameActive = true
+	m.hostInput.Blur()
+	return m, m.nameInput.Focus()
+}
+
+func (m *Model) updateEditing(km tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(km, keys.Exit):
+		m.editing = false
+		m.nameInput.Blur()
+		m.hostInput.Blur()
+		return m, nil
+	case key.Matches(km, keys.Field):
+		m.nameActive = !m.nameActive
+		if m.nameActive {
+			m.hostInput.Blur()
+			return m, m.nameInput.Focus()
+		}
+		m.nameInput.Blur()
+		return m, m.hostInput.Focus()
+	case key.Matches(km, keys.Save):
+		return m.saveEdit()
+	}
+
+	var cmd tea.Cmd
+	if m.nameActive {
+		m.nameInput, cmd = m.nameInput.Update(km)
+	} else {
+		m.hostInput, cmd = m.hostInput.Update(km)
+	}
+	return m, cmd
+}
+
+func (m *Model) saveEdit() (tea.Model, tea.Cmd) {
+	name := strings.TrimSpace(m.nameInput.Value())
+	host := strings.TrimSpace(m.hostInput.Value())
+	if name == "" || host == "" {
+		m.err = "name and host are required"
+		return m, nil
+	}
+	// Enforce unique names (ignoring the row being edited).
+	for i, f := range m.forges {
+		if f.Name == name && i != m.editIdx {
+			m.err = fmt.Sprintf("forge %q already exists", name)
+			return m, nil
+		}
+	}
+	f := config.Forge{Name: name, Host: host}
+	if m.editIdx >= 0 {
+		m.forges[m.editIdx] = f
+	} else {
+		m.forges = append(m.forges, f)
+		m.cursor = len(m.forges) - 1
+	}
+	m.editing = false
+	m.nameInput.Blur()
+	m.hostInput.Blur()
+	return m, nil
+}
+
+func (m *Model) View() string {
+	header := styles.MenuTitle.Render("Forge Registry")
+
+	var rows []string
+	if len(m.forges) == 0 {
+		rows = append(rows, styles.MenuSubStyle.Render("  no forges — press 'a' to add one"))
+	}
+	for i, f := range m.forges {
+		line := fmt.Sprintf("  %s  (%s)", f.Name, f.Host)
+		if i == m.cursor && !m.editing {
+			line = lipgloss.NewStyle().Bold(true).Render(line + "  ◄")
+		}
+		rows = append(rows, line)
+	}
+	body := strings.Join(rows, "\n")
+
+	var footer string
+	if m.editing {
+		verb := "edit"
+		if m.editIdx < 0 {
+			verb = "new"
+		}
+		footer = lipgloss.JoinVertical(lipgloss.Left,
+			styles.MenuSubStyle.Render(verb+" forge"),
+			"name: "+m.nameInput.View(),
+			"host: "+m.hostInput.View(),
+			styles.MenuHelpStyle.Render("tab switch field • enter save • esc cancel"),
+		)
+	} else {
+		footer = styles.MenuHelpStyle.Render("↑/↓ move • a add • e edit • d delete • esc save & back")
+	}
+	if m.err != "" {
+		footer = styles.ToastErrorStyle.Render(m.err) + "\n" + footer
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Left, header, "", body, "", footer)
+}

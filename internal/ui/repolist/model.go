@@ -98,6 +98,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.List.NewStatusMessage("Pulling all repos…"),
 				commands.PullAllReposCmd(),
 			)
+
+		case key.Matches(msg, constants.RepoListKeyMap.Forges):
+			repo := ConvertToRepoType(m.List.SelectedItem())
+			if repo.Path == "" {
+				break
+			}
+			cmds = append(cmds, commands.OpenRepoForgesCmd(repo.Path))
+
+		case key.Matches(msg, constants.RepoListKeyMap.Registry):
+			cmds = append(cmds, commands.SetState(domain.StateForgeRegistry))
 		}
 
 	case events.PullAllReposComplete:

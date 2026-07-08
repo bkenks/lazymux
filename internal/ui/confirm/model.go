@@ -18,7 +18,8 @@ const (
 )
 
 type Model struct {
-	RepoPath string
+	RepoPath string // display path (repo key)
+	AbsPath  string // on-disk path passed to the delete command
 	cursor   choice
 }
 
@@ -41,7 +42,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, constants.ConfirmKeyMap.Proceed):
 			cmds = append(
 				cmds,
-				commands.DeleteRepoCmd(m.RepoPath),
+				commands.DeleteRepoCmd(m.AbsPath),
 				commands.SetState(domain.StateMain),
 			)
 		case key.Matches(msg, constants.ConfirmKeyMap.Exit):
