@@ -54,8 +54,12 @@ type Model struct {
 	list   list.Model
 	forges []config.Forge
 
-	// inUse maps a forge name to how many repos link it, so deletion of a
-	// forge still referenced by repos can be blocked.
+	// repos is a working copy of the repo→forge links. Deleting or renaming a
+	// forge cascades into it so no repo is left pointing at a missing forge;
+	// it's emitted with ForgesChanged on exit.
+	repos map[string]config.RepoLink
+
+	// inUse maps a forge name to how many repos link it, shown per row.
 	inUse map[string]int
 
 	editing    bool
@@ -70,10 +74,14 @@ func New(cfg config.Config) *Model {
 	forges := make([]config.Forge, len(cfg.Forges))
 	copy(forges, cfg.Forges)
 
-	inUse := map[string]int{}
-	for _, link := range cfg.Repos {
-		for _, f := range link.Forges {
-			inUse[f]++
+	// Deep-copy the repo links so edits here don't mutate the app's config
+	// until ForgesChanged is applied on exit.
+	repos := make(map[string]config.RepoLink, len(cfg.Repos))
+	for k, v := range cfg.Repos {
+		repos[k] = config.RepoLink{
+			Forges:  append([]string(nil), v.Forges...),
+			Primary: v.Primary,
+			Scheme:  v.Scheme,
 		}
 	}
 
@@ -91,12 +99,24 @@ func New(cfg config.Config) *Model {
 	l.AdditionalShortHelpKeys = helpKeys
 	l.AdditionalFullHelpKeys = helpKeys
 
-	m := &Model{list: l, forges: forges, inUse: inUse, editIdx: -1, nameInput: name, hostInput: host}
+	m := &Model{list: l, forges: forges, repos: repos, editIdx: -1, nameInput: name, hostInput: host}
+	m.recomputeUses()
 	m.refresh()
 	return m
 }
 
 func (m *Model) Init() tea.Cmd { return nil }
+
+// recomputeUses rebuilds the per-forge repo counts from the working repo copy.
+func (m *Model) recomputeUses() {
+	uses := map[string]int{}
+	for _, link := range m.repos {
+		for _, f := range link.Forges {
+			uses[f]++
+		}
+	}
+	m.inUse = uses
+}
 
 func (m *Model) refresh() {
 	items := make([]list.Item, len(m.forges))
@@ -132,8 +152,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(km, keys.Exit):
 		forges := m.forges
+		repos := m.repos
 		return m, tea.Batch(
-			func() tea.Msg { return events.ForgesChanged{Forges: forges} },
+			func() tea.Msg { return events.ForgesChanged{Forges: forges, Repos: repos} },
 			func() tea.Msg { return events.SetState{State: domain.StateMain} },
 		)
 	case key.Matches(km, keys.Add):
@@ -146,11 +167,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(m.forges) > 0 {
 			idx := m.list.Index()
 			name := m.forges[idx].Name
-			if n := m.inUse[name]; n > 0 {
-				m.err = fmt.Sprintf("%q is linked by %d repo(s) — repoint them (f) first", name, n)
-				break
-			}
+			// Cascade the removal into every repo that links this forge:
+			// drop it, and promote another linked forge to primary (or leave
+			// the repo unlinked) when it was the primary.
+			m.applyForgeRemoved(name)
 			m.forges = append(m.forges[:idx], m.forges[idx+1:]...)
+			m.recomputeUses()
 			m.err = ""
 			m.refresh()
 		}
@@ -220,7 +242,15 @@ func (m *Model) saveEdit() (tea.Model, tea.Cmd) {
 	}
 	f := config.Forge{Name: name, Host: host}
 	if m.editIdx >= 0 {
+		old := m.forges[m.editIdx].Name
 		m.forges[m.editIdx] = f
+		if old != name {
+			// Cascade the rename into repo links so they keep referencing this
+			// forge under its new name. A host-only edit needs no cascade (the
+			// app re-renders affected repos from the new registry).
+			m.applyForgeRenamed(old, name)
+			m.recomputeUses()
+		}
 	} else {
 		m.forges = append(m.forges, f)
 	}
@@ -232,6 +262,68 @@ func (m *Model) saveEdit() (tea.Model, tea.Cmd) {
 		m.list.Select(len(m.forges) - 1)
 	}
 	return m, nil
+}
+
+// applyForgeRemoved drops forge `name` from every repo link. When it was a
+// repo's primary, the first remaining linked forge is promoted; if none remain
+// the repo is left unlinked (empty primary).
+func (m *Model) applyForgeRemoved(name string) {
+	for key, link := range m.repos {
+		if !contains(link.Forges, name) {
+			continue
+		}
+		link.Forges = without(link.Forges, name)
+		if link.Primary == name {
+			link.Primary = ""
+			if len(link.Forges) > 0 {
+				link.Primary = link.Forges[0]
+			}
+		}
+		m.repos[key] = link
+	}
+}
+
+// applyForgeRenamed rewrites forge `old` to `new` in every repo link (and their
+// primary), so a rename never orphans a repo.
+func (m *Model) applyForgeRenamed(old, newName string) {
+	for key, link := range m.repos {
+		if !contains(link.Forges, old) {
+			continue
+		}
+		forges := make([]string, 0, len(link.Forges))
+		for _, f := range link.Forges {
+			if f == old {
+				f = newName
+			}
+			if !contains(forges, f) {
+				forges = append(forges, f)
+			}
+		}
+		link.Forges = forges
+		if link.Primary == old {
+			link.Primary = newName
+		}
+		m.repos[key] = link
+	}
+}
+
+func contains(s []string, v string) bool {
+	for _, x := range s {
+		if x == v {
+			return true
+		}
+	}
+	return false
+}
+
+func without(s []string, v string) []string {
+	out := make([]string, 0, len(s))
+	for _, x := range s {
+		if x != v {
+			out = append(out, x)
+		}
+	}
+	return out
 }
 
 func (m *Model) View() string {

@@ -16,7 +16,13 @@ type ForgeSelectComplete struct {
 func (ForgeSelectComplete) isEvent() {}
 
 // ForgesChanged replaces the whole forge registry (from the settings screen).
-type ForgesChanged struct{ Forges []config.Forge }
+// Repos carries the repo links already reconciled against the new registry —
+// forges removed or renamed there are cascaded into each repo's Forges/Primary
+// so no repo is left referencing a forge that no longer exists.
+type ForgesChanged struct {
+	Forges []config.Forge
+	Repos  map[string]config.RepoLink
+}
 
 func (ForgesChanged) isEvent() {}
 

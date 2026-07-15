@@ -1,14 +1,9 @@
 package settings
 
 import (
-	"fmt"
-	"io"
-	"strings"
-
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // SettingChanged is emitted when a setting value changes.
@@ -42,37 +37,6 @@ var keys = keyMap{
 	),
 }
 
-// settingDelegate renders each setting row.
-type settingDelegate struct{}
-
-func (d settingDelegate) Height() int                              { return 1 }
-func (d settingDelegate) Spacing() int                            { return 0 }
-func (d settingDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-
-func (d settingDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
-	s, ok := item.(Setting)
-	if !ok {
-		return
-	}
-
-	label := s.Label()
-	value := fmt.Sprintf("[%s]", s.ValueString())
-
-	width := m.Width() - 4
-	needed := len(label) + len(value) + 1
-	if width < needed {
-		width = needed
-	}
-	spacer := strings.Repeat(" ", width-len(label)-len(value))
-	line := fmt.Sprintf("  %s%s%s", label, spacer, value)
-
-	if index == m.Index() {
-		line = lipgloss.NewStyle().Bold(true).Render(line)
-	}
-
-	fmt.Fprint(w, line)
-}
-
 // Model is the settings screen Bubble Tea model.
 type Model struct {
 	list      list.Model
@@ -87,7 +51,7 @@ func New(title string, settings []Setting, width, height, widthPad, heightPad in
 		items[i] = s
 	}
 
-	l := list.New(items, settingDelegate{}, width-widthPad, height-heightPad)
+	l := list.New(items, list.NewDefaultDelegate(), width-widthPad, height-heightPad)
 	l.Title = title
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)

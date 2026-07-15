@@ -24,6 +24,10 @@ type Tools struct {
 type UI struct {
 	Theme        string `json:"theme"`
 	ShowFullPath bool   `json:"showFullPath"`
+	// ShowForge is the default visibility of the "forge:" line in the repo
+	// list. The list's `g` key toggles it for the session; this is the value
+	// restored on launch.
+	ShowForge bool `json:"showForge"`
 }
 
 type Behavior struct {
@@ -78,6 +82,7 @@ func Default() Config {
 		UI: UI{
 			Theme:        "default",
 			ShowFullPath: false,
+			ShowForge:    true,
 		},
 		Behavior: Behavior{
 			DefaultProtocol: "https",

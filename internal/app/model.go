@@ -53,6 +53,10 @@ type ModelManager struct {
 func New(cfg config.Config) *ModelManager {
 	commands.SetDeps(cfg)
 
+	// Restore the persisted forge-label visibility before building the repo
+	// list, so its row height is sized correctly from the start.
+	domain.ShowForge = cfg.UI.ShowForge
+
 	x, y := styles.DocStyle.GetFrameSize()
 	settingsItems := buildSettingsItems(cfg)
 
@@ -108,6 +112,11 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.active = &m.clonerepos
 
 			case domain.StateSettings:
+				// Rebuild with the live window size (and current cfg) — like the
+				// other screens — since the startup build ran at size 0×0.
+				x, y := styles.DocStyle.GetFrameSize()
+				m.settingsModel = settings.New("Settings", buildSettingsItems(m.cfg),
+					constants.WindowSize.Width, constants.WindowSize.Height, x, y)
 				m.active = &m.settingsModel
 
 			case domain.StateForgeSelect:
@@ -202,11 +211,37 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case events.ForgesChanged:
+			prevForges := m.cfg.Forges
+			prevRepos := m.cfg.Repos
 			m.cfg.Forges = msg.Forges
+			m.cfg.Repos = msg.Repos
 			commands.SetDeps(m.cfg)
+
+			// Re-render the git remote for any repo whose primary forge changed
+			// name or host (promotion after a delete, a rename, or a host edit).
+			// A repo left unlinked keeps its existing remote — the insteadOf
+			// rule already written still resolves.
+			for key, link := range m.cfg.Repos {
+				if link.Primary == "" {
+					continue
+				}
+				newForge, ok := m.cfg.ForgeByName(link.Primary)
+				if !ok {
+					continue // dangling primary; leave the existing config alone
+				}
+				prev := prevRepos[key]
+				if prev.Primary == link.Primary && forgeHost(prevForges, prev.Primary) == newForge.Host {
+					continue // nothing affecting the remote changed
+				}
+				if err := repomgr.RenderGitConfig(m.cfg, key, link); err != nil {
+					cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("%s: %v", key, err)))
+				}
+			}
+
 			if err := config.Save(m.cfg); err != nil {
 				cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("couldn't save forges: %v", err)))
 			}
+			cmds = append(cmds, commands.RefreshReposCmd())
 
 		case events.OpenRepoForges:
 			m.repoForges = repoforges.New(m.cfg, msg.Key)

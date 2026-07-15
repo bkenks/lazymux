@@ -74,18 +74,19 @@ func (k defaultKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 // Repo List Key Map
 
 type repoListKeyMap struct {
-	Select   key.Binding
-	Clone    key.Binding
-	Delete   key.Binding
-	VSCode   key.Binding
-	Settings key.Binding
-	Refresh  key.Binding
-	CopyPath key.Binding
-	Shell    key.Binding
-	Quit     key.Binding
-	PullAll  key.Binding
-	Forges   key.Binding
-	Registry key.Binding
+	Select      key.Binding
+	Clone       key.Binding
+	Delete      key.Binding
+	VSCode      key.Binding
+	Settings    key.Binding
+	Refresh     key.Binding
+	CopyPath    key.Binding
+	Shell       key.Binding
+	Quit        key.Binding
+	PullAll     key.Binding
+	Forges      key.Binding
+	Registry    key.Binding
+	ToggleForge key.Binding
 }
 
 var RepoListKeyMap = repoListKeyMap{
@@ -137,6 +138,10 @@ var RepoListKeyMap = repoListKeyMap{
 		key.WithKeys("F"),
 		key.WithHelp("F", "registry"),
 	),
+	ToggleForge: key.NewBinding(
+		key.WithKeys("g"),
+		key.WithHelp("g", "forge label"),
+	),
 }
 
 func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
@@ -163,6 +168,7 @@ func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 		SetOnHelpType(Full, RepoListKeyMap.PullAll, "pull all", "git pull every repo (skips conflicts)"),
 		SetOnHelpType(Full, RepoListKeyMap.Forges, "forges", "edit repo's forge links"),
 		SetOnHelpType(Full, RepoListKeyMap.Registry, "registry", "manage forge registry"),
+		SetOnHelpType(Full, RepoListKeyMap.ToggleForge, "forge label", "show/hide the forge label"),
 		SetOnHelpType(Full, RepoListKeyMap.Delete, "delete", "delete repo"),
 		SetOnHelpType(Full, RepoListKeyMap.Settings, "settings", "open settings"),
 		SetOnHelpType(Full, RepoListKeyMap.Quit, "quit", "quit"),

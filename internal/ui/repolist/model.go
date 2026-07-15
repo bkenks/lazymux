@@ -15,14 +15,24 @@ type Model struct {
 	RepoList []list.Item
 }
 
+// newDelegate builds the list row renderer, sized for whether the "forge:"
+// line is currently shown: height 3 fits name + namespace + forge line, height
+// 2 when the forge label is hidden.
+func newDelegate() list.DefaultDelegate {
+	d := list.NewDefaultDelegate()
+	if domain.ShowForge {
+		d.SetHeight(3)
+	} else {
+		d.SetHeight(2)
+	}
+	return d
+}
+
 func New() *Model {
 	w, h := SizeBuffer()
-	// Height 3 so a row shows the repo name, its path, and the "forge:" line.
-	delegate := list.NewDefaultDelegate()
-	delegate.SetHeight(3)
 	newList := list.New(
 		[]list.Item{},
-		delegate,
+		newDelegate(),
 		w, h,
 	)
 	newList.Title = "Repositories"
@@ -111,6 +121,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, constants.RepoListKeyMap.Registry):
 			cmds = append(cmds, commands.SetState(domain.StateForgeRegistry))
+
+		case key.Matches(msg, constants.RepoListKeyMap.ToggleForge):
+			domain.ShowForge = !domain.ShowForge
+			m.List.SetDelegate(newDelegate())
 		}
 
 	case events.PullAllReposComplete:
@@ -123,6 +137,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) View() string { return m.List.View() }
+
+// SyncForgeVisibility re-applies the row delegate so a change in
+// domain.ShowForge (made outside the list, e.g. from settings) takes effect on
+// the row height next render.
+func (m *Model) SyncForgeVisibility() { m.List.SetDelegate(newDelegate()) }
 
 // UpdateRepoList replaces the list's items. It returns the command from
 // list.SetItems, which must be run so the filtered view is recomputed when a

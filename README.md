@@ -131,7 +131,7 @@ After entering one or more clone URLs, lazymux steps through each repo so you ca
 | `Tab` | Switch between name / host fields (while editing) |
 | `Esc` | Save & back |
 
-Forges still linked by one or more repos can't be deleted — repoint those repos (`f`) first. Each row shows how many repos link it.
+Each row shows how many repos link it. Deleting or renaming a forge cascades into the repos that use it: a rename updates their links, and a delete drops it — promoting another linked forge to primary, or leaving the repo unlinked if it was its only one. Repos whose primary changed have their remote re-rendered automatically.
 
 ### Repo Forges (`f`)
 

@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"path"
+	"time"
+)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Interface
@@ -20,11 +23,28 @@ type Repo struct {
 }
 
 func (r Repo) Title() string { return r.Name }
-func (r Repo) Description() string {
-	if r.Primary != "" {
-		return r.Path + "\nforge: " + r.Primary
+
+// Namespace is the repo's path with its own name stripped — e.g. "bkenks" for
+// "bkenks/myrepo", or "foo/bar" for "foo/bar/repo". Empty for a repo sitting
+// directly under the base dir.
+func (r Repo) Namespace() string {
+	ns := path.Dir(r.Path)
+	if ns == "." {
+		return ""
 	}
-	return r.Path
+	return ns
+}
+
+// ShowForge controls whether Description() includes the "forge:" line. It's
+// toggled from the repo list; package-level to match the app's other view-state
+// globals (constants.WindowSize, the style vars).
+var ShowForge = true
+
+func (r Repo) Description() string {
+	if ShowForge && r.Primary != "" {
+		return r.Namespace() + "\nforge: " + r.Primary
+	}
+	return r.Namespace()
 }
 func (r Repo) FilterValue() string { return r.Name }
 
