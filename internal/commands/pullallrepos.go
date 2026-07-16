@@ -10,62 +10,65 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// PullAllReposCmd runs `git pull --ff-only` against every managed repo in
-// parallel. Repos that can't be fast-forwarded (merge conflicts, divergent
-// branches, dirty working tree, missing upstream) are skipped and reported
-// back via PullAllReposComplete. --ff-only guarantees we never leave a repo
-// in a half-merged state, so no cleanup is needed on failure.
+// PullAllReposCmd scans every managed repo and kicks off `git pull --ff-only`
+// against each in parallel (capped at 8 concurrent network ops), streaming one
+// PullResult per repo down a channel. It returns immediately with a
+// PullAllStarted carrying the total and that channel; the UI drains it via
+// WaitForPullCmd to drive a live progress bar. --ff-only guarantees we never
+// leave a repo half-merged, so repos that can't fast-forward are just skipped.
 func PullAllReposCmd() tea.Cmd {
 	return func() tea.Msg {
 		found, err := repomgr.List(cfg())
 		if err != nil {
-			return events.PullAllReposComplete{
-				Skipped: []events.SkippedPull{{Reason: "scan failed: " + err.Error()}},
-			}
+			ch := make(chan events.PullResult, 1)
+			ch <- events.PullResult{Reason: "scan failed: " + err.Error()}
+			close(ch)
+			return events.PullAllStarted{Total: 1, Results: ch}
 		}
 
 		paths := make([]string, 0, len(found))
 		for _, r := range found {
-			paths = append(paths, r.AbsPath)
-		}
-
-		var (
-			mu      sync.Mutex
-			wg      sync.WaitGroup
-			pulled  int
-			skipped []events.SkippedPull
-		)
-
-		sem := make(chan struct{}, 8) // cap concurrent network ops
-
-		for _, p := range paths {
-			if p == "" {
-				continue
+			if r.AbsPath != "" {
+				paths = append(paths, r.AbsPath)
 			}
-			wg.Add(1)
-			sem <- struct{}{}
-			go func(path string) {
-				defer wg.Done()
-				defer func() { <-sem }()
-
-				output, err := exec.Command("git", "-C", path, "pull", "--ff-only").CombinedOutput()
-				if err != nil {
-					mu.Lock()
-					skipped = append(skipped, events.SkippedPull{
-						RepoPath: path,
-						Reason:   firstLine(string(output)),
-					})
-					mu.Unlock()
-					return
-				}
-				mu.Lock()
-				pulled++
-				mu.Unlock()
-			}(p)
 		}
 
-		wg.Wait()
-		return events.PullAllReposComplete{Pulled: pulled, Skipped: skipped}
+		ch := make(chan events.PullResult, len(paths))
+		go func() {
+			var wg sync.WaitGroup
+			sem := make(chan struct{}, 8) // cap concurrent network ops
+			for _, p := range paths {
+				wg.Add(1)
+				sem <- struct{}{}
+				go func(path string) {
+					defer wg.Done()
+					defer func() { <-sem }()
+
+					output, err := exec.Command("git", "-C", path, "pull", "--ff-only").CombinedOutput()
+					if err != nil {
+						ch <- events.PullResult{RepoPath: path, Reason: firstLine(string(output))}
+						return
+					}
+					ch <- events.PullResult{RepoPath: path}
+				}(p)
+			}
+			wg.Wait()
+			close(ch)
+		}()
+
+		return events.PullAllStarted{Total: len(paths), Results: ch}
+	}
+}
+
+// WaitForPullCmd blocks on the next PullResult from the pull-all channel,
+// returning PullAllDrained once the channel is closed.
+func WaitForPullCmd(ch <-chan events.PullResult) tea.Cmd {
+	return func() tea.Msg {
+		r, ok := <-ch
+		if !ok {
+			return events.PullAllDrained{}
+		}
+		return r
 	}
 }
 

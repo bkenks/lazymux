@@ -1,33 +1,15 @@
 package domain
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/bkenks/lazymux/internal/styles"
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/lipgloss"
 )
-
-var KeyStyle = lipgloss.NewStyle().Foreground(styles.SubduedColor)
-var HelpStyle = lipgloss.NewStyle().Foreground(styles.VerySubduedColor)
 
 type BindingProvider func() []key.Binding
 
+// FormatBindingsInline renders a one-line key hint bar through the shared
+// bubbles/help renderer, so the non-list screens match the styling the list
+// screens already get from help internally.
 func FormatBindingsInline(get BindingProvider) string {
-	bindings := get()
-	parts := make([]string, 0, len(bindings))
-
-	for _, b := range bindings {
-		if b.Enabled() { // assuming exported fields
-			parts = append(parts,
-				fmt.Sprintf("%s %s",
-					KeyStyle.Render(b.Help().Key),
-					HelpStyle.Render(b.Help().Desc),
-				),
-			)
-		}
-	}
-
-	return strings.Join(parts, HelpStyle.Render(" • "))
+	return styles.Help.ShortHelpView(get())
 }

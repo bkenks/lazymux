@@ -25,7 +25,7 @@ func main() {
 	cfg := config.Load()
 	styles.Apply(cfg.UI.Theme)
 
-	tui := app.New(cfg)
+	tui := app.New(cfg, version())
 	p := tea.NewProgram(tui, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "lazymux: fatal:", err)

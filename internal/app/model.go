@@ -17,17 +17,32 @@ import (
 	"github.com/bkenks/lazymux/internal/ui/forgeselect"
 	"github.com/bkenks/lazymux/internal/ui/repoforges"
 	"github.com/bkenks/lazymux/internal/ui/repolist"
+	"github.com/bkenks/lazymux/internal/ui/splash"
 	"github.com/bkenks/lazymux/pkg/settings"
+	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
-const toastDuration = 4 * time.Second
+const (
+	toastHold     = 4 * time.Second       // full-opacity dwell before fading out
+	toastFrame    = 45 * time.Millisecond // fade animation frame interval
+	toastFadeStep = 0.18                  // opacity delta per fade frame
+)
+
+type toastPhase int
+
+const (
+	toastFadeIn toastPhase = iota
+	toastHolding
+	toastFadeOut
+)
 
 type ModelManager struct {
 	cfg config.Config
 
 	state         domain.SessionState
+	splash        splash.Model
 	main          repolist.Model
 	confirmDelete confirm.Model
 	clonerepos    clonerepos.Model
@@ -39,18 +54,21 @@ type ModelManager struct {
 	active tea.Model
 
 	// clone batch progress (cloning runs after the forge-select step)
-	cloneTotal int
-	cloneDone  int
-	cloneFail  int
+	cloneTotal    int
+	cloneDone     int
+	cloneFail     int
+	cloneProgress progress.Model
 
 	pendingDeleteKey string
 
-	toast      string
-	toastLevel events.ToastLevel
-	toastSeq   int
+	toast        string
+	toastLevel   events.ToastLevel
+	toastSeq     int
+	toastOpacity float64
+	toastPhase   toastPhase
 }
 
-func New(cfg config.Config) *ModelManager {
+func New(cfg config.Config, version string) *ModelManager {
 	commands.SetDeps(cfg)
 
 	// Restore the persisted forge-label visibility before building the repo
@@ -62,18 +80,21 @@ func New(cfg config.Config) *ModelManager {
 
 	m := &ModelManager{
 		cfg:           cfg,
+		splash:        *splash.New(version),
 		main:          *repolist.New(),
 		confirmDelete: *confirm.New(),
 		clonerepos:    *clonerepos.New(),
 		settingsModel: settings.New("Settings", settingsItems, constants.WindowSize.Width, constants.WindowSize.Height, x, y),
+		cloneProgress: progress.New(progress.WithDefaultGradient(), progress.WithoutPercentage()),
 	}
 
-	m.active = &m.main
+	m.state = domain.StateSplash
+	m.active = &m.splash
 	return m
 }
 
 func (m *ModelManager) Init() tea.Cmd {
-	cmds := []tea.Cmd{commands.RefreshReposCmd()}
+	cmds := []tea.Cmd{m.splash.Init(), commands.RefreshReposCmd()}
 	if w := m.cfg.LoadWarning; w != "" {
 		cmds = append(cmds, m.toastCmd(events.ToastError, w))
 	}
@@ -95,6 +116,9 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = msg.State
 
 			switch m.state {
+			case domain.StateSplash:
+				m.active = &m.splash
+
 			case domain.StateMain:
 				m.active = &m.main
 
@@ -134,6 +158,14 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.repoForges != nil {
 					m.active = m.repoForges
 				}
+			}
+
+			// Re-broadcast the window size so the newly-active screen lays out at
+			// the current dimensions — the repo list is built at size 0 behind the
+			// splash and would otherwise stay unsized until the next real resize.
+			if constants.WindowSize.Width > 0 {
+				sz := constants.WindowSize
+				cmds = append(cmds, func() tea.Msg { return sz })
 			}
 
 		case events.StartRepoClone:
@@ -279,7 +311,10 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, commands.RefreshReposCmd())
 
 		case events.PullAllReposComplete:
-			cmds = append(cmds, commands.RefreshReposCmd())
+			cmds = append(cmds,
+				commands.RefreshReposCmd(),
+				m.toastCmd(events.ToastInfo, msg.Summary()),
+			)
 
 		case events.ReposRefreshed:
 			cmds = append(cmds, m.main.UpdateRepoList(msg.RepoList))
@@ -303,14 +338,33 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.toast = msg.Msg
 			m.toastLevel = msg.Level
 			m.toastSeq++
-			seq := m.toastSeq
-			cmds = append(cmds, tea.Tick(toastDuration, func(time.Time) tea.Msg {
-				return events.ToastClear{Seq: seq}
-			}))
+			m.toastOpacity = 0
+			m.toastPhase = toastFadeIn
+			cmds = append(cmds, toastTick(m.toastSeq))
 
-		case events.ToastClear:
-			if msg.Seq == 0 || msg.Seq == m.toastSeq {
-				m.toast = ""
+		case events.ToastAnim:
+			if msg.Seq != m.toastSeq {
+				break // stale animation from a superseded toast
+			}
+			switch m.toastPhase {
+			case toastFadeIn:
+				if m.toastOpacity += toastFadeStep; m.toastOpacity >= 1 {
+					m.toastOpacity = 1
+					m.toastPhase = toastHolding
+					cmds = append(cmds, tea.Tick(toastHold, toastAnimMsg(msg.Seq)))
+				} else {
+					cmds = append(cmds, toastTick(msg.Seq))
+				}
+			case toastHolding:
+				m.toastPhase = toastFadeOut
+				cmds = append(cmds, toastTick(msg.Seq))
+			case toastFadeOut:
+				if m.toastOpacity -= toastFadeStep; m.toastOpacity <= 0 {
+					m.toastOpacity = 0
+					m.toast = ""
+				} else {
+					cmds = append(cmds, toastTick(msg.Seq))
+				}
 			}
 		}
 
@@ -334,7 +388,33 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *ModelManager) View() string {
 	body := styles.DocStyle.Render(m.active.View())
-	return lipgloss.JoinVertical(lipgloss.Left, body, m.renderToast())
+	// The footer region is a single reserved line (FooterReservedLines). A clone
+	// batch in flight owns it — showing a live gradient bar between the per-repo
+	// terminal handovers — otherwise it's the toast line.
+	footer := m.renderToast()
+	if line := m.renderCloneProgress(); line != "" {
+		footer = line
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, body, footer)
+}
+
+// renderCloneProgress draws a gradient bar while a clone batch is in flight.
+// Empty once every repo is done, so the final summary toast can take the footer.
+func (m *ModelManager) renderCloneProgress() string {
+	if m.cloneTotal == 0 || m.cloneDone >= m.cloneTotal {
+		return ""
+	}
+	bar := constants.WindowSize.Width - 24
+	switch {
+	case bar > 40:
+		bar = 40
+	case bar < 10:
+		bar = 10
+	}
+	m.cloneProgress.Width = bar
+	pct := float64(m.cloneDone) / float64(m.cloneTotal)
+	label := styles.Subtle(fmt.Sprintf(" cloning %d/%d", m.cloneDone+1, m.cloneTotal))
+	return "  " + m.cloneProgress.ViewAs(pct) + label
 }
 
 func (m *ModelManager) renderToast() string {
@@ -342,11 +422,7 @@ func (m *ModelManager) renderToast() string {
 	if m.toast == "" {
 		return styles.ToastIdleStyle.Width(width).Render("")
 	}
-	style := styles.ToastInfoStyle
-	if m.toastLevel == events.ToastError {
-		style = styles.ToastErrorStyle
-	}
-	return style.Width(width).Render(m.toast)
+	return styles.RenderToast(m.toast, m.toastLevel == events.ToastError, m.toastOpacity, width)
 }
 
 func (m *ModelManager) toastCmd(level events.ToastLevel, msg string) tea.Cmd {
@@ -354,3 +430,11 @@ func (m *ModelManager) toastCmd(level events.ToastLevel, msg string) tea.Cmd {
 		return events.Toast{Msg: msg, Level: level}
 	}
 }
+
+// toastAnimMsg returns a tea.Tick callback that emits a ToastAnim for seq.
+func toastAnimMsg(seq int) func(time.Time) tea.Msg {
+	return func(time.Time) tea.Msg { return events.ToastAnim{Seq: seq} }
+}
+
+// toastTick schedules the next fade frame for seq.
+func toastTick(seq int) tea.Cmd { return tea.Tick(toastFrame, toastAnimMsg(seq)) }

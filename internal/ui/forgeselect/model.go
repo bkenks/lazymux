@@ -135,8 +135,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if _, ok := msg.(tea.WindowSizeMsg); ok {
-		w, h := sizeBuffer()
-		m.list.SetSize(w, h)
+		m.resize()
 	}
 
 	km, ok := msg.(tea.KeyMsg)
@@ -256,6 +255,7 @@ func (m *Model) startAdd() (tea.Model, tea.Cmd) {
 		}
 	}
 	m.adding = true
+	m.resize()
 	m.nameInput.SetValue(suggestName(host))
 	m.nameInput.CursorEnd()
 	return m, m.nameInput.Focus()
@@ -265,6 +265,7 @@ func (m *Model) updateAdding(km tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(km, keys.Exit):
 		m.adding = false
+		m.resize()
 		m.nameInput.Blur()
 		return m, nil
 	case key.Matches(km, keys.Confirm):
@@ -282,6 +283,7 @@ func (m *Model) updateAdding(km tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.forges = append(m.forges, f)
 		m.newForges = append(m.newForges, f)
 		m.adding = false
+		m.resize()
 		m.nameInput.Blur()
 		m.refresh()
 		m.list.Select(len(m.forges) - 1)
@@ -299,22 +301,42 @@ func (m *Model) View() string {
 		return ""
 	}
 	view := m.list.View()
+	if !m.adding && m.err == "" {
+		return view
+	}
 
-	var extra []string
+	rows := []string{view}
 	if m.err != "" {
-		extra = append(extra, styles.ToastErrorStyle.Render(m.err))
+		rows = append(rows, styles.ToastErrorStyle.Render(m.err))
 	}
 	if m.adding {
-		extra = append(extra, styles.Subtle("add forge name  ")+m.nameInput.View()+
-			"   "+styles.Subtle("enter save · esc cancel"))
+		form := lipgloss.JoinVertical(lipgloss.Left,
+			styles.Subtle("add forge name"),
+			m.nameInput.View(),
+			styles.Subtle("enter save · esc cancel"),
+		)
+		rows = append(rows, styles.FormBoxStyle.Render(form))
 	}
-	if len(extra) > 0 {
-		return lipgloss.JoinVertical(lipgloss.Left, view, lipgloss.JoinVertical(lipgloss.Left, extra...))
-	}
-	return view
+	return lipgloss.JoinVertical(lipgloss.Left, rows...)
 }
 
 // helpers
+
+// addFormLines is the vertical space the framed add-forge form occupies (3
+// content rows + rounded border + top margin), reserved from the list while
+// adding.
+const addFormLines = 7
+
+// resize lays out the list, leaving room for the framed add form when it's open.
+func (m *Model) resize() {
+	w, h := sizeBuffer()
+	if m.adding {
+		if h -= addFormLines; h < 1 {
+			h = 1
+		}
+	}
+	m.list.SetSize(w, h)
+}
 
 func sizeBuffer() (w, h int) {
 	x, y := styles.DocStyle.GetFrameSize()

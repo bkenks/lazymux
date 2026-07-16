@@ -84,6 +84,12 @@ func rebuildStyles() {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(SubduedColor)
 
+	FormBoxStyle = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(Purple).
+		Padding(0, 1).
+		MarginTop(1)
+
 	DialogTitleStyle = lipgloss.NewStyle().
 		Background(DarkPurple).
 		Foreground(White).
@@ -103,4 +109,6 @@ func rebuildStyles() {
 		Padding(0, 1).
 		Foreground(DarkPink).
 		Bold(true)
+
+	Help = newHelpModel()
 }

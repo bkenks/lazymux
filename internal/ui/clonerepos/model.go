@@ -1,8 +1,6 @@
 package clonerepos
 
 import (
-	"fmt"
-
 	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
@@ -14,13 +12,10 @@ import (
 )
 
 type Model struct {
-	textarea    textarea.Model
-	adjHeight   int
-	adjWidth    int
-	err         error
-	RepoCounter int
-	TotalRepos  int
-	Failures    int
+	textarea  textarea.Model
+	adjHeight int
+	adjWidth  int
+	err       error
 }
 
 func New() *Model {
@@ -79,21 +74,6 @@ func headerView() string {
 	return title
 }
 
-func (m *Model) progressView() string {
-	if m.TotalRepos == 0 {
-		return ""
-	}
-	if m.RepoCounter >= m.TotalRepos {
-		return styles.MenuSubStyle.Render(
-			fmt.Sprintf("done — %d cloned, %d failed",
-				m.TotalRepos-m.Failures, m.Failures),
-		)
-	}
-	return styles.MenuSubStyle.Render(
-		fmt.Sprintf("[%d/%d] cloning…", m.RepoCounter+1, m.TotalRepos),
-	)
-}
-
 func footerView() string {
 	helpKeys := styles.MenuHelpStyle.
 		Render(
@@ -119,7 +99,6 @@ func (m *Model) View() string {
 		lipgloss.Left,
 		headerView(),
 		m.textarea.View(),
-		m.progressView(),
 		footerView(),
 	)
 

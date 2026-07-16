@@ -135,8 +135,7 @@ func (m *Model) refresh() {
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if _, ok := msg.(tea.WindowSizeMsg); ok {
-		w, h := sizeBuffer()
-		m.list.SetSize(w, h)
+		m.resize()
 	}
 
 	km, ok := msg.(tea.KeyMsg)
@@ -185,6 +184,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Model) startEdit(idx int) (tea.Model, tea.Cmd) {
 	m.editing = true
+	m.resize() // shrink the list to make room for the framed form
 	m.editIdx = idx
 	m.err = ""
 	if idx >= 0 {
@@ -203,6 +203,7 @@ func (m *Model) updateEditing(km tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(km, keys.Exit):
 		m.editing = false
+		m.resize()
 		m.nameInput.Blur()
 		m.hostInput.Blur()
 		return m, nil
@@ -255,6 +256,7 @@ func (m *Model) saveEdit() (tea.Model, tea.Cmd) {
 		m.forges = append(m.forges, f)
 	}
 	m.editing = false
+	m.resize()
 	m.nameInput.Blur()
 	m.hostInput.Blur()
 	m.refresh()
@@ -328,27 +330,43 @@ func without(s []string, v string) []string {
 
 func (m *Model) View() string {
 	view := m.list.View()
+	if !m.editing && m.err == "" {
+		return view
+	}
 
-	var extra []string
+	rows := []string{view}
 	if m.err != "" {
-		extra = append(extra, styles.ToastErrorStyle.Render(m.err))
+		rows = append(rows, styles.ToastErrorStyle.Render(m.err))
 	}
 	if m.editing {
 		verb := "edit forge"
 		if m.editIdx < 0 {
 			verb = "new forge"
 		}
-		extra = append(extra,
+		form := lipgloss.JoinVertical(lipgloss.Left,
 			styles.Subtle(verb),
 			styles.Subtle("name  ")+m.nameInput.View(),
 			styles.Subtle("host  ")+m.hostInput.View(),
 			styles.Subtle("tab switch field · enter save · esc cancel"),
 		)
+		rows = append(rows, styles.FormBoxStyle.Render(form))
 	}
-	if len(extra) > 0 {
-		return lipgloss.JoinVertical(lipgloss.Left, view, lipgloss.JoinVertical(lipgloss.Left, extra...))
+	return lipgloss.JoinVertical(lipgloss.Left, rows...)
+}
+
+// editFormLines is the vertical space the framed edit form occupies (4 content
+// rows + rounded border + top margin), reserved from the list while editing.
+const editFormLines = 8
+
+// resize lays out the list, leaving room for the framed edit form when it's open.
+func (m *Model) resize() {
+	w, h := sizeBuffer()
+	if m.editing {
+		if h -= editFormLines; h < 1 {
+			h = 1
+		}
 	}
-	return view
+	m.list.SetSize(w, h)
 }
 
 func sizeBuffer() (w, h int) {

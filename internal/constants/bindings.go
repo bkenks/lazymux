@@ -183,14 +183,31 @@ func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 // Confirm Key Map
 
 type confirmKeyMap struct {
-	Proceed key.Binding
-	Exit    key.Binding
+	Left     key.Binding
+	Right    key.Binding
+	Move     key.Binding // display-only: the ←/→ hint shown in help
+	Activate key.Binding
+	Proceed  key.Binding // ctrl+p: instant confirm shortcut (hidden from help)
+	Exit     key.Binding
 }
 
 var ConfirmKeyMap = confirmKeyMap{
+	Left: key.NewBinding(
+		key.WithKeys(tea.KeyLeft.String(), "h"),
+	),
+	Right: key.NewBinding(
+		key.WithKeys(tea.KeyRight.String(), "l"),
+	),
+	Move: key.NewBinding(
+		key.WithHelp("←/→", "select"),
+	),
+	Activate: key.NewBinding(
+		key.WithKeys(tea.KeyEnter.String()),
+		key.WithHelp("enter", "confirm"),
+	),
 	Proceed: key.NewBinding(
 		key.WithKeys(tea.KeyCtrlP.String()),
-		key.WithHelp("ctrl+p", "proceed"),
+		key.WithHelp("ctrl+p", "delete now"),
 	),
 	Exit: key.NewBinding(
 		key.WithKeys(tea.KeyEsc.String()),
@@ -200,7 +217,8 @@ var ConfirmKeyMap = confirmKeyMap{
 
 func (k confirmKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 	bindsWithHelp := []key.Binding{
-		SetOnHelpType(helpType, ConfirmKeyMap.Proceed, "proceed", "proceed with deleting"),
+		SetOnHelpType(helpType, ConfirmKeyMap.Move, "select", "select yes/no"),
+		SetOnHelpType(helpType, ConfirmKeyMap.Activate, "confirm", "confirm selection"),
 		SetOnHelpType(helpType, ConfirmKeyMap.Exit, "back", "back to menu"),
 	}
 	return func() []key.Binding { return bindsWithHelp }

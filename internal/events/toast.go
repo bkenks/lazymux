@@ -15,9 +15,10 @@ type Toast struct {
 
 func (Toast) isEvent() {}
 
-// ToastClear hides the currently displayed toast if its sequence number still
-// matches the most recent Toast. Emitted by a tea.Tick after Toast fires.
-// Seq guards against an old ticker clearing a newer toast.
-type ToastClear struct{ Seq int }
+// ToastAnim advances the toast fade state machine (fade-in → hold → fade-out)
+// one frame. Emitted by a tea.Tick after Toast fires and reschedules itself
+// until the toast has faded out. Seq guards against an old animation driving a
+// newer toast — a stale tick (Seq != current) is ignored.
+type ToastAnim struct{ Seq int }
 
-func (ToastClear) isEvent() {}
+func (ToastAnim) isEvent() {}

@@ -3,7 +3,8 @@ package domain
 type SessionState int
 
 const (
-	StateMain SessionState = iota
+	StateSplash SessionState = iota
+	StateMain
 	StateConfirmDelete
 	StateCloneRepo
 	StateSettings

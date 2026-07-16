@@ -39,9 +39,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, constants.ConfirmKeyMap.Left):
+			m.cursor = choiceYes
+		case key.Matches(msg, constants.ConfirmKeyMap.Right):
+			m.cursor = choiceNo
+		case key.Matches(msg, constants.ConfirmKeyMap.Activate):
+			if m.cursor == choiceYes {
+				cmds = append(cmds, commands.DeleteRepoCmd(m.AbsPath))
+			}
+			cmds = append(cmds, commands.SetState(domain.StateMain))
 		case key.Matches(msg, constants.ConfirmKeyMap.Proceed):
-			cmds = append(
-				cmds,
+			cmds = append(cmds,
 				commands.DeleteRepoCmd(m.AbsPath),
 				commands.SetState(domain.StateMain),
 			)
@@ -66,6 +74,8 @@ func (m *Model) View() string {
 
 	repoPath := styles.DialogRepoPath.Render(m.RepoPath)
 
+	buttons := m.buttonRow()
+
 	helpKeys := styles.DialogHelpStyle.Render(
 		domain.FormatBindingsInline(
 			constants.ConfirmKeyMap.HelpBinds(constants.Short),
@@ -77,6 +87,8 @@ func (m *Model) View() string {
 		title,
 		subtitle,
 		repoPath,
+		buttons,
+		"",
 		helpKeys,
 	)
 
@@ -91,4 +103,17 @@ func (m *Model) View() string {
 	)
 
 	return placedContent
+}
+
+// buttonRow renders the Yes/No pair, highlighting the one under the cursor.
+func (m *Model) buttonRow() string {
+	yes, no := "Yes, delete", "Cancel"
+	if m.cursor == choiceYes {
+		yes = styles.SelectedButton.Render(yes)
+		no = styles.UnselectedButton.Render(no)
+	} else {
+		yes = styles.UnselectedButton.Render(yes)
+		no = styles.SelectedButton.Render(no)
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top, yes, no)
 }
