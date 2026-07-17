@@ -93,12 +93,18 @@ func Default() Config {
 	}
 }
 
+// dirName is the name of the directory under $HOME that holds the config
+// file and, by default, cloned repos. Overridden at build time via
+// -ldflags "-X .../config.dirName=lazymux-dev" to build a dev binary that
+// is fully sandboxed from the normal ~/lazymux tree.
+var dirName = "lazymux"
+
 func defaultBaseDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return filepath.Join(".", "lazymux")
+		return filepath.Join(".", dirName)
 	}
-	return filepath.Join(home, "lazymux")
+	return filepath.Join(home, dirName)
 }
 
 // Path returns the resolved config file path. Everything lives in a single
