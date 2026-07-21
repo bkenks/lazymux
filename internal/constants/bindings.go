@@ -231,8 +231,10 @@ func (k confirmKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 // Clone Repo Key Map
 
 type cloneRepoKeyMap struct {
-	Exit    key.Binding
-	Proceed key.Binding
+	Exit       key.Binding
+	Proceed    key.Binding
+	ToggleMode key.Binding
+	CycleForge key.Binding
 }
 
 var CloneRepoKeyMap = cloneRepoKeyMap{
@@ -244,11 +246,20 @@ var CloneRepoKeyMap = cloneRepoKeyMap{
 		key.WithKeys(tea.KeyCtrlP.String()),
 		key.WithHelp("ctrl+p", "proceed"),
 	),
+	ToggleMode: key.NewBinding(
+		key.WithKeys(tea.KeyCtrlT.String()),
+		key.WithHelp("ctrl+t", "urls/namespace"),
+	),
+	CycleForge: key.NewBinding(
+		key.WithKeys(tea.KeyTab.String()),
+		key.WithHelp("tab", "cycle forge"),
+	),
 }
 
 func (k cloneRepoKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 	bindsWithHelp := []key.Binding{
 		SetOnHelpType(helpType, CloneRepoKeyMap.Proceed, "proceed", "proceed with cloning"),
+		SetOnHelpType(helpType, CloneRepoKeyMap.ToggleMode, "namespace", "toggle urls/namespace mode"),
 		SetOnHelpType(helpType, CloneRepoKeyMap.Exit, "back", "back to menu"),
 	}
 	return func() []key.Binding { return bindsWithHelp }

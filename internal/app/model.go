@@ -83,7 +83,7 @@ func New(cfg config.Config, version string) *ModelManager {
 		splash:        *splash.New(version),
 		main:          *repolist.New(),
 		confirmDelete: *confirm.New(),
-		clonerepos:    *clonerepos.New(),
+		clonerepos:    *clonerepos.New(cfg),
 		settingsModel: settings.New("Settings", settingsItems, constants.WindowSize.Width, constants.WindowSize.Height, x, y),
 		cloneProgress: progress.New(progress.WithDefaultGradient(), progress.WithoutPercentage()),
 	}
@@ -132,7 +132,7 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.active = &m.confirmDelete
 
 			case domain.StateCloneRepo:
-				m.clonerepos = *clonerepos.New()
+				m.clonerepos = *clonerepos.New(m.cfg)
 				m.active = &m.clonerepos
 
 			case domain.StateSettings:
@@ -193,6 +193,11 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.forgeSelect = forgeselect.New(m.cfg, pending)
 			cmds = append(cmds, commands.SetState(domain.StateForgeSelect))
+
+		case events.NamespaceCloneFailed:
+			// The clone screen (still active) shows this inline too; the
+			// toast just surfaces it if the user has already moved on.
+			cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("%s: %v", msg.Namespace, msg.Err)))
 
 		case events.ForgeSelectComplete:
 			// Persist any inline-added forges, then start the clones.
