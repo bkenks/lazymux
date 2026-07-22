@@ -1,6 +1,6 @@
 # Building lazymux
 
-Build, install and release tasks are uv/Python scripts in `mise-tasks/`. Run them
+Build, install and release tasks are uv/Python scripts in `.mise/tasks/`. Run them
 with `mise run <task>` from anywhere in the repo; `mise tasks` lists them.
 
 `mise.toml` at the repo root pins the toolchain (Go and uv), so `mise install`
@@ -42,26 +42,25 @@ set `CGO_ENABLED=0`, so the Linux binaries are static. Windows artifacts get a
 `.exe` suffix. Artifacts are named `lazymux-<version>-<goos>-<goarch>`, and a
 `SHA256SUMS` file is written alongside them in the standard `sha256sum -c` format.
 
-The matrix lives in `PLATFORMS` in `mise-tasks/_lib.py`; `--platform` only accepts
+The matrix lives in `PLATFORMS` in `.mise/tasks/_lib.py`; `--platform` only accepts
 pairs from that list.
 
 ## Task layout
 
 ```
-mise-tasks/
+.mise/tasks/
   _lib.py       shared helpers — not executable, so mise ignores it
-  build         \
-  dev            |
-  install        |  executable PEP 723 scripts, one per task
-  install-dev    |
-  clean          |
-  release       /
-  ruff.toml     lint/format config for the scripts
+  build.py      \
+  dev.py         |
+  install.py     |  executable PEP 723 scripts, one per task
+  install-dev.py |
+  clean.py       |
+  release.py    /
 ```
 
 Tasks are file tasks, so mise passes arguments straight through to the script;
 `argparse` handles them. `mise run release --help` prints the script's own help.
-Lint with `uvx ruff check mise-tasks/` and `uvx ty check mise-tasks/`.
+Lint with `uvx ruff check .mise/tasks/` and `uvx ty check .mise/tasks/`.
 
 ## Regular build vs. dev build
 

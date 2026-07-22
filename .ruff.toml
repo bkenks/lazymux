@@ -1,5 +1,5 @@
-# The mise task scripts in `mise-tasks/` are the only Python in this repo; keep
+# The mise task scripts in `.mise/tasks/` are the only Python in this repo; keep
 # them at the same 100-char width as the rest of the codebase.
-# (This cannot live in mise-tasks/ — mise parses any .toml there as a task file.)
+# (This cannot live in .mise/tasks/ — mise parses any .toml there as a task file.)
 line-length = 100
 target-version = "py313"

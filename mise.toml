@@ -1,4 +1,4 @@
-# Toolchain for lazymux. Tasks are uv/Python scripts in `mise-tasks/`;
+# Toolchain for lazymux. Tasks are uv/Python scripts in `.mise/tasks/`;
 # run `mise tasks` to list them, `mise run <task> --help` for a script's options.
 
 [tools]

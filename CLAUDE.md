@@ -24,10 +24,10 @@ mise run clean            # remove build/bin and build/dist
 mise run release patch    # vet+test, build all, tag, push, publish (also: minor|major|vX.Y.Z)
 ```
 
-Tasks are uv/Python scripts in `mise-tasks/`, sharing helpers via the
+Tasks are uv/Python scripts in `.mise/tasks/`, sharing helpers via the
 non-executable `_lib.py`; `mise.toml` only pins the Go and uv toolchains. Args
 pass straight through to argparse, so `mise run release --help` works. Lint them
-with `uvx ruff check mise-tasks/` and `uvx ty check mise-tasks/`.
+with `uvx ruff check .mise/tasks/` and `uvx ty check .mise/tasks/`.
 
 `release` refuses to run on a dirty tree, off `main`, or when `main` has diverged
 from the remote, and it builds the whole matrix + tests *before* tagging. Use
