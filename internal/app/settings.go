@@ -14,6 +14,7 @@ const (
 	skConfirmDelete = "confirm_delete"
 	skShowFullPath  = "show_full_path"
 	skShowForge     = "show_forge"
+	skShowStats     = "show_stats"
 )
 
 var editorOptions = []string{"codium", "code", "nvim", "vim", "hx", "zed", "idea"}
@@ -46,6 +47,7 @@ func buildSettingsItems(cfg config.Config) []settings.Setting {
 		settings.NewToggle(skConfirmDelete, "Confirm before deleting", cfg.Behavior.ConfirmDelete),
 		settings.NewToggle(skShowFullPath, "Show full path on rows", cfg.UI.ShowFullPath),
 		settings.NewToggle(skShowForge, "Show forge label on rows", cfg.UI.ShowForge),
+		settings.NewToggle(skShowStats, "Show git stats on rows", cfg.UI.ShowStats),
 	}
 }
 
@@ -70,6 +72,11 @@ func (m *ModelManager) applySettingChange(msg settings.SettingChanged) {
 			m.cfg.UI.ShowForge = v
 			domain.ShowForge = v // apply to the live repo list immediately
 			m.main.SyncForgeVisibility()
+		}
+	case skShowStats:
+		if v, ok := msg.Setting.Value().(bool); ok {
+			m.cfg.UI.ShowStats = v
+			domain.ShowStats = v // apply to the live repo list immediately
 		}
 	}
 	commands.SetDeps(m.cfg)

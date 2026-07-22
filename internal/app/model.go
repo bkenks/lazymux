@@ -74,6 +74,7 @@ func New(cfg config.Config, version string) *ModelManager {
 	// Restore the persisted forge-label visibility before building the repo
 	// list, so its row height is sized correctly from the start.
 	domain.ShowForge = cfg.UI.ShowForge
+	domain.ShowStats = cfg.UI.ShowStats
 
 	x, y := styles.DocStyle.GetFrameSize()
 	settingsItems := buildSettingsItems(cfg)

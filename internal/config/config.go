@@ -28,6 +28,10 @@ type UI struct {
 	// list. The list's `g` key toggles it for the session; this is the value
 	// restored on launch.
 	ShowForge bool `json:"showForge"`
+	// ShowStats is the default visibility of the git stats summary (branches,
+	// unpushed commits, uncommitted files) on repo list rows. The list's `t`
+	// key toggles it for the session; this is the value restored on launch.
+	ShowStats bool `json:"showStats"`
 }
 
 type Behavior struct {
@@ -83,6 +87,7 @@ func Default() Config {
 			Theme:        "default",
 			ShowFullPath: false,
 			ShowForge:    true,
+			ShowStats:    true,
 		},
 		Behavior: Behavior{
 			DefaultProtocol: "https",

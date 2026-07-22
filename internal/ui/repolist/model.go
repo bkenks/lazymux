@@ -152,6 +152,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, constants.RepoListKeyMap.ToggleForge):
 			domain.ShowForge = !domain.ShowForge
 			m.List.SetDelegate(newDelegate())
+
+		case key.Matches(msg, constants.RepoListKeyMap.ToggleStats):
+			domain.ShowStats = !domain.ShowStats
 		}
 
 	case events.PullAllStarted:

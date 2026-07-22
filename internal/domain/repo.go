@@ -51,9 +51,14 @@ func (r Repo) Namespace() string {
 // globals (constants.WindowSize, the style vars).
 var ShowForge = true
 
+// ShowStats controls whether Description() includes the git stats summary
+// (branches, unpushed commits, uncommitted files). Toggled from the repo list
+// like ShowForge.
+var ShowStats = true
+
 func (r Repo) Description() string {
 	line := r.Namespace()
-	if stats := r.GitStatsLabel(); stats != "" {
+	if stats := r.GitStatsLabel(); ShowStats && stats != "" {
 		if line != "" {
 			line += "  ·  "
 		}
