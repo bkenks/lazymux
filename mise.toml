@@ -1,0 +1,63 @@
+# Build/install tasks for lazymux. Run with `mise run <task>` from anywhere in the repo.
+#
+#   mise run build         build build/bin/lazymux
+#   mise run dev           build build/bin/lazymux-dev, sandboxed to ~/lazymux-dev
+#   mise run install       install lazymux to $GOBIN
+#   mise run install-dev   install lazymux-dev to $GOBIN
+#   mise run clean         remove build/bin
+
+[tools]
+go = "1.26"
+
+[env]
+MODULE = "github.com/bkenks/lazymux"
+BIN_DIR = "{{config_root}}/build/bin"
+DEV_DIR_NAME = "lazymux-dev"
+
+[tasks.build]
+description = "Build build/bin/lazymux"
+dir = "{{config_root}}"
+run = '''
+set -euo pipefail
+version="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
+mkdir -p "$BIN_DIR"
+go build -ldflags "-X main.buildVersion=$version" -o "$BIN_DIR/lazymux" .
+'''
+
+[tasks.dev]
+description = "Build build/bin/lazymux-dev, sandboxed to ~/lazymux-dev"
+dir = "{{config_root}}"
+run = '''
+set -euo pipefail
+version="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
+mkdir -p "$BIN_DIR"
+go build \
+  -ldflags "-X main.buildVersion=$version-dev -X $MODULE/internal/config.dirName=$DEV_DIR_NAME" \
+  -o "$BIN_DIR/lazymux-dev" .
+'''
+
+[tasks.install]
+description = "Install lazymux to $GOBIN"
+depends = ["build"]
+run = '''
+set -euo pipefail
+gobin="$(go env GOBIN)"
+[ -n "$gobin" ] || gobin="$(go env GOPATH)/bin"
+mkdir -p "$gobin"
+install -m 0755 "$BIN_DIR/lazymux" "$gobin/lazymux"
+'''
+
+[tasks.install-dev]
+description = "Install lazymux-dev to $GOBIN"
+depends = ["dev"]
+run = '''
+set -euo pipefail
+gobin="$(go env GOBIN)"
+[ -n "$gobin" ] || gobin="$(go env GOPATH)/bin"
+mkdir -p "$gobin"
+install -m 0755 "$BIN_DIR/lazymux-dev" "$gobin/lazymux-dev"
+'''
+
+[tasks.clean]
+description = "Remove build/bin"
+run = 'rm -rf "$BIN_DIR"'

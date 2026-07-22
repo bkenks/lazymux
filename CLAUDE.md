@@ -14,9 +14,16 @@ Module path is `github.com/bkenks/lazymux` (kept GitHub-style so `go install` wo
 go build ./...            # compile
 go test ./...             # run tests (config + repomgr only)
 go vet ./...
-./devinstall.sh           # go install . → $GOPATH/bin (local dev build)
-./newtag.sh [patch|minor|major|vX.Y.Z]   # release: commit, push, bump+push tag, go install @tag
+
+mise run build            # → build/bin/lazymux
+mise run dev              # → build/bin/lazymux-dev, sandboxed to ~/lazymux-dev
+mise run install          # install lazymux to $GOBIN
+mise run install-dev      # install lazymux-dev to $GOBIN
+mise run clean            # remove build/bin
 ```
+
+Build/install tasks live in `mise.toml` at the repo root (see
+`.project/docs/build.md`); the Go toolchain is pinned there too.
 
 Run a single test: `go test ./internal/repomgr -run TestRenderGitConfig -v`. Tests only exist for `internal/config` (save/load round-trip + legacy TOML migration) and `internal/repomgr` (`ParseRepoURL` table test + `RenderGitConfig` insteadOf behavior against a real temp git repo). There is no UI/event/command test coverage.
 
