@@ -103,9 +103,21 @@ func gitConfig(dir, key, value string) error {
 }
 
 // List walks baseDir and returns every git repo found, annotated with its
-// forge link from config. A repo is any directory containing a .git entry;
-// walking stops descending once one is found, so nested namespaces work.
+// forge link from config and its local git stats. A repo is any directory
+// containing a .git entry; walking stops descending once one is found, so
+// nested namespaces work.
 func List(cfg config.Config) ([]domain.Repo, error) {
+	return list(cfg, true)
+}
+
+// ListMeta is List without the per-repo git stats, which cost three git
+// subprocesses each. Callers that only need locations and forge links (the
+// MCP server) should use this.
+func ListMeta(cfg config.Config) ([]domain.Repo, error) {
+	return list(cfg, false)
+}
+
+func list(cfg config.Config, withStats bool) ([]domain.Repo, error) {
 	base := cfg.BaseDir
 	if _, err := os.Stat(base); os.IsNotExist(err) {
 		return nil, nil
@@ -132,7 +144,10 @@ func List(cfg config.Config) ([]domain.Repo, error) {
 		}
 		key := filepath.ToSlash(rel)
 		link := cfg.Repos[key]
-		stats := gitStats(path)
+		var stats repoStats
+		if withStats {
+			stats = gitStats(path)
+		}
 		repos = append(repos, domain.Repo{
 			Name:             filepath.Base(path),
 			Path:             key,

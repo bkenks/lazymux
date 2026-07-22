@@ -18,7 +18,7 @@ go vet ./...
 ./newtag.sh [patch|minor|major|vX.Y.Z]   # release: commit, push, bump+push tag, go install @tag
 ```
 
-Run a single test: `go test ./internal/repomgr -run TestRenderGitConfig -v`. Tests only exist for `internal/config` (save/load round-trip + legacy TOML migration) and `internal/repomgr` (`ParseRepoURL` table test + `RenderGitConfig` insteadOf behavior against a real temp git repo). There is no UI/event/command test coverage.
+Run a single test: `go test ./internal/repomgr -run TestRenderGitConfig -v`. Tests exist for `internal/config` (save/load round-trip + legacy TOML migration), `internal/repomgr` (`ParseRepoURL` table test + `RenderGitConfig` insteadOf behavior against a real temp git repo), and `internal/mcp` (URL parsing, search ranking, purpose persistence, plus an end-to-end test that drives the real server over HTTP with the SDK client). There is no UI/event/command test coverage.
 
 Version is injected at build time: `-ldflags "-X main.buildVersion=..."`.
 
@@ -58,9 +58,20 @@ Per-repo links persist in `config.Repos map[string]RepoLink` (keyed by `namespac
 
 Actual clone **execution** is in `commands/clonerepoexec.go` via `tea.ExecProcess` (not inside repomgr) so git can prompt for credentials interactively.
 
+## internal/mcp (the LLM data layer)
+
+A second entry point that has nothing to do with the TUI: `main.go` routes `lazymux mcp ...` to `mcp.Run` **before** `config.Load()` and the Bubble Tea program are set up, so no MCP subcommand ever touches the renderer.
+
+- `cli.go` — subcommand dispatch (`start`, `stop`, `serve`, `list`, `set-url`, `set-port`). `applyURL` folds a bare host, `host:port`, or a full URL into `config.MCP`, leaving out components alone.
+- `repos.go` — the data layer. `inventory` maps `repomgr.ListMeta` + `config.Repos` into `[]RepoInfo`; `search` ranks by **distinct query terms matched first, weighted field score second** (so a repo covering every word beats one that merely repeats one word); `setDescription` re-`Load`s the config immediately before `Save` so a concurrently running TUI's edits survive, and refuses keys that aren't real repos.
+- `server.go` — four tools (`list_repositories`, `search_repositories`, `get_repository`, `set_repository_purpose`) registered on the official `modelcontextprotocol/go-sdk` server, served over streamable HTTP. The SDK is imported as `mcpsdk` to avoid colliding with this package's name. Handlers call `config.Load()` per request, so a repo cloned in the TUI shows up without restarting the server.
+- `daemon.go` — pidfile lifecycle. **The child writes the pidfile only after `net.Listen` succeeds** (via `Serve`'s `onListen` callback), and `Start` waits for that file rather than dialing the port — dialing can't tell our server from an unrelated process already squatting on it, which made a failed bind look like a successful start. `Start` also reaps the child in a goroutine so a startup failure reports immediately instead of hanging until the timeout on a zombie that still answers signal 0.
+
+Per-repo `purpose`/`context` live on `config.RepoLink`, alongside the forge fields — one entry per repo, not a parallel map. `config.Save` writes via temp-file + rename since the TUI and the MCP server can both write.
+
 ## Config
 
-`internal/config/config.go`. Single JSON file `~/lazymux/.lazymux.json` (override with `$LAZYMUX_CONFIG`); `Path()` resolves it, `BaseDir` defaults to `$HOME/lazymux`. `Load()` auto-migrates a legacy `~/.config/lazymux/config.toml` on first run and writes defaults otherwise; parse errors fall back to defaults with a `LoadWarning` surfaced as a startup toast. Schema: `Config{BaseDir, PlaceholderHost, Tools{Lazygit,Editor,Shell}, UI{Theme,ShowFullPath}, Behavior{DefaultProtocol,ConfirmDelete}, Forges, Repos}`.
+`internal/config/config.go`. Single JSON file `~/lazymux/.lazymux.json` (override with `$LAZYMUX_CONFIG`); `Path()` resolves it, `BaseDir` defaults to `$HOME/lazymux`. `Load()` auto-migrates a legacy `~/.config/lazymux/config.toml` on first run and writes defaults otherwise; parse errors fall back to defaults with a `LoadWarning` surfaced as a startup toast. Schema: `Config{BaseDir, PlaceholderHost, Tools{Lazygit,Editor,Shell}, UI{Theme,ShowFullPath}, Behavior{DefaultProtocol,ConfirmDelete}, MCP{Host,Port,Path}, Forges, Repos}`.
 
 ## External tools
 
