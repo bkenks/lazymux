@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 )
@@ -14,6 +17,14 @@ import (
 // origin. A per-repo local git `insteadOf` rule rewrites it to the primary
 // forge, so the stored remote never changes when the primary forge does.
 const DefaultPlaceholderHost = "lazymux-placeholder"
+
+// Defaults for the MCP server. It binds to loopback so the repo inventory
+// isn't exposed to the network unless the user opts in via `mcp set-url`.
+const (
+	DefaultMCPHost = "127.0.0.1"
+	DefaultMCPPort = 7777
+	DefaultMCPPath = "/mcp"
+)
 
 type Tools struct {
 	Lazygit string `json:"lazygit"`
@@ -48,11 +59,40 @@ type Forge struct {
 }
 
 // RepoLink records which forges host a managed repo, which one is primary
-// (drives the insteadOf rewrite), and the URL scheme used for that repo.
+// (drives the insteadOf rewrite), and the URL scheme used for that repo. It
+// also carries the human/LLM-facing description of the repo written by the
+// MCP server (see internal/mcp).
 type RepoLink struct {
 	Forges  []string `json:"forges"`
 	Primary string   `json:"primary"`
 	Scheme  string   `json:"scheme"`
+
+	// Purpose is a one-line summary of what the repo is for, used to route a
+	// natural-language request to the right repo.
+	Purpose string `json:"purpose,omitempty"`
+	// Context is longer-form detail — stack, conventions, when to reach for
+	// this repo over a sibling.
+	Context string `json:"context,omitempty"`
+}
+
+// MCP configures the MCP server that exposes the repo inventory to LLMs.
+type MCP struct {
+	// Host is the bind address ("127.0.0.1" to stay local, "0.0.0.0" to expose
+	// the server on the network).
+	Host string `json:"host"`
+	Port int    `json:"port"`
+	// Path is the HTTP path the streamable-HTTP endpoint is mounted at.
+	Path string `json:"path"`
+}
+
+// Endpoint is the full URL clients connect to.
+func (m MCP) Endpoint() string {
+	return fmt.Sprintf("http://%s%s", m.Addr(), m.Path)
+}
+
+// Addr is the host:port pair passed to net.Listen.
+func (m MCP) Addr() string {
+	return net.JoinHostPort(m.Host, strconv.Itoa(m.Port))
 }
 
 type Config struct {
@@ -63,6 +103,7 @@ type Config struct {
 	Tools    Tools    `json:"tools"`
 	UI       UI       `json:"ui"`
 	Behavior Behavior `json:"behavior"`
+	MCP      MCP      `json:"mcp"`
 
 	Forges []Forge `json:"forges"`
 	// Repos maps a repo key ("<namespace>/<repo>") to its forge links.
@@ -92,6 +133,11 @@ func Default() Config {
 		Behavior: Behavior{
 			DefaultProtocol: "https",
 			ConfirmDelete:   true,
+		},
+		MCP: MCP{
+			Host: DefaultMCPHost,
+			Port: DefaultMCPPort,
+			Path: DefaultMCPPath,
 		},
 		Forges: []Forge{},
 		Repos:  map[string]RepoLink{},
@@ -165,6 +211,20 @@ func normalize(cfg Config) Config {
 	if cfg.Behavior.DefaultProtocol == "" {
 		cfg.Behavior.DefaultProtocol = d.Behavior.DefaultProtocol
 	}
+	if cfg.MCP.Host == "" {
+		cfg.MCP.Host = d.MCP.Host
+	}
+	if cfg.MCP.Port == 0 {
+		cfg.MCP.Port = d.MCP.Port
+	}
+	// A hand-edited path like "mcp" or "/mcp/" would otherwise never match the
+	// route the server registers.
+	cfg.MCP.Path = strings.TrimRight(cfg.MCP.Path, "/")
+	if cfg.MCP.Path == "" {
+		cfg.MCP.Path = d.MCP.Path
+	} else if !strings.HasPrefix(cfg.MCP.Path, "/") {
+		cfg.MCP.Path = "/" + cfg.MCP.Path
+	}
 	if cfg.Repos == nil {
 		cfg.Repos = map[string]RepoLink{}
 	}
@@ -236,16 +296,36 @@ func migrateLegacy(base Config) (Config, bool) {
 }
 
 // Save serializes cfg to Path() as indented JSON, creating parents as needed.
+// The write goes to a temp file in the same directory and is renamed into
+// place, so a crash (or the MCP server and the TUI writing at once) can't
+// leave a half-written config behind.
 func Save(cfg Config) error {
 	path := Path()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	tmp, err := os.CreateTemp(dir, ".lazymux-*.json.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName) // no-op once the rename succeeds
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmpName, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, path)
 }
 
 // ForgeByName returns the registry forge with the given name.

@@ -6,6 +6,7 @@ import (
 
 	"github.com/bkenks/lazymux/internal/app"
 	"github.com/bkenks/lazymux/internal/config"
+	"github.com/bkenks/lazymux/internal/mcp"
 	"github.com/bkenks/lazymux/internal/styles"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -18,6 +19,12 @@ func main() {
 			return
 		case "-h", "--help":
 			printHelp()
+			return
+		case "mcp":
+			if err := mcp.Run(os.Args[2:], version()); err != nil {
+				fmt.Fprintln(os.Stderr, "lazymux mcp:", err)
+				os.Exit(1)
+			}
 			return
 		}
 	}
@@ -42,10 +49,15 @@ func printHelp() {
 	fmt.Println(`lazymux — a TUI git repo manager (clone + lazygit + your editor)
 
 Usage: lazymux [flags]
+       lazymux mcp <command>
 
 Flags:
   -h, --help     show this help
   -v, --version  show version
+
+Commands:
+  mcp            serve the repo inventory to LLMs over MCP
+                 (start, stop, serve, list, set-url, set-port)
 
 Configuration:
   All settings, the forge registry, and per-repo forge links live in a single

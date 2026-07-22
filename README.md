@@ -79,6 +79,7 @@ This builds and installs the `lazymux` binary into `$(go env GOPATH)/bin` — ma
 lazymux            # launch the TUI
 lazymux --help     # show keybindings + config location
 lazymux --version  # show the version
+lazymux mcp start  # serve the repo inventory to LLMs (see "MCP server")
 ```
 
 On first run, lazymux creates `~/lazymux/` and a `.lazymux.json` config (migrating an existing `~/.config/lazymux/config.toml` if present). It then lists any repos already under `~/lazymux/`. Register your forges (`F`), then clone (`Ctrl+N`) to start pulling repos in.
@@ -155,6 +156,69 @@ Changes save to disk immediately.
 
 ---
 
+## MCP server
+
+lazymux already knows where every repo on your machine lives. `lazymux mcp` hands that
+inventory to an LLM over the [Model Context Protocol](https://modelcontextprotocol.io),
+so an assistant can work out *which* repo a request is about — "fix the login bug on the
+marketing site" — and get back an absolute path instead of guessing or globbing your home
+directory.
+
+```bash
+lazymux mcp start            # start it in the background
+lazymux mcp stop             # stop it
+lazymux mcp list             # config, endpoint, and whether it's running
+lazymux mcp set-port 8080    # change the port
+lazymux mcp set-url 0.0.0.0  # change the bind host (accepts host, host:port, or a full URL)
+lazymux mcp serve            # run in the foreground, for a supervisor or for debugging
+```
+
+Then point a client at the endpoint (`http://127.0.0.1:7777/mcp` by default):
+
+```bash
+claude mcp add --transport http lazymux http://127.0.0.1:7777/mcp
+```
+
+### Tools
+
+| tool | what it does |
+|---|---|
+| `list_repositories` | every managed repo — path, forge links, recorded purpose. Recently-used first. |
+| `search_repositories` | rank repos against a plain-English description of the task |
+| `get_repository` | one repo by its `<namespace>/<name>` key |
+| `set_repository_purpose` | write a `purpose` and/or `context` back into `.lazymux.json` |
+
+That last one is what makes this improve over time. A repo starts out as just a path; once
+an assistant works out what it's for it records a purpose, and every later session routes
+straight there. `list_repositories` reports which repos still have nothing recorded, so a
+model knows what's worth describing.
+
+Purposes land in the same `repos` object as forge links:
+
+```json
+"repos": {
+  "bkenks/myrepo": {
+    "forges": ["forgejo", "github"],
+    "primary": "forgejo",
+    "scheme": "https",
+    "purpose": "compose stacks for the homelab",
+    "context": "One directory per stack. Deployed by Komodo; don't edit .env by hand."
+  }
+}
+```
+
+You can write these by hand too — the MCP server is just one way to fill them in.
+
+The server binds to `127.0.0.1` by default, so the inventory isn't exposed to your network.
+`set-url 0.0.0.0` opts into that; there's no authentication, so only do it on a network you
+trust. Changing the host or port doesn't affect a server that's already running — stop and
+start it to apply.
+
+State lives next to the config: `.lazymux-mcp.pid` and `.lazymux-mcp.log` in the same
+directory as `.lazymux.json`, so `$LAZYMUX_CONFIG` keeps a dev instance fully separate.
+
+---
+
 ## Configuration
 
 Everything lives in a single JSON file at `~/lazymux/.lazymux.json` (override the path with `$LAZYMUX_CONFIG`). It's created on first run — with a one-time migration from the legacy `~/.config/lazymux/config.toml` if that exists. Edit it directly or use the in-app screens.
@@ -176,6 +240,11 @@ Everything lives in a single JSON file at `~/lazymux/.lazymux.json` (override th
     "defaultProtocol": "https",
     "confirmDelete": true
   },
+  "mcp": {
+    "host": "127.0.0.1",
+    "port": 7777,
+    "path": "/mcp"
+  },
   "forges": [
     { "name": "github", "host": "github.com" },
     { "name": "forgejo", "host": "fj.example.com" }
@@ -184,7 +253,8 @@ Everything lives in a single JSON file at `~/lazymux/.lazymux.json` (override th
     "bkenks/myrepo": {
       "forges": ["forgejo", "github"],
       "primary": "forgejo",
-      "scheme": "https"
+      "scheme": "https",
+      "purpose": "compose stacks for the homelab"
     }
   }
 }
@@ -192,8 +262,10 @@ Everything lives in a single JSON file at `~/lazymux/.lazymux.json` (override th
 
 - `baseDir` — root under which repos live as `<namespace>/<repo>`.
 - `placeholderHost` — the fake host stored in every managed repo's `origin`.
+- `mcp` — where the MCP server binds (managed with `lazymux mcp set-url` / `set-port`).
 - `forges` — the registry (managed in-app with `F`).
-- `repos` — per-repo forge links, primary, and scheme (managed in-app with `f`).
+- `repos` — per-repo forge links, primary, and scheme (managed in-app with `f`), plus the
+  `purpose`/`context` the MCP server reads and writes.
 
 The in-app settings screen covers `editor`, `defaultProtocol`, `confirm_delete`, and `showFullPath`. Tool paths (`lazygit`, `shell`) and `theme` are file-only for now — edit and relaunch.
 
