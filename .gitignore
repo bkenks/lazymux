@@ -37,10 +37,14 @@ go.work.sum
 # Binary Builds
 .builds/
 build/bin/
+build/dist/
 
 # Binary Builds for Testing
 .testing/
 testing/
+
+# Python bytecode from the mise task scripts
+__pycache__/
 
 # macOS
 .DS_Store

@@ -14,9 +14,26 @@ Module path is `github.com/bkenks/lazymux` (kept GitHub-style so `go install` wo
 go build ./...            # compile
 go test ./...             # run tests (config + repomgr only)
 go vet ./...
-./devinstall.sh           # go install . → $GOPATH/bin (local dev build)
-./newtag.sh [patch|minor|major|vX.Y.Z]   # release: commit, push, bump+push tag, go install @tag
+
+mise run build            # → build/bin/lazymux (host only, fast)
+mise run build --all      # → build/dist/* — 6 platforms + SHA256SUMS
+mise run dev              # → build/bin/lazymux-dev, sandboxed to ~/lazymux-dev
+mise run install          # install lazymux to $GOBIN
+mise run install-dev      # install lazymux-dev to $GOBIN
+mise run clean            # remove build/bin and build/dist
+mise run release patch    # vet+test, build all, tag, push, publish (also: minor|major|vX.Y.Z)
 ```
+
+Tasks are uv/Python scripts in `mise-tasks/`, sharing helpers via the
+non-executable `_lib.py`; `mise.toml` only pins the Go and uv toolchains. Args
+pass straight through to argparse, so `mise run release --help` works. Lint them
+with `uvx ruff check mise-tasks/` and `uvx ty check mise-tasks/`.
+
+`release` refuses to run on a dirty tree, off `main`, or when `main` has diverged
+from the remote, and it builds the whole matrix + tests *before* tagging. Use
+`--dry-run` to preview. The cross-compile matrix is `PLATFORMS` in `_lib.py`
+(darwin/linux/windows × amd64/arm64); lazymux is pure Go, so cross builds need
+only `GOOS`/`GOARCH`. See `.project/docs/build.md`.
 
 Run a single test: `go test ./internal/repomgr -run TestRenderGitConfig -v`. Tests only exist for `internal/config` (save/load round-trip + legacy TOML migration) and `internal/repomgr` (`ParseRepoURL` table test + `RenderGitConfig` insteadOf behavior against a real temp git repo). There is no UI/event/command test coverage.
 
