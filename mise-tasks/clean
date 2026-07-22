@@ -1,0 +1,20 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.13"
+# ///
+#MISE description="Remove build/bin"
+
+import shutil
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+
+from _lib import bin_dir
+
+target = bin_dir()
+if target.exists():
+    shutil.rmtree(target)
+    print(f"removed {target}")
+else:
+    print(f"nothing to clean ({target} does not exist)")

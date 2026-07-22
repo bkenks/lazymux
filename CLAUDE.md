@@ -20,10 +20,17 @@ mise run dev              # → build/bin/lazymux-dev, sandboxed to ~/lazymux-de
 mise run install          # install lazymux to $GOBIN
 mise run install-dev      # install lazymux-dev to $GOBIN
 mise run clean            # remove build/bin
+mise run release patch    # vet+test, build, tag, push, publish (also: minor|major|vX.Y.Z)
 ```
 
-Build/install tasks live in `mise.toml` at the repo root (see
-`.project/docs/build.md`); the Go toolchain is pinned there too.
+Tasks are uv/Python scripts in `mise-tasks/`, sharing helpers via the
+non-executable `_lib.py`; `mise.toml` only pins the Go and uv toolchains. Args
+pass straight through to argparse, so `mise run release --help` works. Lint them
+with `uvx ruff check mise-tasks/` and `uvx ty check mise-tasks/`.
+
+`release` refuses to run on a dirty tree, off `main`, or when `main` has diverged
+from the remote, and it builds/tests *before* tagging. Use `--dry-run` to preview.
+See `.project/docs/build.md`.
 
 Run a single test: `go test ./internal/repomgr -run TestRenderGitConfig -v`. Tests only exist for `internal/config` (save/load round-trip + legacy TOML migration) and `internal/repomgr` (`ParseRepoURL` table test + `RenderGitConfig` insteadOf behavior against a real temp git repo). There is no UI/event/command test coverage.
 

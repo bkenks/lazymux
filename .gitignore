@@ -42,6 +42,9 @@ build/bin/
 .testing/
 testing/
 
+# Python bytecode from the mise task scripts
+__pycache__/
+
 # macOS
 .DS_Store
 # Claude Code worktrees / local state
