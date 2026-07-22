@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.13"
 # ///
-#MISE description="Cut a release: bump the version tag, build, push, publish to Forgejo"
+#MISE description="Cut a release: bump the version tag, build every platform, push, publish"
 
 """Cut a lazymux release.
 
@@ -13,8 +13,9 @@
     mise run release patch --dry-run    print the plan, change nothing
 
 Preflight refuses to release from a dirty tree, a non-release branch, or a
-branch that has diverged from its remote. The binary is built and the test
-suite runs *before* the tag is created, so a broken build never gets tagged.
+branch that has diverged from its remote. The full platform matrix is built and
+the test suite runs *before* the tag is created, so a broken build never gets
+tagged. Every artifact is attached to the Forgejo release.
 """
 
 from __future__ import annotations
@@ -28,7 +29,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from _lib import bin_dir, build_lazymux, capture, die, gobin, repo_root, run
+from _lib import PLATFORMS, build_matrix, capture, die, dist_dir, repo_root, run, write_checksums
 
 RELEASE_BRANCH = "main"
 REMOTE = "origin"
@@ -39,7 +40,7 @@ BUMPS = ("patch", "minor", "major")
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="mise run release",
-        description="Build, tag, push and publish a lazymux release.",
+        description="Build every platform, tag, push and publish a lazymux release.",
     )
     parser.add_argument(
         "version",
@@ -120,8 +121,7 @@ def preflight(new: str) -> None:
             "push or pull before releasing"
         )
 
-    existing = capture("git", "tag", "--list", new, cwd=root)
-    if existing:
+    if capture("git", "tag", "--list", new, cwd=root):
         die(f"tag {new} already exists")
 
 
@@ -134,22 +134,17 @@ def confirm(prompt: str, assume_yes: bool) -> None:
         die("aborted")
 
 
-def asset_name(version: str) -> str:
-    goos = capture("go", "env", "GOOS")
-    goarch = capture("go", "env", "GOARCH")
-    return f"lazymux-{version}-{goos}-{goarch}"
-
-
-def publish(version: str, asset: Path) -> None:
-    """Create the Forgejo release via tea, attaching the built binary."""
+def publish(version: str, assets: list[Path]) -> None:
+    """Create the Forgejo release via tea, attaching every build artifact."""
     if shutil.which("tea") is None:
         print(
             f"warning: `tea` not found — tag {version} was pushed, but no Forgejo "
-            "release was created. Install tea, or create it in the web UI.",
+            "release was created. Install tea, or create it in the web UI and "
+            f"upload the artifacts from {dist_dir()}.",
             file=sys.stderr,
         )
         return
-    run(
+    cmd: list[str | Path] = [
         "tea",
         "release",
         "create",
@@ -159,9 +154,10 @@ def publish(version: str, asset: Path) -> None:
         version,
         "--note",
         f"lazymux {version}",
-        "--asset",
-        asset,
-    )
+    ]
+    for asset in assets:
+        cmd += ["--asset", asset]
+    run(*cmd)
 
 
 def main() -> None:
@@ -174,25 +170,30 @@ def main() -> None:
     print(f"releasing {current} -> {new}")
     preflight(new)
 
-    # Build and test before tagging, so a broken tree never gets a tag.
+    # Build and test before tagging, so a broken tree never gets a tag. The
+    # matrix is built here rather than via `mise run build --all` because the
+    # artifacts must embed `new`, and that tag does not exist yet.
     run("go", "vet", "./...")
     run("go", "test", "./...")
-    binary = build_lazymux(new)
-
-    asset = bin_dir() / asset_name(new)
-    shutil.copy2(binary, asset)
+    artifacts = build_matrix(new)
+    assets = [*artifacts, write_checksums(artifacts)]
 
     if args.dry_run:
+        publish_line = (
+            "  (publish skipped)"
+            if args.no_publish
+            else f"  tea release create --tag {new} with {len(assets)} assets"
+        )
         print(
             f"\ndry run — would have:\n"
             f"  git tag -a {new} -m 'Release {new}'\n"
             f"  git push {REMOTE} {new}\n"
-            f"  {'(publish skipped)' if args.no_publish else f'tea release create --tag {new} --asset {asset.name}'}\n"
-            f"\nbuilt artifacts left in {bin_dir()}"
+            f"{publish_line}\n"
+            f"\nbuilt artifacts left in {dist_dir()}"
         )
         return
 
-    confirm(f"tag {new} and push it to {REMOTE}?", args.yes)
+    confirm(f"tag {new}, push it to {REMOTE}, and publish {len(assets)} assets?", args.yes)
 
     run("git", "tag", "-a", new, "-m", f"Release {new}")
     try:
@@ -203,12 +204,11 @@ def main() -> None:
         raise
 
     if not args.no_publish:
-        publish(new, asset)
+        publish(new, assets)
 
-    print(f"\nreleased {new}")
-    print(f"  binary: {binary}")
-    print(f"  asset:  {asset}")
-    print(f"  install it with: mise run install   (-> {gobin()}/lazymux)")
+    print(f"\nreleased {new} ({len(PLATFORMS)} platforms)")
+    for asset in assets:
+        print(f"  {asset.name}")
 
 
 main()

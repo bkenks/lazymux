@@ -37,6 +37,7 @@ go.work.sum
 # Binary Builds
 .builds/
 build/bin/
+build/dist/
 
 # Binary Builds for Testing
 .testing/

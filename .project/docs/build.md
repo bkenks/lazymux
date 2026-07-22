@@ -9,17 +9,41 @@ provisions everything. Each script carries its own PEP 723 header and runs under
 
 ## Commands
 
-| Command                | Output                        |
-|------------------------|--------------------------------|
-| `mise run build`       | `build/bin/lazymux`            |
-| `mise run dev`         | `build/bin/lazymux-dev`        |
-| `mise run install`     | installs `lazymux` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
-| `mise run install-dev` | installs `lazymux-dev` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
-| `mise run clean`       | removes `build/bin`            |
-| `mise run release <bump>` | tags, pushes and publishes a release (see below) |
+| Command                       | Output                        |
+|-------------------------------|--------------------------------|
+| `mise run build`              | `build/bin/lazymux` (this machine) |
+| `mise run build --all`        | `build/dist/*` — all 6 platforms + `SHA256SUMS` |
+| `mise run build --platform GOOS/GOARCH` | `build/dist/*` — one platform (repeatable) |
+| `mise run build --list`       | prints the release matrix       |
+| `mise run dev`                | `build/bin/lazymux-dev`        |
+| `mise run install`            | installs `lazymux` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
+| `mise run install-dev`        | installs `lazymux-dev` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
+| `mise run clean`              | removes `build/bin` and `build/dist` |
+| `mise run release <bump>`     | tags, pushes and publishes a release (see below) |
 
 `install` and `install-dev` declare `#MISE depends=` on `build` / `dev`, so they
 compile first.
+
+## Cross-compilation
+
+Plain `mise run build` is host-only, so the local edit-rebuild loop and
+`mise run install` stay fast (~1s). `--all` cross-compiles the release matrix
+into `build/dist/` (~20s):
+
+| GOOS    | GOARCH        |
+|---------|---------------|
+| darwin  | amd64, arm64  |
+| linux   | amd64, arm64  |
+| windows | amd64, arm64  |
+
+lazymux is pure Go — there is no cgo anywhere in its dependency graph — so these
+need nothing but `GOOS`/`GOARCH`; no C cross-toolchain is involved. Matrix builds
+set `CGO_ENABLED=0`, so the Linux binaries are static. Windows artifacts get a
+`.exe` suffix. Artifacts are named `lazymux-<version>-<goos>-<goarch>`, and a
+`SHA256SUMS` file is written alongside them in the standard `sha256sum -c` format.
+
+The matrix lives in `PLATFORMS` in `mise-tasks/_lib.py`; `--platform` only accepts
+pairs from that list.
 
 ## Task layout
 
@@ -73,13 +97,17 @@ TTY), `--no-publish` (push the tag but skip the Forgejo release).
 dirty, the current branch is not `main`, `main` has diverged from `origin/main`,
 the target tag already exists, or the new version is not greater than the latest tag.
 
-**Order of operations** — `go vet` and `go test` run, then the binary is built with
-the *new* version injected, and only then is the tag created. A broken tree never
-gets tagged. If `git push` of the tag fails, the local tag is deleted so a retry
-starts clean.
+**Order of operations** — `go vet` and `go test` run, then the full platform matrix
+is built with the *new* version injected, and only then is the tag created. A tree
+that fails to compile for any target never gets tagged. If `git push` of the tag
+fails, the local tag is deleted so a retry starts clean.
 
 **Publishing** — after the tag is pushed, the script calls `tea release create` to
-create the Forgejo release, attaching the built binary as
-`lazymux-<version>-<goos>-<goarch>`. The asset is the host platform only; there is
-no cross-compilation. If `tea` is not installed the tag is still pushed and the
-script warns that the release was not created.
+create the Forgejo release, attaching all six binaries plus `SHA256SUMS`. If `tea`
+is not installed the tag is still pushed and the script warns that the release was
+not created, pointing at `build/dist/` for a manual upload.
+
+Release builds call `build_matrix()` from `_lib.py` directly rather than shelling
+out to `mise run build --all`. They have to: the artifacts must embed the new
+version, and at build time that tag does not exist yet, so `git describe` would
+stamp them with the *previous* version plus a `-dirty`/commit-count suffix.
