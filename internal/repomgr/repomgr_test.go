@@ -36,6 +36,49 @@ func TestParseRepoURL(t *testing.T) {
 	}
 }
 
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	full := append([]string{"-C", dir}, args...)
+	if out, err := exec.Command("git", full...).CombinedOutput(); err != nil {
+		t.Fatalf("git %s: %s", strings.Join(args, " "), out)
+	}
+}
+
+func TestGitStats(t *testing.T) {
+	dir := t.TempDir()
+	runGit(t, dir, "init")
+	runGit(t, dir, "config", "user.email", "t@example.com")
+	runGit(t, dir, "config", "user.name", "T")
+
+	// Fresh repo, no commits yet: no branches, nothing unpushed, clean.
+	if s := gitStats(dir); s.branches != 0 || s.unpushed != 0 || s.uncommitted != 0 {
+		t.Fatalf("empty repo: got %+v", s)
+	}
+
+	// One commit on the default branch, no remote: 1 branch, 1 unpushed, clean.
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("a"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, dir, "add", "a.txt")
+	runGit(t, dir, "commit", "-m", "first")
+	if s := gitStats(dir); s.branches != 1 || s.unpushed != 1 || s.uncommitted != 0 {
+		t.Fatalf("after commit: got %+v", s)
+	}
+
+	// Second branch, one modified file and one untracked file: 2 branches, 2
+	// uncommitted paths. Untracked files count too — a wipe loses them as well.
+	runGit(t, dir, "branch", "feature")
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("changed"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "b.txt"), []byte("new"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if s := gitStats(dir); s.branches != 2 || s.uncommitted != 2 {
+		t.Fatalf("two branches + two uncommitted: got %+v", s)
+	}
+}
+
 func gitCfg(t *testing.T, dir, key string) string {
 	t.Helper()
 	out, _ := exec.Command("git", "-C", dir, "config", "--local", "--get", key).Output()

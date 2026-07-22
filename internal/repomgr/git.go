@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/bkenks/lazymux/internal/config"
@@ -78,12 +79,10 @@ func clearManagedInsteadOf(dir, placeholderHost string) error {
 	}
 	sc := bufio.NewScanner(strings.NewReader(string(out)))
 	for sc.Scan() {
-		line := sc.Text()
-		sp := strings.IndexByte(line, ' ')
-		if sp < 0 {
+		keyName, value, ok := strings.Cut(sc.Text(), " ")
+		if !ok {
 			continue
 		}
-		keyName, value := line[:sp], line[sp+1:]
 		if !strings.Contains(value, placeholderHost) {
 			continue
 		}
@@ -133,14 +132,18 @@ func List(cfg config.Config) ([]domain.Repo, error) {
 		}
 		key := filepath.ToSlash(rel)
 		link := cfg.Repos[key]
+		stats := gitStats(path)
 		repos = append(repos, domain.Repo{
-			Name:           filepath.Base(path),
-			Path:           key,
-			AbsPath:        path,
-			LastInteracted: interactions[key],
-			Forges:         link.Forges,
-			Primary:        link.Primary,
-			Scheme:         link.Scheme,
+			Name:             filepath.Base(path),
+			Path:             key,
+			AbsPath:          path,
+			LastInteracted:   interactions[key],
+			Forges:           link.Forges,
+			Primary:          link.Primary,
+			Scheme:           link.Scheme,
+			LocalBranches:    stats.branches,
+			UnpushedCommits:  stats.unpushed,
+			UncommittedFiles: stats.uncommitted,
 		})
 		return filepath.SkipDir // don't descend into a repo
 	})
@@ -167,10 +170,49 @@ func Remove(baseDir, absPath string) error {
 	return nil
 }
 
-func firstLine(s string) string {
-	s = strings.TrimSpace(s)
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		return s[:i]
+// repoStats holds the local git signals shown in the repo list.
+type repoStats struct {
+	branches    int
+	unpushed    int
+	uncommitted int
+}
+
+// gitStats inspects a repo's local state without touching the network. Failures
+// (not a git repo, git missing) yield a zero-value result rather than aborting
+// the whole listing.
+func gitStats(dir string) repoStats {
+	var s repoStats
+	// Local branch count: one line per ref under refs/heads.
+	if out, err := exec.Command("git", "-C", dir, "for-each-ref",
+		"--format=%(refname)", "refs/heads").Output(); err == nil {
+		s.branches = countLines(string(out))
+	}
+	// Unpushed commits: reachable from any local branch but no remote-tracking
+	// ref. With no remotes configured, --remotes is empty, so every commit on a
+	// branch counts — correct, since nothing is backed up anywhere.
+	if out, err := exec.Command("git", "-C", dir, "rev-list", "--count",
+		"--branches", "--not", "--remotes").Output(); err == nil {
+		s.unpushed, _ = strconv.Atoi(strings.TrimSpace(string(out)))
+	}
+	// Uncommitted files: one porcelain status line per changed path, counting
+	// staged, unstaged, and untracked entries alike.
+	if out, err := exec.Command("git", "-C", dir, "status", "--porcelain").Output(); err == nil {
+		s.uncommitted = countLines(string(out))
 	}
 	return s
+}
+
+func countLines(s string) int {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0
+	}
+	return strings.Count(s, "\n") + 1
+}
+
+func firstLine(s string) string {
+	// Cut returns the whole string when there's no newline, which is what we
+	// want for single-line output.
+	first, _, _ := strings.Cut(strings.TrimSpace(s), "\n")
+	return first
 }

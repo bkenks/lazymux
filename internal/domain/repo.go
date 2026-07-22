@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"path"
 	"time"
 )
@@ -20,6 +21,16 @@ type Repo struct {
 	Forges  []string
 	Primary string
 	Scheme  string
+
+	// Local git state, used to gauge whether a repo can be wiped safely. These
+	// are independent signals: LocalBranches counts refs/heads; UnpushedCommits
+	// counts commits reachable from local branches but absent from every
+	// remote-tracking ref; UncommittedFiles counts working-tree paths that
+	// aren't committed at all. The last two are disjoint categories of work a
+	// delete would lose.
+	LocalBranches    int
+	UnpushedCommits  int
+	UncommittedFiles int
 }
 
 func (r Repo) Title() string { return r.Name }
@@ -41,10 +52,43 @@ func (r Repo) Namespace() string {
 var ShowForge = true
 
 func (r Repo) Description() string {
-	if ShowForge && r.Primary != "" {
-		return r.Namespace() + "\nforge: " + r.Primary
+	line := r.Namespace()
+	if stats := r.GitStatsLabel(); stats != "" {
+		if line != "" {
+			line += "  ·  "
+		}
+		line += stats
 	}
-	return r.Namespace()
+	if ShowForge && r.Primary != "" {
+		return line + "\nforge: " + r.Primary
+	}
+	return line
+}
+
+// GitStatsLabel summarizes local git state for the list row: branch count plus
+// any unpushed commits or uncommitted changes — the signals for whether a repo
+// still holds work that a delete would lose. Empty for repos with no branches
+// (e.g. a bare or freshly-initialized repo).
+func (r Repo) GitStatsLabel() string {
+	if r.LocalBranches == 0 {
+		return ""
+	}
+	label := fmt.Sprintf("%d %s", r.LocalBranches, plural(r.LocalBranches, "branch", "branches"))
+	if r.UnpushedCommits > 0 {
+		label += fmt.Sprintf(", %d unpushed", r.UnpushedCommits)
+	}
+	if r.UncommittedFiles > 0 {
+		label += fmt.Sprintf(", %d uncommitted %s", r.UncommittedFiles,
+			plural(r.UncommittedFiles, "file", "files"))
+	}
+	return label
+}
+
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return one
+	}
+	return many
 }
 func (r Repo) FilterValue() string { return r.Name }
 
