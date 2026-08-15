@@ -65,6 +65,19 @@ lazymux is built for repos that live on more than one host — for example a sel
 
 ## Installation
 
+### Homebrew
+
+```bash
+brew tap bkenks/lazymux https://fj.ktbcloud.com/bkenks/homebrew-lazymux.git
+brew install lazymux
+```
+
+Builds from source against the tagged release. This is the route to take if you want the
+MCP server supervised by `brew services` — see [Running the MCP server as a
+service](#running-the-mcp-server-as-a-service).
+
+### go install
+
 ```bash
 go install github.com/bkenks/lazymux@latest
 ```
@@ -178,6 +191,27 @@ Then point a client at the endpoint (`http://127.0.0.1:7777/mcp` by default):
 ```bash
 claude mcp add --transport http lazymux http://127.0.0.1:7777/mcp
 ```
+
+### Running the MCP server as a service
+
+`lazymux mcp start` has to be re-run after every reboot. To keep the endpoint up, hand
+`lazymux mcp serve` — the foreground mode — to a supervisor.
+
+With the Homebrew install, the formula ships a service definition:
+
+```bash
+brew services start lazymux   # starts now, and again at every login
+brew services stop lazymux
+brew services list            # status
+```
+
+Logs land in `$(brew --prefix)/var/log/lazymux-mcp.log`.
+
+For a non-Homebrew install, write a launchd agent to
+`~/Library/LaunchAgents/com.example.lazymux-mcp.plist` that runs `lazymux mcp serve` with
+`RunAtLoad` and `KeepAlive` set, then `launchctl bootstrap gui/$(id -u) <plist>`.
+
+Either way, run only one supervisor — two will fight over the port.
 
 ### Tools
 
