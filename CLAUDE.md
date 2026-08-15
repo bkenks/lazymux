@@ -6,7 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 lazymux is a Bubble Tea (charmbracelet) TUI git repo manager: clone repos, browse them in a filterable list sorted by recency, and jump into lazygit / your editor / a shell. It manages repo locations natively (no `ghq`), cloning into `~/lazymux/<namespace>/<repo>`, and links each repo to one or more registered git **forges** with a switchable primary.
 
-Module path is `github.com/bkenks/lazymux` (kept GitHub-style so `go install` works), but the repo is hosted on a Forgejo instance at `fj.homektb.com`. Use `tea` (the Forgejo CLI) / `git` for VCS ops here, not `gh`.
+Module path is `github.com/bkenks/lazymux` (kept GitHub-style so `go install` works), but the repo is hosted on a Forgejo instance at `fj.ktbcloud.com`. Use `tea` (the Forgejo CLI) / `git` for VCS ops here, not `gh`.
+
+The Homebrew tap lives in a separate repo, `bkenks/homebrew-lazymux` on the same Forgejo
+instance. Its formula pins the current release tarball + sha256, so cutting a release means
+updating the formula there too.
 
 ## Commands
 
