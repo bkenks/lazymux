@@ -2,15 +2,44 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## CACHE
+
+Stale-prone values — module path, hosts, on-disk paths, build outputs, screen and
+tool inventories. Read them first, but treat them as a cache, not truth: if one
+does not match the tree or a running instance, this file is out of date, not the
+code. Re-derive from the source, use that, and fix the entry here.
+
+- **Module path:** `github.com/bkenks/lazymux` (kept GitHub-style so `go install`
+  works). **Hosted on** a Forgejo instance at `fj.ktbcloud.com` — use `tea` / `git`
+  for VCS ops here, not `gh`.
+- **Homebrew tap:** `bkenks/homebrew-lazymux` on the same Forgejo instance. Its
+  formula pins the current release tarball + sha256, so cutting a release means
+  updating the formula there too.
+- **Clone destination:** `~/lazymux/<namespace>/<repo>`; `BaseDir` defaults to
+  `$HOME/lazymux`.
+- **Config file:** `~/lazymux/.lazymux.json`, override with `$LAZYMUX_CONFIG`.
+  Legacy path auto-migrated from `~/.config/lazymux/config.toml`.
+- **Interaction recency store:** `$XDG_DATA_HOME/lazymux/interactions.json`.
+- **Build outputs:** `build/bin/lazymux`, `build/bin/lazymux-dev` (sandboxed to
+  `~/lazymux-dev`), `build/dist/*` for the release matrix.
+- **mise tasks:** `.mise/tasks/`, helpers in the non-executable `_lib.py`.
+- **Cross-compile matrix:** `PLATFORMS` in `.mise/tasks/_lib.py` — darwin/linux/windows
+  × amd64/arm64.
+- **Placeholder host:** `placeholderHost`, default `lazymux-placeholder`.
+- **Screens:** `internal/ui/{splash,repolist,confirm,clonerepos,forgeregistry,forgeselect,repoforges}`
+  plus `pkg/settings`.
+- **Test coverage exists for:** `internal/config`, `internal/repomgr`, `internal/mcp`.
+  No UI/event/command tests.
+- **MCP tools:** `list_repositories`, `search_repositories`, `get_repository`,
+  `set_repository_purpose`. MCP subcommands: `start`, `stop`, `serve`, `list`,
+  `set-url`, `set-port`.
+- **Config schema:** `Config{BaseDir, PlaceholderHost, Tools{Lazygit,Editor,Shell},
+  UI{Theme,ShowFullPath}, Behavior{DefaultProtocol,ConfirmDelete}, MCP{Host,Port,Path},
+  Forges, Repos}`.
+
 ## What this is
 
-lazymux is a Bubble Tea (charmbracelet) TUI git repo manager: clone repos, browse them in a filterable list sorted by recency, and jump into lazygit / your editor / a shell. It manages repo locations natively (no `ghq`), cloning into `~/lazymux/<namespace>/<repo>`, and links each repo to one or more registered git **forges** with a switchable primary.
-
-Module path is `github.com/bkenks/lazymux` (kept GitHub-style so `go install` works), but the repo is hosted on a Forgejo instance at `fj.ktbcloud.com`. Use `tea` (the Forgejo CLI) / `git` for VCS ops here, not `gh`.
-
-The Homebrew tap lives in a separate repo, `bkenks/homebrew-lazymux` on the same Forgejo
-instance. Its formula pins the current release tarball + sha256, so cutting a release means
-updating the formula there too.
+lazymux is a Bubble Tea (charmbracelet) TUI git repo manager: clone repos, browse them in a filterable list sorted by recency, and jump into lazygit / your editor / a shell. It manages repo locations natively (no `ghq`), cloning into its own base directory, and links each repo to one or more registered git **forges** with a switchable primary. Module path, hosting forge, Homebrew tap, and paths are in CACHE.
 
 ## Commands
 
@@ -19,27 +48,25 @@ go build ./...            # compile
 go test ./...             # run tests (config + repomgr + mcp only)
 go vet ./...
 
-mise run build            # → build/bin/lazymux (host only, fast)
-mise run build --all      # → build/dist/* — 6 platforms + SHA256SUMS
-mise run dev              # → build/bin/lazymux-dev, sandboxed to ~/lazymux-dev
+mise run build            # host-only build, fast
+mise run build --all      # full release matrix + SHA256SUMS
+mise run dev              # sandboxed dev build
 mise run install          # install lazymux to $GOBIN
 mise run install-dev      # install lazymux-dev to $GOBIN
 mise run clean            # remove build/bin and build/dist
 mise run release patch    # vet+test, build all, tag, push, publish (also: minor|major|vX.Y.Z)
 ```
 
-Tasks are uv/Python scripts in `.mise/tasks/`, sharing helpers via the
-non-executable `_lib.py`; `mise.toml` only pins the Go and uv toolchains. Args
-pass straight through to argparse, so `mise run release --help` works. Lint them
-with `uvx ruff check .mise/tasks/` and `uvx ty check .mise/tasks/`.
+Tasks are uv/Python scripts (location in CACHE); `mise.toml` only pins the Go and
+uv toolchains. Args pass straight through to argparse, so `mise run release --help`
+works. Lint them with `uvx ruff check` and `uvx ty check` over the task directory.
 
 `release` refuses to run on a dirty tree, off `main`, or when `main` has diverged
 from the remote, and it builds the whole matrix + tests *before* tagging. Use
-`--dry-run` to preview. The cross-compile matrix is `PLATFORMS` in `_lib.py`
-(darwin/linux/windows × amd64/arm64); lazymux is pure Go, so cross builds need
-only `GOOS`/`GOARCH`. See `.project/docs/build.md`.
+`--dry-run` to preview. lazymux is pure Go, so cross builds need only
+`GOOS`/`GOARCH`. See `.project/docs/build.md`.
 
-Run a single test: `go test ./internal/repomgr -run TestRenderGitConfig -v`. Tests exist for `internal/config` (save/load round-trip + legacy TOML migration), `internal/repomgr` (`ParseRepoURL` table test + `RenderGitConfig` insteadOf behavior against a real temp git repo), and `internal/mcp` (URL parsing, search ranking, purpose persistence, plus an end-to-end test that drives the real server over HTTP with the SDK client). There is no UI/event/command test coverage.
+Run a single test: `go test ./internal/repomgr -run TestRenderGitConfig -v`. What each covered package tests: `internal/config` (save/load round-trip + legacy TOML migration), `internal/repomgr` (`ParseRepoURL` table test + `RenderGitConfig` insteadOf behavior against a real temp git repo), and `internal/mcp` (URL parsing, search ranking, purpose persistence, plus an end-to-end test that drives the real server over HTTP with the SDK client). Covered packages are listed in CACHE.
 
 Version is injected at build time: `-ldflags "-X main.buildVersion=..."`.
 
@@ -49,20 +76,20 @@ Standard Elm architecture (Model/Update/View) with a custom router and event lay
 
 **Root model & routing** — `internal/app/model.go` defines `ModelManager`, which holds one instance of every screen plus an `active tea.Model` pointer. `Update()` does two-level dispatch: a type switch on `tea.Msg`, with a nested switch on `events.Event`. The central case is `events.SetState`, which sets `m.state` (a `domain.SessionState` enum) and reassigns `m.active` to the matching screen — this is the router. It also re-broadcasts the current `WindowSize` on every state change so the newly-active screen lays out at the right dimensions (notably the repo list, built at size 0 behind the splash). **After** the event switch, every message is also forwarded to the active screen (`m.active, cmd = m.active.Update(msg)`), so screens still receive raw key/resize messages. `View()` renders `m.active.View()` plus a single footer line (`FooterReservedLines`) that shows a live clone-progress bar while a clone batch runs, otherwise the toast.
 
-**Screens** live under `internal/ui/*` (splash, repolist, confirm, clonerepos, forgeregistry, forgeselect, repoforges) plus `pkg/settings`. Each is a self-contained Bubble Tea model unaware of its siblings. Most are constructed up front in `New()`; `forgeselect` and `repoforges` are built lazily (nil pointers until first opened). `splash` is the initial `active` screen — a gradient wordmark + build version shown on launch (state `StateSplash`) that auto-dismisses to the repo list after ~1.6s or on any key while the first repo scan runs behind it.
+**Screens** live under `internal/ui/*` plus `pkg/settings` (inventory in CACHE). Each is a self-contained Bubble Tea model unaware of its siblings. Most are constructed up front in `New()`; `forgeselect` and `repoforges` are built lazily (nil pointers until first opened). `splash` is the initial `active` screen — a gradient wordmark + build version shown on launch (state `StateSplash`) that auto-dismisses to the repo list after ~1.6s or on any key while the first repo scan runs behind it.
 
 **Events & commands** — the messaging pattern:
 - `internal/events/*` — typed structs implementing the `events.Event` marker interface (`isEvent()`). Just data + a marker so `model.go` can do one `case events.Event:`.
 - `internal/commands/*` — `func() tea.Cmd` factories returning closures that produce those events.
 - Flow: **keypress → screen's Update matches a `constants.*KeyMap` binding → calls a `commands.XCmd()` → runtime runs the `tea.Cmd` (often `tea.ExecProcess`) → closure returns an `events.X{}` msg → `ModelManager.Update` mutates state and/or emits more Cmds.**
 
-`internal/domain/*` holds cross-cutting types unrelated to messaging: `SessionState` enum, `Repo` (implements bubbles `list.Item`), and interaction-recency persistence (`interactions.go`, stored at `$XDG_DATA_HOME/lazymux/interactions.json`).
+`internal/domain/*` holds cross-cutting types unrelated to messaging: `SessionState` enum, `Repo` (implements bubbles `list.Item`), and interaction-recency persistence (`interactions.go`; store path in CACHE).
 
 ## The forge system (core domain concept)
 
 A **forge** is a named git host (`config.Forge{Name, Host}`, e.g. `github`→`github.com`). Repos can live on multiple forges (e.g. self-hosted Forgejo mirrored to GitHub) with one designated **primary**.
 
-The key trick (`internal/repomgr/git.go` → `RenderGitConfig`): every managed repo's `origin` is rewritten to a stable placeholder host (`placeholderHost`, default `lazymux-placeholder`) that **never changes**. A per-repo local git `insteadOf` rule resolves that placeholder to the primary forge. Switching primary re-renders only that one rule — the stored `origin` is never touched. `clearManagedInsteadOf` idempotently strips stale rules first. No automatic failover; the user always picks the live forge.
+The key trick (`internal/repomgr/git.go` → `RenderGitConfig`): every managed repo's `origin` is rewritten to a stable placeholder host (see CACHE) that **never changes**. A per-repo local git `insteadOf` rule resolves that placeholder to the primary forge. Switching primary re-renders only that one rule — the stored `origin` is never touched. `clearManagedInsteadOf` idempotently strips stale rules first. No automatic failover; the user always picks the live forge.
 
 Three forge screens, each emitting a distinct event (`internal/events/forge.go`):
 - `forgeregistry` (`F`) — global CRUD of all forges; blocks deleting a forge still in use.
@@ -83,16 +110,16 @@ Actual clone **execution** is in `commands/clonerepoexec.go` via `tea.ExecProces
 
 A second entry point that has nothing to do with the TUI: `main.go` routes `lazymux mcp ...` to `mcp.Run` **before** `config.Load()` and the Bubble Tea program are set up, so no MCP subcommand ever touches the renderer.
 
-- `cli.go` — subcommand dispatch (`start`, `stop`, `serve`, `list`, `set-url`, `set-port`). `applyURL` folds a bare host, `host:port`, or a full URL into `config.MCP`, leaving out components alone.
+- `cli.go` — subcommand dispatch (subcommands in CACHE). `applyURL` folds a bare host, `host:port`, or a full URL into `config.MCP`, leaving out components alone.
 - `repos.go` — the data layer. `inventory` maps `repomgr.ListMeta` + `config.Repos` into `[]RepoInfo`; `search` ranks by **distinct query terms matched first, weighted field score second** (so a repo covering every word beats one that merely repeats one word); `setDescription` re-`Load`s the config immediately before `Save` so a concurrently running TUI's edits survive, and refuses keys that aren't real repos.
-- `server.go` — four tools (`list_repositories`, `search_repositories`, `get_repository`, `set_repository_purpose`) registered on the official `modelcontextprotocol/go-sdk` server, served over streamable HTTP. The SDK is imported as `mcpsdk` to avoid colliding with this package's name. Handlers call `config.Load()` per request, so a repo cloned in the TUI shows up without restarting the server.
+- `server.go` — the tools listed in CACHE, registered on the official `modelcontextprotocol/go-sdk` server, served over streamable HTTP. The SDK is imported as `mcpsdk` to avoid colliding with this package's name. Handlers call `config.Load()` per request, so a repo cloned in the TUI shows up without restarting the server.
 - `daemon.go` — pidfile lifecycle. **The child writes the pidfile only after `net.Listen` succeeds** (via `Serve`'s `onListen` callback), and `Start` waits for that file rather than dialing the port — dialing can't tell our server from an unrelated process already squatting on it, which made a failed bind look like a successful start. `Start` also reaps the child in a goroutine so a startup failure reports immediately instead of hanging until the timeout on a zombie that still answers signal 0.
 
 Per-repo `purpose`/`context` live on `config.RepoLink`, alongside the forge fields — one entry per repo, not a parallel map. `config.Save` writes via temp-file + rename since the TUI and the MCP server can both write.
 
 ## Config
 
-`internal/config/config.go`. Single JSON file `~/lazymux/.lazymux.json` (override with `$LAZYMUX_CONFIG`); `Path()` resolves it, `BaseDir` defaults to `$HOME/lazymux`. `Load()` auto-migrates a legacy `~/.config/lazymux/config.toml` on first run and writes defaults otherwise; parse errors fall back to defaults with a `LoadWarning` surfaced as a startup toast. Schema: `Config{BaseDir, PlaceholderHost, Tools{Lazygit,Editor,Shell}, UI{Theme,ShowFullPath}, Behavior{DefaultProtocol,ConfirmDelete}, MCP{Host,Port,Path}, Forges, Repos}`.
+`internal/config/config.go`. A single JSON file (path and schema in CACHE); `Path()` resolves it. `Load()` auto-migrates the legacy TOML config on first run and writes defaults otherwise; parse errors fall back to defaults with a `LoadWarning` surfaced as a startup toast.
 
 ## External tools
 
