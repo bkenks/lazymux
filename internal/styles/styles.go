@@ -163,7 +163,7 @@ func newHelpModel() help.Model {
 const (
 	GlyphCheckOn  = "◉"
 	GlyphCheckOff = "○"
-	GlyphPrimary  = "★"
+	GlyphOrigin   = "★"
 )
 
 // Subtle renders muted secondary text (input labels, hints). It's a function

@@ -224,9 +224,10 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case events.CloneRepoExec:
 			if msg.Err != nil {
 				m.cloneFail++
-			} else if msg.Clone.Primary != "" {
+			} else if msg.Clone.Origin != "" {
 				// Clone succeeded: record the link and rewrite the repo to a
-				// placeholder origin resolved to its primary forge.
+				// placeholder origin resolved to its origin forge, plus a push
+				// URL per upstream.
 				key := msg.Clone.URL.Key()
 				link := msg.Clone.Link()
 				m.cfg.Repos[key] = link
@@ -255,21 +256,23 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cfg.Repos = msg.Repos
 			commands.SetDeps(m.cfg)
 
-			// Re-render the git remote for any repo whose primary forge changed
-			// name or host (promotion after a delete, a rename, or a host edit).
-			// A repo left unlinked keeps its existing remote — the insteadOf
-			// rule already written still resolves.
+			// Re-render the git remotes for any repo whose links changed name or
+			// host (promotion after a delete, a rename, or a host edit). A repo
+			// left unlinked keeps its existing remote — the insteadOf rule
+			// already written still resolves.
 			for key, link := range m.cfg.Repos {
-				if link.Primary == "" {
+				if link.Origin == "" {
 					continue
 				}
-				newForge, ok := m.cfg.ForgeByName(link.Primary)
+				newForge, ok := m.cfg.ForgeByName(link.Origin)
 				if !ok {
-					continue // dangling primary; leave the existing config alone
+					continue // dangling origin; leave the existing config alone
 				}
 				prev := prevRepos[key]
-				if prev.Primary == link.Primary && forgeHost(prevForges, prev.Primary) == newForge.Host {
-					continue // nothing affecting the remote changed
+				if prev.Origin == link.Origin &&
+					forgeHost(prevForges, prev.Origin) == newForge.Host &&
+					equalStrings(prev.Upstreams, link.Upstreams) {
+					continue // nothing affecting the remotes changed
 				}
 				if err := repomgr.RenderGitConfig(m.cfg, key, link); err != nil {
 					cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("%s: %v", key, err)))
@@ -286,11 +289,11 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, commands.SetState(domain.StateRepoForges))
 
 		case events.RepoLinkChanged:
-			if len(msg.Link.Forges) == 0 {
+			if len(msg.Link.Upstreams) == 0 {
 				delete(m.cfg.Repos, msg.Key)
 			} else {
 				m.cfg.Repos[msg.Key] = msg.Link
-				if msg.Link.Primary != "" {
+				if msg.Link.Origin != "" {
 					if err := repomgr.RenderGitConfig(m.cfg, msg.Key, msg.Link); err != nil {
 						cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("%s: %v", msg.Key, err)))
 					}

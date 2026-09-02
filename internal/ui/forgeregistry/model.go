@@ -79,9 +79,9 @@ func New(cfg config.Config) *Model {
 	repos := make(map[string]config.RepoLink, len(cfg.Repos))
 	for k, v := range cfg.Repos {
 		repos[k] = config.RepoLink{
-			Forges:  append([]string(nil), v.Forges...),
-			Primary: v.Primary,
-			Scheme:  v.Scheme,
+			Upstreams: append([]string(nil), v.Upstreams...),
+			Origin:    v.Origin,
+			Scheme:    v.Scheme,
 		}
 	}
 
@@ -111,7 +111,7 @@ func (m *Model) Init() tea.Cmd { return nil }
 func (m *Model) recomputeUses() {
 	uses := map[string]int{}
 	for _, link := range m.repos {
-		for _, f := range link.Forges {
+		for _, f := range link.Upstreams {
 			uses[f]++
 		}
 	}
@@ -167,8 +167,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			idx := m.list.Index()
 			name := m.forges[idx].Name
 			// Cascade the removal into every repo that links this forge:
-			// drop it, and promote another linked forge to primary (or leave
-			// the repo unlinked) when it was the primary.
+			// drop it, and promote another upstream to origin (or leave
+			// the repo unlinked) when it was the origin.
 			m.applyForgeRemoved(name)
 			m.forges = append(m.forges[:idx], m.forges[idx+1:]...)
 			m.recomputeUses()
@@ -266,34 +266,34 @@ func (m *Model) saveEdit() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// applyForgeRemoved drops forge `name` from every repo link. When it was a
-// repo's primary, the first remaining linked forge is promoted; if none remain
-// the repo is left unlinked (empty primary).
+// applyForgeRemoved drops forge `name` from every repo's upstreams. When it was
+// a repo's origin, the first remaining upstream takes over; if none remain the
+// repo is left unlinked (empty origin).
 func (m *Model) applyForgeRemoved(name string) {
 	for key, link := range m.repos {
-		if !contains(link.Forges, name) {
+		if !contains(link.Upstreams, name) {
 			continue
 		}
-		link.Forges = without(link.Forges, name)
-		if link.Primary == name {
-			link.Primary = ""
-			if len(link.Forges) > 0 {
-				link.Primary = link.Forges[0]
+		link.Upstreams = without(link.Upstreams, name)
+		if link.Origin == name {
+			link.Origin = ""
+			if len(link.Upstreams) > 0 {
+				link.Origin = link.Upstreams[0]
 			}
 		}
 		m.repos[key] = link
 	}
 }
 
-// applyForgeRenamed rewrites forge `old` to `new` in every repo link (and their
-// primary), so a rename never orphans a repo.
+// applyForgeRenamed rewrites forge `old` to `new` in every repo's upstreams
+// (and their origin), so a rename never orphans a repo.
 func (m *Model) applyForgeRenamed(old, newName string) {
 	for key, link := range m.repos {
-		if !contains(link.Forges, old) {
+		if !contains(link.Upstreams, old) {
 			continue
 		}
-		forges := make([]string, 0, len(link.Forges))
-		for _, f := range link.Forges {
+		forges := make([]string, 0, len(link.Upstreams))
+		for _, f := range link.Upstreams {
 			if f == old {
 				f = newName
 			}
@@ -301,9 +301,9 @@ func (m *Model) applyForgeRenamed(old, newName string) {
 				forges = append(forges, f)
 			}
 		}
-		link.Forges = forges
-		if link.Primary == old {
-			link.Primary = newName
+		link.Upstreams = forges
+		if link.Origin == old {
+			link.Origin = newName
 		}
 		m.repos[key] = link
 	}

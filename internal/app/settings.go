@@ -20,6 +20,20 @@ const (
 var editorOptions = []string{"codium", "code", "nvim", "vim", "hx", "zed", "idea"}
 var protocolOptions = []string{"https", "ssh"}
 
+// equalStrings reports whether two forge-name lists hold the same names in the
+// same order.
+func equalStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // forgeHost returns the host of the named forge in the given slice, or "" if
 // it isn't present.
 func forgeHost(forges []config.Forge, name string) string {

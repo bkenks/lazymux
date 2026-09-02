@@ -1,6 +1,6 @@
 // Package repomgr is lazymux's native replacement for ghq: it parses clone
 // URLs, decides on-disk locations (<baseDir>/<namespace>/<repo>), and manages
-// each repo's placeholder origin + primary-forge insteadOf rewrite.
+// each repo's placeholder origin + origin-forge insteadOf rewrite.
 package repomgr
 
 import (

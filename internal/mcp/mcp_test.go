@@ -192,9 +192,9 @@ func TestSetDescriptionPersistsAndMerges(t *testing.T) {
 	cfg := newTestWorkspace(t, "bkenks/lazymux")
 	// A pre-existing forge link must survive a purpose write.
 	cfg.Repos["bkenks/lazymux"] = config.RepoLink{
-		Forges:  []string{"github"},
-		Primary: "github",
-		Scheme:  "https",
+		Upstreams: []string{"github"},
+		Origin:    "github",
+		Scheme:    "https",
 	}
 	if err := config.Save(cfg); err != nil {
 		t.Fatalf("saving config: %v", err)
@@ -212,8 +212,8 @@ func TestSetDescriptionPersistsAndMerges(t *testing.T) {
 	if link.Context != "Go, bubbletea" {
 		t.Errorf("Context = %q, want it persisted", link.Context)
 	}
-	if link.Primary != "github" {
-		t.Errorf("Primary = %q, want the pre-existing forge link preserved", link.Primary)
+	if link.Origin != "github" {
+		t.Errorf("Origin = %q, want the pre-existing forge link preserved", link.Origin)
 	}
 
 	// Writing only a context must leave the purpose alone.

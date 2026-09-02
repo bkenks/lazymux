@@ -12,7 +12,7 @@ func TestSaveLoadRoundtrip(t *testing.T) {
 
 	cfg := Default()
 	cfg.Forges = []Forge{{Name: "github", Host: "github.com"}}
-	cfg.Repos["bkenks/lazymux"] = RepoLink{Forges: []string{"github"}, Primary: "github", Scheme: "https"}
+	cfg.Repos["bkenks/lazymux"] = RepoLink{Upstreams: []string{"github"}, Origin: "github", Scheme: "https"}
 	if err := Save(cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +25,7 @@ func TestSaveLoadRoundtrip(t *testing.T) {
 		t.Errorf("forges = %+v", got.Forges)
 	}
 	link, ok := got.Repos["bkenks/lazymux"]
-	if !ok || link.Primary != "github" || link.Scheme != "https" {
+	if !ok || link.Origin != "github" || link.Scheme != "https" {
 		t.Errorf("repo link = %+v ok=%v", link, ok)
 	}
 	if f, ok := got.ForgeByHost("GitHub.com"); !ok || f.Name != "github" {
@@ -64,5 +64,28 @@ func TestMigrateLegacyToml(t *testing.T) {
 	// The migrated config should now exist as json.
 	if _, err := os.Stat(filepath.Join(dir, ".lazymux.json")); err != nil {
 		t.Errorf("migrated json not written: %v", err)
+	}
+}
+
+func TestLoadMigratesForgesPrimary(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".lazymux.json")
+	t.Setenv("LAZYMUX_CONFIG", path)
+
+	legacy := `{"repos":{"bkenks/lazymux":{"forges":["github","forgejo"],` +
+		`"primary":"forgejo","scheme":"https"}}}`
+	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	link := Load().Repos["bkenks/lazymux"]
+	if link.Origin != "forgejo" {
+		t.Errorf("Origin = %q, want forgejo", link.Origin)
+	}
+	if len(link.Upstreams) != 2 || link.Upstreams[0] != "github" {
+		t.Errorf("Upstreams = %+v", link.Upstreams)
+	}
+	if link.LegacyForges != nil || link.LegacyPrimary != "" {
+		t.Errorf("legacy fields not cleared: %+v", link)
 	}
 }

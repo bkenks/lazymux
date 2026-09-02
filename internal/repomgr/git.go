@@ -19,7 +19,7 @@ func RepoDir(baseDir, key string) string {
 }
 
 // Clone clones from the real URL into <baseDir>/<key>, then rewrites the repo
-// to use a placeholder origin resolved to the primary forge via insteadOf.
+// to use a placeholder origin resolved to the origin forge via insteadOf.
 // Cloning happens against the real URL so existing credentials work; the
 // placeholder is applied only afterwards.
 func Clone(cfg config.Config, realURL string, u RepoURL, link config.RepoLink) error {
@@ -38,10 +38,11 @@ func Clone(cfg config.Config, realURL string, u RepoURL, link config.RepoLink) e
 }
 
 // RenderGitConfig makes a repo's git config match its RepoLink: origin points
-// at the placeholder host, and a single local insteadOf rewrites the
-// placeholder to the primary forge. It's idempotent — any stale
-// lazymux-managed insteadOf rules are cleared first — so it can be re-run
-// whenever the primary forge or scheme changes.
+// at the placeholder host, a single local insteadOf rewrites the placeholder to
+// the origin forge (so fetch/pull go there), and one remote.origin.pushurl is
+// written per upstream forge, which makes a push fan out to all of them. It's
+// idempotent — stale lazymux-managed insteadOf rules and every existing pushurl
+// are cleared first — so it can be re-run whenever the links or scheme change.
 func RenderGitConfig(cfg config.Config, key string, link config.RepoLink) error {
 	dir := RepoDir(cfg.BaseDir, key)
 	scheme := normalizeScheme(link.Scheme)
@@ -50,25 +51,51 @@ func RenderGitConfig(cfg config.Config, key string, link config.RepoLink) error 
 		return err
 	}
 
-	forge, ok := cfg.ForgeByName(link.Primary)
+	origin, ok := cfg.ForgeByName(link.Origin)
 	if !ok {
-		return fmt.Errorf("primary forge %q not in registry", link.Primary)
+		return fmt.Errorf("origin forge %q not in registry", link.Origin)
 	}
 
 	phBase := hostBase(scheme, cfg.PlaceholderHost)
-	forgeBase := hostBase(scheme, forge.Host)
+	originBase := hostBase(scheme, origin.Host)
 
-	// url.<forgeBase>.insteadOf = <placeholderBase>
-	if err := gitConfig(dir, "url."+forgeBase+".insteadOf", phBase); err != nil {
+	// url.<originBase>.insteadOf = <placeholderBase>
+	if err := gitConfig(dir, "url."+originBase+".insteadOf", phBase); err != nil {
 		return err
 	}
 	// origin stores the stable placeholder URL.
 	placeholderURL := phBase + key + ".git"
-	return gitConfig(dir, "remote.origin.url", placeholderURL)
+	if err := gitConfig(dir, "remote.origin.url", placeholderURL); err != nil {
+		return err
+	}
+	return renderPushURLs(cfg, dir, key, scheme, link)
+}
+
+// renderPushURLs replaces remote.origin.pushurl with one concrete URL per
+// upstream forge. Upstreams that aren't in the registry are skipped. With a
+// single upstream (the origin forge) no pushurl is written at all, so push
+// follows the placeholder origin like it always has.
+func renderPushURLs(cfg config.Config, dir, key, scheme string, link config.RepoLink) error {
+	if err := unsetAll(dir, "remote.origin.pushurl"); err != nil {
+		return err
+	}
+	if len(link.Upstreams) < 2 {
+		return nil
+	}
+	for _, name := range link.Upstreams {
+		forge, ok := cfg.ForgeByName(name)
+		if !ok {
+			continue
+		}
+		if err := gitConfigAdd(dir, "remote.origin.pushurl", hostBase(scheme, forge.Host)+key+".git"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // clearManagedInsteadOf removes every url.<base>.insteadOf whose value points
-// at our placeholder host, so switching primaries never leaves two rules
+// at our placeholder host, so switching the origin forge never leaves two rules
 // competing for the same placeholder prefix.
 func clearManagedInsteadOf(dir, placeholderHost string) error {
 	out, err := exec.Command("git", "-C", dir, "config", "--local",
@@ -90,6 +117,26 @@ func clearManagedInsteadOf(dir, placeholderHost string) error {
 		section := strings.TrimSuffix(keyName, ".insteadof")
 		_ = exec.Command("git", "-C", dir, "config", "--local",
 			"--remove-section", section).Run()
+	}
+	return nil
+}
+
+// gitConfigAdd appends a value to a multi-valued config key.
+func gitConfigAdd(dir, key, value string) error {
+	out, err := exec.Command("git", "-C", dir, "config", "--local", "--add", key, value).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git config --add %s: %s", key, firstLine(string(out)))
+	}
+	return nil
+}
+
+// unsetAll drops every value of a config key. Exit status 5 means the key was
+// already absent, which is the desired end state.
+func unsetAll(dir, key string) error {
+	cmd := exec.Command("git", "-C", dir, "config", "--local", "--unset-all", key)
+	out, err := cmd.CombinedOutput()
+	if err != nil && cmd.ProcessState.ExitCode() != 5 {
+		return fmt.Errorf("git config --unset-all %s: %s", key, firstLine(string(out)))
 	}
 	return nil
 }
@@ -153,8 +200,8 @@ func list(cfg config.Config, withStats bool) ([]domain.Repo, error) {
 			Path:             key,
 			AbsPath:          path,
 			LastInteracted:   interactions[key],
-			Forges:           link.Forges,
-			Primary:          link.Primary,
+			Upstreams:        link.Upstreams,
+			Origin:           link.Origin,
 			Scheme:           link.Scheme,
 			LocalBranches:    stats.branches,
 			UnpushedCommits:  stats.unpushed,

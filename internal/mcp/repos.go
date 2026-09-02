@@ -24,8 +24,8 @@ type RepoInfo struct {
 	Purpose string `json:"purpose,omitempty" jsonschema:"one-line summary of what this repo is for"`
 	Context string `json:"context,omitempty" jsonschema:"longer notes: stack, conventions, when to use it"`
 
-	Forges  []string `json:"forges,omitempty" jsonschema:"registered forges hosting this repo"`
-	Primary string   `json:"primary,omitempty" jsonschema:"forge that origin currently resolves to"`
+	Upstreams []string `json:"upstreams,omitempty" jsonschema:"registered forges this repo is pushed to"`
+	Origin    string   `json:"origin,omitempty" jsonschema:"forge that origin currently resolves to, used for fetch and pull"`
 
 	LastInteracted string `json:"lastInteracted,omitempty" jsonschema:"RFC3339 time the user last opened this repo, if ever"`
 }
@@ -50,8 +50,8 @@ func inventory(cfg config.Config) ([]RepoInfo, error) {
 			Path:      r.AbsPath,
 			Purpose:   link.Purpose,
 			Context:   link.Context,
-			Forges:    r.Forges,
-			Primary:   r.Primary,
+			Upstreams: r.Upstreams,
+			Origin:    r.Origin,
 		}
 		if !r.LastInteracted.IsZero() {
 			info.LastInteracted = r.LastInteracted.UTC().Format(timeLayout)

@@ -14,8 +14,8 @@ import (
 )
 
 // DefaultPlaceholderHost is the fake host stored in every managed repo's
-// origin. A per-repo local git `insteadOf` rule rewrites it to the primary
-// forge, so the stored remote never changes when the primary forge does.
+// origin. A per-repo local git `insteadOf` rule rewrites it to the origin
+// forge, so the stored remote never changes when the origin forge does.
 const DefaultPlaceholderHost = "lazymux-placeholder"
 
 // Defaults for the MCP server. It binds to loopback so the repo inventory
@@ -58,14 +58,22 @@ type Forge struct {
 	Host string `json:"host"`
 }
 
-// RepoLink records which forges host a managed repo, which one is primary
-// (drives the insteadOf rewrite), and the URL scheme used for that repo. It
-// also carries the human/LLM-facing description of the repo written by the
-// MCP server (see internal/mcp).
+// RepoLink records which forges host a managed repo. Upstreams are every forge
+// the repo is pushed to; Origin is the single one the placeholder insteadOf
+// rewrite resolves to, making it the fetch/pull URL. Origin is always one of
+// Upstreams. Scheme is the URL scheme used for that repo. It also carries the
+// human/LLM-facing description of the repo written by the MCP server (see
+// internal/mcp).
 type RepoLink struct {
-	Forges  []string `json:"forges"`
-	Primary string   `json:"primary"`
-	Scheme  string   `json:"scheme"`
+	Upstreams []string `json:"upstreams"`
+	Origin    string   `json:"origin"`
+	Scheme    string   `json:"scheme"`
+
+	// LegacyForges and LegacyPrimary hold the pre-upstream schema. normalize
+	// folds them into Upstreams/Origin and clears them, so they disappear from
+	// the file on the next Save.
+	LegacyForges  []string `json:"forges,omitempty"`
+	LegacyPrimary string   `json:"primary,omitempty"`
 
 	// Purpose is a one-line summary of what the repo is for, used to route a
 	// natural-language request to the right repo.
@@ -228,10 +236,27 @@ func normalize(cfg Config) Config {
 	if cfg.Repos == nil {
 		cfg.Repos = map[string]RepoLink{}
 	}
+	for key, link := range cfg.Repos {
+		cfg.Repos[key] = migrateRepoLink(link)
+	}
 	if cfg.Forges == nil {
 		cfg.Forges = []Forge{}
 	}
 	return cfg
+}
+
+// migrateRepoLink folds the pre-upstream forges/primary fields of a repo link
+// into Upstreams/Origin, leaving an already-migrated link untouched.
+func migrateRepoLink(link RepoLink) RepoLink {
+	if len(link.Upstreams) == 0 {
+		link.Upstreams = link.LegacyForges
+	}
+	if link.Origin == "" {
+		link.Origin = link.LegacyPrimary
+	}
+	link.LegacyForges = nil
+	link.LegacyPrimary = ""
+	return link
 }
 
 // legacyConfig mirrors the old TOML schema for one-time migration.

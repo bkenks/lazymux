@@ -3,6 +3,7 @@ package domain
 import (
 	"fmt"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -18,9 +19,11 @@ type Repo struct {
 	LastInteracted time.Time
 
 	// Forge links, populated from config for repos under the lazymux base dir.
-	Forges  []string
-	Primary string
-	Scheme  string
+	// Upstreams are every forge the repo is pushed to; Origin is the one it is
+	// fetched from.
+	Upstreams []string
+	Origin    string
+	Scheme    string
 
 	// Local git state, used to gauge whether a repo can be wiped safely. These
 	// are independent signals: LocalBranches counts refs/heads; UnpushedCommits
@@ -64,8 +67,12 @@ func (r Repo) Description() string {
 		}
 		line += stats
 	}
-	if ShowForge && r.Primary != "" {
-		return line + "\nforge: " + r.Primary
+	if ShowForge && r.Origin != "" {
+		forges := "origin: " + r.Origin
+		if len(r.Upstreams) > 1 {
+			forges += "  ·  push: " + strings.Join(r.Upstreams, ", ")
+		}
+		return line + "\n" + forges
 	}
 	return line
 }

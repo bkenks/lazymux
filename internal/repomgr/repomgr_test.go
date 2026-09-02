@@ -85,6 +85,16 @@ func gitCfg(t *testing.T, dir, key string) string {
 	return strings.TrimSpace(string(out))
 }
 
+func gitCfgAll(t *testing.T, dir, key string) []string {
+	t.Helper()
+	out, _ := exec.Command("git", "-C", dir, "config", "--local", "--get-all", key).Output()
+	trimmed := strings.TrimSpace(string(out))
+	if trimmed == "" {
+		return nil
+	}
+	return strings.Split(trimmed, "\n")
+}
+
 func TestRenderGitConfig(t *testing.T) {
 	base := t.TempDir()
 	key := "bkenks/lazymux"
@@ -105,8 +115,8 @@ func TestRenderGitConfig(t *testing.T) {
 		},
 	}
 
-	// Primary = forgejo, https.
-	link := config.RepoLink{Forges: []string{"github", "forgejo"}, Primary: "forgejo", Scheme: "https"}
+	// Origin = forgejo, pushed to both forges, https.
+	link := config.RepoLink{Upstreams: []string{"github", "forgejo"}, Origin: "forgejo", Scheme: "https"}
 	if err := RenderGitConfig(cfg, key, link); err != nil {
 		t.Fatal(err)
 	}
@@ -117,8 +127,16 @@ func TestRenderGitConfig(t *testing.T) {
 		t.Errorf("forgejo insteadOf = %q", got)
 	}
 
-	// Switch primary to github: the forgejo rule must be gone, github rule set.
-	link.Primary = "github"
+	// Both upstreams get a push URL, so a push fans out to each forge.
+	if got := gitCfgAll(t, dir, "remote.origin.pushurl"); !equalStrings(got, []string{
+		"https://github.com/bkenks/lazymux.git",
+		"https://fj.homektb.com/bkenks/lazymux.git",
+	}) {
+		t.Errorf("push URLs = %q", got)
+	}
+
+	// Switch origin to github: the forgejo rule must be gone, github rule set.
+	link.Origin = "github"
 	if err := RenderGitConfig(cfg, key, link); err != nil {
 		t.Fatal(err)
 	}
@@ -143,4 +161,32 @@ func TestRenderGitConfig(t *testing.T) {
 	if got := gitCfg(t, dir, "url.https://github.com/.insteadOf"); got != "" {
 		t.Errorf("stale https insteadOf still present: %q", got)
 	}
+	if got := gitCfgAll(t, dir, "remote.origin.pushurl"); !equalStrings(got, []string{
+		"git@github.com:bkenks/lazymux.git",
+		"git@fj.homektb.com:bkenks/lazymux.git",
+	}) {
+		t.Errorf("ssh push URLs = %q", got)
+	}
+
+	// Dropping back to a single upstream removes the push URLs entirely, so
+	// push follows the placeholder origin.
+	link.Upstreams = []string{"github"}
+	if err := RenderGitConfig(cfg, key, link); err != nil {
+		t.Fatal(err)
+	}
+	if got := gitCfgAll(t, dir, "remote.origin.pushurl"); len(got) != 0 {
+		t.Errorf("push URLs = %q, want none", got)
+	}
+}
+
+func equalStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

@@ -12,7 +12,7 @@
 
 **lazymux** is a TUI (Terminal User Interface) built with [Bubbletea](https://github.com/charmbracelet/bubbletea) that manages where your repositories live and unifies them with [lazygit](https://github.com/jesseduffield/lazygit) and your editor in a single workflow. It gives you a searchable list of all your repos, and from there you can jump into git history, clone new repos, delete old ones, copy a repo's path, drop into a shell, or open the project in your editor — all with a keystroke.
 
-It manages repo locations natively (no `ghq` required): repos are cloned into `~/lazymux/<namespace>/<repo>`, and a **forge registry** lets you link each repo to one or more git hosts (GitHub, a self-hosted Forgejo/Gitea, GitLab, …) and pick which one is *primary*.
+It manages repo locations natively (no `ghq` required): repos are cloned into `~/lazymux/<namespace>/<repo>`, and a **forge registry** lets you link each repo to one or more git hosts (GitHub, a self-hosted Forgejo/Gitea, GitLab, …) as **upstreams**, with one of them set as the **origin** you fetch from.
 
 No more `cd`-ing around. No more remembering paths. Just launch `lazymux` and go.
 
@@ -23,24 +23,27 @@ No more `cd`-ing around. No more remembering paths. Just launch `lazymux` and go
 lazymux is built for repos that live on more than one host — for example a self-hosted Forgejo that mirrors to GitHub.
 
 - You register your **forges** once (a name + host, e.g. `github` → `github.com`).
-- When you clone, lazymux auto-matches the URL's host to a registered forge, and lets you link additional forges the repo is mirrored to. One linked forge is the **primary**.
-- Under the hood, every managed repo's `origin` is rewritten to a stable placeholder host (`lazymux-placeholder`), and a per-repo local git [`insteadOf`](https://git-scm.com/docs/git-config#Documentation/git-config.txt-urlltbasegtinsteadOf) rule resolves the placeholder to the **primary** forge:
+- When you clone, lazymux auto-matches the URL's host to a registered forge, and lets you check off every forge the repo is pushed to — its **upstreams**. Exactly one upstream is the **origin**: the host fetch and pull read from.
+- Under the hood, every managed repo's `origin` is rewritten to a stable placeholder host (`lazymux-placeholder`), and a per-repo local git [`insteadOf`](https://git-scm.com/docs/git-config#Documentation/git-config.txt-urlltbasegtinsteadOf) rule resolves the placeholder to the **origin** forge. With more than one upstream, each gets a `pushurl`, so a single `git push` fans out to all of them:
 
   ```ini
   [remote "origin"]
-      url = https://lazymux-placeholder/bkenks/myrepo.git   # never changes
+      url = https://lazymux-placeholder/bkenks/myrepo.git    # never changes
+      pushurl = https://github.com/bkenks/myrepo.git         # upstream
+      pushurl = https://fj.example.com/bkenks/myrepo.git     # upstream
   [url "https://github.com/"]
-      insteadOf = https://lazymux-placeholder/               # primary = github
+      insteadOf = https://lazymux-placeholder/               # origin = github
   ```
 
-- If a forge goes down or you just want to point somewhere else, **switch the primary** (`f` on the repo) and lazymux re-renders that one rule. The stored `origin` never changes — only the host it resolves to. There's no automatic failover; you're always in control of which forge is live.
+- If a forge goes down or you just want to fetch from somewhere else, **switch the origin** (`f` on the repo) and lazymux re-renders that one rule. The stored `origin` URL never changes — only the host it resolves to. There's no automatic failover; you're always in control of which forge is live.
+- A repo with a single upstream gets no `pushurl` at all: push follows the placeholder origin, exactly as before.
 
 ---
 
 ## Features
 
 - **Native repo management** — clone into `~/lazymux/<namespace>/<repo>`, list, delete, and pull-all, all with plain `git` (no `ghq`)
-- **Forge registry** — register git hosts and link repos to one or more of them, with a per-repo primary
+- **Forge registry** — register git hosts and link repos to one or more of them as upstreams, with a per-repo origin
 - **Stable placeholder remotes** — switch a repo's forge without ever touching its `origin`
 - **Browse all repos** in a clean, filterable list, sorted by most-recently used
 - **Open with lazygit** to manage commits, branches, PRs, and more
@@ -114,7 +117,7 @@ On first run, lazymux creates `~/lazymux/` and a `.lazymux.json` config (migrati
 | `r` | **Refresh** the repo list |
 | `Ctrl+N` | **Clone** new repositories |
 | `Ctrl+P` | **Pull** every repo (`git pull --ff-only`, skips conflicts) |
-| `f` | Edit the selected repo's **forge links** — forges, primary, scheme |
+| `f` | Edit the selected repo's **forge links** — upstreams, origin, scheme |
 | `F` | Manage the **forge registry** |
 | `Ctrl+\` | **Delete** the selected repository |
 | `Ctrl+S` | Open **settings** |
@@ -127,8 +130,8 @@ After entering one or more clone URLs, lazymux steps through each repo so you ca
 | Key | Action |
 |---|---|
 | `↑` / `↓` | Move the cursor |
-| `Space` | Toggle the forge under the cursor on/off |
-| `p` | Set the forge under the cursor as **primary** |
+| `Space` | Toggle the forge under the cursor as an **upstream** |
+| `o` | Set the forge under the cursor as the **origin** (fetch/pull) |
 | `s` | Toggle the URL **scheme** (https ↔ ssh) for this repo |
 | `a` | **Add a new forge** from this repo's clone URL |
 | `Enter` | Confirm this repo (advance to the next) |
@@ -145,15 +148,15 @@ After entering one or more clone URLs, lazymux steps through each repo so you ca
 | `Tab` | Switch between name / host fields (while editing) |
 | `Esc` | Save & back |
 
-Each row shows how many repos link it. Deleting or renaming a forge cascades into the repos that use it: a rename updates their links, and a delete drops it — promoting another linked forge to primary, or leaving the repo unlinked if it was its only one. Repos whose primary changed have their remote re-rendered automatically.
+Each row shows how many repos link it. Deleting or renaming a forge cascades into the repos that use it: a rename updates their links, and a delete drops it — promoting another upstream to origin, or leaving the repo unlinked if it was its only one. Repos whose links changed have their remotes re-rendered automatically.
 
 ### Repo Forges (`f`)
 
 | Key | Action |
 |---|---|
 | `↑` / `↓` | Move the cursor |
-| `Space` | Toggle the forge under the cursor |
-| `p` | Set the forge under the cursor as **primary** |
+| `Space` | Toggle the forge under the cursor as an **upstream** |
+| `o` | Set the forge under the cursor as the **origin** (fetch/pull) |
 | `s` | Toggle the URL **scheme** (https ↔ ssh) |
 | `Esc` | Save & back (re-renders the repo's remote) |
 
@@ -232,8 +235,8 @@ Purposes land in the same `repos` object as forge links:
 ```json
 "repos": {
   "bkenks/myrepo": {
-    "forges": ["forgejo", "github"],
-    "primary": "forgejo",
+    "upstreams": ["forgejo", "github"],
+    "origin": "forgejo",
     "scheme": "https",
     "purpose": "compose stacks for the homelab",
     "context": "One directory per stack. Deployed by Komodo; don't edit .env by hand."
@@ -285,8 +288,8 @@ Everything lives in a single JSON file at `~/lazymux/.lazymux.json` (override th
   ],
   "repos": {
     "bkenks/myrepo": {
-      "forges": ["forgejo", "github"],
-      "primary": "forgejo",
+      "upstreams": ["forgejo", "github"],
+      "origin": "forgejo",
       "scheme": "https",
       "purpose": "compose stacks for the homelab"
     }
@@ -298,7 +301,7 @@ Everything lives in a single JSON file at `~/lazymux/.lazymux.json` (override th
 - `placeholderHost` — the fake host stored in every managed repo's `origin`.
 - `mcp` — where the MCP server binds (managed with `lazymux mcp set-url` / `set-port`).
 - `forges` — the registry (managed in-app with `F`).
-- `repos` — per-repo forge links, primary, and scheme (managed in-app with `f`), plus the
+- `repos` — per-repo upstreams, origin, and scheme (managed in-app with `f`), plus the
   `purpose`/`context` the MCP server reads and writes.
 
 The in-app settings screen covers `editor`, `defaultProtocol`, `confirm_delete`, and `showFullPath`. Tool paths (`lazygit`, `shell`) and `theme` are file-only for now — edit and relaunch.
@@ -315,7 +318,7 @@ lazymux is built using the [Charmbracelet](https://github.com/charmbracelet) sta
 - **[Bubbles](https://github.com/charmbracelet/bubbles)** — Pre-built TUI components (list, text input, key bindings)
 - **[Lipgloss](https://github.com/charmbracelet/lipgloss)** — Terminal styling and layout
 
-On startup, lazymux walks `~/lazymux/` to populate the repository list. Cloning runs `git clone` against the real URL, then rewrites the repo to a placeholder `origin` resolved to its primary forge; selecting a repo launches `lazygit`; deletion removes the local directory (and now-empty namespace parents). Errors surface in the status footer instead of crashing the TUI.
+On startup, lazymux walks `~/lazymux/` to populate the repository list. Cloning runs `git clone` against the real URL, then rewrites the repo to a placeholder `origin` resolved to its origin forge (plus a push URL per upstream); selecting a repo launches `lazygit`; deletion removes the local directory (and now-empty namespace parents). Errors surface in the status footer instead of crashing the TUI.
 
 ---
 

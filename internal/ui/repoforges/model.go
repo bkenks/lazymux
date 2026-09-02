@@ -1,6 +1,7 @@
-// Package repoforges is the per-repo screen for changing which forges a repo
-// is linked to, which one is primary, and the URL scheme. Saving re-renders the
-// repo's placeholder origin + insteadOf rule.
+// Package repoforges is the per-repo screen for changing which forges a repo is
+// pushed to, which single one it is fetched from (the origin), and the URL
+// scheme. Saving re-renders the repo's placeholder origin, insteadOf rule, and
+// push URLs.
 package repoforges
 
 import (
@@ -18,23 +19,23 @@ import (
 )
 
 type keyMap struct {
-	Toggle, Primary, Scheme, Exit key.Binding
+	Toggle, Origin, Scheme, Exit key.Binding
 }
 
 var keys = keyMap{
-	Toggle:  key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "toggle")),
-	Primary: key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "primary")),
-	Scheme:  key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "scheme")),
-	Exit:    key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "save & back")),
+	Toggle: key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "upstream")),
+	Origin: key.NewBinding(key.WithKeys("o"), key.WithHelp("o", "origin")),
+	Scheme: key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "scheme")),
+	Exit:   key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "save & back")),
 }
 
 func helpKeys() []key.Binding {
-	return []key.Binding{keys.Toggle, keys.Primary, keys.Scheme, keys.Exit}
+	return []key.Binding{keys.Toggle, keys.Origin, keys.Scheme, keys.Exit}
 }
 
 type forgeItem struct {
-	name, host       string
-	checked, primary bool
+	name, host      string
+	checked, origin bool
 }
 
 func (i forgeItem) Title() string {
@@ -43,14 +44,14 @@ func (i forgeItem) Title() string {
 		box = styles.GlyphCheckOn
 	}
 	t := box + " " + i.name
-	if i.primary {
-		t += " " + styles.GlyphPrimary
+	if i.origin {
+		t += " " + styles.GlyphOrigin
 	}
 	return t
 }
 func (i forgeItem) Description() string {
-	if i.primary {
-		return i.host + "  · primary"
+	if i.origin {
+		return i.host + "  · origin (fetch)"
 	}
 	return i.host
 }
@@ -83,7 +84,7 @@ func New(cfg config.Config, repoKey string) *Model {
 	m := &Model{list: l, repoKey: repoKey, forges: forges, link: link}
 	m.refresh()
 	for i, f := range forges {
-		if f.Name == link.Primary {
+		if f.Name == link.Origin {
 			m.list.Select(i)
 		}
 	}
@@ -93,7 +94,7 @@ func New(cfg config.Config, repoKey string) *Model {
 func (m *Model) Init() tea.Cmd { return nil }
 
 func (m *Model) has(name string) bool {
-	for _, f := range m.link.Forges {
+	for _, f := range m.link.Upstreams {
 		if f == name {
 			return true
 		}
@@ -104,7 +105,7 @@ func (m *Model) has(name string) bool {
 func (m *Model) refresh() {
 	items := make([]list.Item, len(m.forges))
 	for i, f := range m.forges {
-		items[i] = forgeItem{name: f.Name, host: f.Host, checked: m.has(f.Name), primary: m.link.Primary == f.Name}
+		items[i] = forgeItem{name: f.Name, host: f.Host, checked: m.has(f.Name), origin: m.link.Origin == f.Name}
 	}
 	idx := m.list.Index()
 	m.list.SetItems(items)
@@ -136,8 +137,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.toggle()
 		m.refresh()
 		return m, nil
-	case key.Matches(km, keys.Primary):
-		m.setPrimary()
+	case key.Matches(km, keys.Origin):
+		m.setOrigin()
 		m.refresh()
 		return m, nil
 	case key.Matches(km, keys.Scheme):
@@ -169,36 +170,38 @@ func (m *Model) toggle() {
 		return
 	}
 	if m.has(f.Name) {
-		out := m.link.Forges[:0]
-		for _, x := range m.link.Forges {
+		out := m.link.Upstreams[:0]
+		for _, x := range m.link.Upstreams {
 			if x != f.Name {
 				out = append(out, x)
 			}
 		}
-		m.link.Forges = out
-		if m.link.Primary == f.Name {
-			m.link.Primary = ""
-			if len(m.link.Forges) > 0 {
-				m.link.Primary = m.link.Forges[0]
+		m.link.Upstreams = out
+		if m.link.Origin == f.Name {
+			m.link.Origin = ""
+			if len(m.link.Upstreams) > 0 {
+				m.link.Origin = m.link.Upstreams[0]
 			}
 		}
 	} else {
-		m.link.Forges = append(m.link.Forges, f.Name)
-		if m.link.Primary == "" {
-			m.link.Primary = f.Name
+		m.link.Upstreams = append(m.link.Upstreams, f.Name)
+		if m.link.Origin == "" {
+			m.link.Origin = f.Name
 		}
 	}
 }
 
-func (m *Model) setPrimary() {
+// setOrigin makes the highlighted forge the single fetch source, adding it to
+// the upstreams if it wasn't already one.
+func (m *Model) setOrigin() {
 	f, ok := m.selectedForge()
 	if !ok {
 		return
 	}
 	if !m.has(f.Name) {
-		m.link.Forges = append(m.link.Forges, f.Name)
+		m.link.Upstreams = append(m.link.Upstreams, f.Name)
 	}
-	m.link.Primary = f.Name
+	m.link.Origin = f.Name
 }
 
 func (m *Model) View() string { return m.list.View() }

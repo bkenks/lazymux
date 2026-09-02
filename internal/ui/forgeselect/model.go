@@ -1,5 +1,6 @@
 // Package forgeselect is the clone-time screen where the user picks which
-// forges host each repo being cloned, and which one is primary. It seeds the
+// forges each repo being cloned is pushed to, and which single one it is
+// fetched from (the origin). It seeds the
 // selection from an auto-match on the clone URL's host and lets the user add a
 // new forge inline from that URL.
 package forgeselect
@@ -22,12 +23,12 @@ import (
 )
 
 type keyMap struct {
-	Toggle, Primary, Scheme, Add, Confirm, Exit key.Binding
+	Toggle, Origin, Scheme, Add, Confirm, Exit key.Binding
 }
 
 var keys = keyMap{
-	Toggle:  key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "toggle")),
-	Primary: key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "primary")),
+	Toggle:  key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "upstream")),
+	Origin:  key.NewBinding(key.WithKeys("o"), key.WithHelp("o", "origin")),
 	Scheme:  key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "scheme")),
 	Add:     key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "add forge")),
 	Confirm: key.NewBinding(key.WithKeys("enter", "ctrl+p"), key.WithHelp("enter", "next")),
@@ -35,13 +36,13 @@ var keys = keyMap{
 }
 
 func helpKeys() []key.Binding {
-	return []key.Binding{keys.Toggle, keys.Primary, keys.Scheme, keys.Add, keys.Confirm, keys.Exit}
+	return []key.Binding{keys.Toggle, keys.Origin, keys.Scheme, keys.Add, keys.Confirm, keys.Exit}
 }
 
 // forgeItem is a registry forge as shown in the selection list.
 type forgeItem struct {
-	name, host       string
-	checked, primary bool
+	name, host      string
+	checked, origin bool
 }
 
 func (i forgeItem) Title() string {
@@ -50,14 +51,14 @@ func (i forgeItem) Title() string {
 		box = styles.GlyphCheckOn
 	}
 	t := box + " " + i.name
-	if i.primary {
-		t += " " + styles.GlyphPrimary
+	if i.origin {
+		t += " " + styles.GlyphOrigin
 	}
 	return t
 }
 func (i forgeItem) Description() string {
-	if i.primary {
-		return i.host + "  · primary"
+	if i.origin {
+		return i.host + "  · origin (fetch)"
 	}
 	return i.host
 }
@@ -94,7 +95,7 @@ func New(cfg config.Config, pending []repomgr.PendingClone) *Model {
 
 	m := &Model{forges: forges, pending: pending, nameInput: ti, list: l}
 	m.refresh()
-	m.selectPrimary()
+	m.selectOrigin()
 	return m
 }
 
@@ -111,7 +112,7 @@ func (m *Model) refresh() {
 	p := m.cur()
 	items := make([]list.Item, len(m.forges))
 	for i, f := range m.forges {
-		items[i] = forgeItem{name: f.Name, host: f.Host, checked: p.HasForge(f.Name), primary: p.Primary == f.Name}
+		items[i] = forgeItem{name: f.Name, host: f.Host, checked: p.HasForge(f.Name), origin: p.Origin == f.Name}
 	}
 	idx := m.list.Index()
 	m.list.SetItems(items)
@@ -120,9 +121,9 @@ func (m *Model) refresh() {
 		m.idx+1, len(m.pending), p.URL.Key(), schemeLabel(p.Scheme))
 }
 
-func (m *Model) selectPrimary() {
+func (m *Model) selectOrigin() {
 	for i, f := range m.forges {
-		if f.Name == m.cur().Primary {
+		if f.Name == m.cur().Origin {
 			m.list.Select(i)
 			return
 		}
@@ -156,8 +157,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.toggleSelected()
 		m.refresh()
 		return m, nil
-	case key.Matches(km, keys.Primary):
-		m.setPrimarySelected()
+	case key.Matches(km, keys.Origin):
+		m.setOriginSelected()
 		m.refresh()
 		return m, nil
 	case key.Matches(km, keys.Scheme):
@@ -194,45 +195,47 @@ func (m *Model) toggleSelected() {
 	}
 	p := m.cur()
 	if p.HasForge(f.Name) {
-		p.Forges = removeStr(p.Forges, f.Name)
-		if p.Primary == f.Name {
-			p.Primary = ""
-			if len(p.Forges) > 0 {
-				p.Primary = p.Forges[0]
+		p.Upstreams = removeStr(p.Upstreams, f.Name)
+		if p.Origin == f.Name {
+			p.Origin = ""
+			if len(p.Upstreams) > 0 {
+				p.Origin = p.Upstreams[0]
 			}
 		}
 	} else {
-		p.Forges = append(p.Forges, f.Name)
-		if p.Primary == "" {
-			p.Primary = f.Name
+		p.Upstreams = append(p.Upstreams, f.Name)
+		if p.Origin == "" {
+			p.Origin = f.Name
 		}
 	}
 	m.err = ""
 }
 
-func (m *Model) setPrimarySelected() {
+// setOriginSelected makes the highlighted forge the single fetch source for the
+// current repo, adding it to the upstreams if it wasn't already one.
+func (m *Model) setOriginSelected() {
 	f, ok := m.selectedForge()
 	if !ok {
 		return
 	}
 	p := m.cur()
 	if !p.HasForge(f.Name) {
-		p.Forges = append(p.Forges, f.Name)
+		p.Upstreams = append(p.Upstreams, f.Name)
 	}
-	p.Primary = f.Name
+	p.Origin = f.Name
 	m.err = ""
 }
 
 func (m *Model) confirm() (tea.Model, tea.Cmd) {
-	if m.cur().Primary == "" {
-		m.err = "pick a primary forge (p) before continuing"
+	if m.cur().Origin == "" {
+		m.err = "pick an origin forge (o) before continuing"
 		return m, nil
 	}
 	if m.idx < len(m.pending)-1 {
 		m.idx++
 		m.err = ""
 		m.refresh()
-		m.selectPrimary()
+		m.selectOrigin()
 		return m, nil
 	}
 	clones := m.pending
@@ -249,7 +252,7 @@ func (m *Model) startAdd() (tea.Model, tea.Cmd) {
 	for i, f := range m.forges {
 		if strings.EqualFold(f.Host, host) {
 			m.list.Select(i)
-			m.setPrimarySelected()
+			m.setOriginSelected()
 			m.refresh()
 			return m, nil
 		}
@@ -287,7 +290,7 @@ func (m *Model) updateAdding(km tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.nameInput.Blur()
 		m.refresh()
 		m.list.Select(len(m.forges) - 1)
-		m.setPrimarySelected()
+		m.setOriginSelected()
 		m.refresh()
 		return m, nil
 	}
