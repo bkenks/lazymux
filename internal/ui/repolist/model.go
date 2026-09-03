@@ -52,7 +52,7 @@ func New() *Model {
 		newDelegate(),
 		w, h,
 	)
-	newList.Title = "Repositories"
+	newList.Title = listTitle()
 	newList.AdditionalShortHelpKeys = constants.RepoListKeyMap.HelpBinds(constants.Short)
 	newList.AdditionalFullHelpKeys = constants.RepoListKeyMap.HelpBinds(constants.Full)
 
@@ -70,6 +70,25 @@ func New() *Model {
 
 func (m *Model) Init() tea.Cmd { return nil }
 
+// listTitle names the list and the ordering it's currently in, so the active
+// sort is visible without opening the help.
+func listTitle() string {
+	return "Repositories · " + domain.Sort.Label()
+}
+
+// Resort reorders the items already in the list by the current sort mode and
+// refreshes the title. Used when the mode changes, so switching order doesn't
+// need a rescan of the base dir. The returned command must be run so an active
+// filter recomputes against the new order.
+func (m *Model) Resort() tea.Cmd {
+	items := m.List.Items()
+	domain.SortRepos(items, domain.Sort)
+	cmd := m.List.SetItems(items)
+	m.List.Title = listTitle()
+	m.List.Select(0)
+	return cmd
+}
+
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
@@ -85,76 +104,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.List.FilterState() == list.Filtering {
 			break
 		}
-
-		switch {
-		case key.Matches(msg, constants.RepoListKeyMap.Select):
-			repo := ConvertToRepoType(m.List.SelectedItem())
-			if repo.AbsPath == "" {
-				break
-			}
-			domain.SaveInteraction(repo.Path)
-			cmds = append(cmds, commands.LazygitCmd(repo.AbsPath))
-
-		case key.Matches(msg, constants.RepoListKeyMap.Clone):
-			cmds = append(cmds, commands.SetState(domain.StateCloneRepo))
-
-		case key.Matches(msg, constants.RepoListKeyMap.Delete):
-			if ConvertToRepoType(m.List.SelectedItem()).AbsPath == "" {
-				break
-			}
-			cmds = append(cmds, commands.SetState(domain.StateConfirmDelete))
-
-		case key.Matches(msg, constants.RepoListKeyMap.VSCode):
-			repo := ConvertToRepoType(m.List.SelectedItem())
-			if repo.AbsPath == "" {
-				break
-			}
-			domain.SaveInteraction(repo.Path)
-			cmds = append(cmds, commands.OpenInVSCode(repo.AbsPath))
-
-		case key.Matches(msg, constants.RepoListKeyMap.Settings):
-			cmds = append(cmds, commands.SetState(domain.StateSettings))
-
-		case key.Matches(msg, constants.RepoListKeyMap.Refresh):
-			cmds = append(cmds, commands.RefreshReposCmd())
-
-		case key.Matches(msg, constants.RepoListKeyMap.CopyPath):
-			cmds = append(cmds, commands.CopyPathCmd(AbsRepoPath(m.List.SelectedItem())))
-
-		case key.Matches(msg, constants.RepoListKeyMap.Shell):
-			repo := ConvertToRepoType(m.List.SelectedItem())
-			if repo.AbsPath == "" {
-				break
-			}
-			domain.SaveInteraction(repo.Path)
-			cmds = append(cmds, commands.OpenShellCmd(repo.AbsPath))
-
-		case key.Matches(msg, constants.RepoListKeyMap.PullAll):
-			if m.pulling {
-				break // already pulling; ignore repeat presses
-			}
-			m.pulling = true
-			m.pullDone, m.pullTotal, m.pulled = 0, 0, 0
-			m.skipped = nil
-			m.applySize()
-			cmds = append(cmds, commands.PullAllReposCmd(), m.spinner.Tick)
-
-		case key.Matches(msg, constants.RepoListKeyMap.Forges):
-			repo := ConvertToRepoType(m.List.SelectedItem())
-			if repo.Path == "" {
-				break
-			}
-			cmds = append(cmds, commands.OpenRepoForgesCmd(repo.Path))
-
-		case key.Matches(msg, constants.RepoListKeyMap.Registry):
-			cmds = append(cmds, commands.SetState(domain.StateForgeRegistry))
-
-		case key.Matches(msg, constants.RepoListKeyMap.ToggleForge):
-			domain.ShowForge = !domain.ShowForge
-			m.List.SetDelegate(newDelegate())
-
-		case key.Matches(msg, constants.RepoListKeyMap.ToggleStats):
-			domain.ShowStats = !domain.ShowStats
+		// A key bound to a repo action is consumed here: the list has its own
+		// meaning for several of them (d/f page forward, g jumps to the top),
+		// so forwarding it too would fire both.
+		if handled, keyCmds := m.handleKey(msg); handled {
+			return m, tea.Batch(keyCmds...)
 		}
 
 	case events.PullAllStarted:
@@ -190,6 +144,91 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.List, cmd = m.List.Update(msg)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
+}
+
+// handleKey runs the repo-list keybinds, reporting whether msg matched one of
+// them along with the commands it produced.
+func (m *Model) handleKey(msg tea.KeyMsg) (bool, []tea.Cmd) {
+	var cmds []tea.Cmd
+
+	switch {
+	case key.Matches(msg, constants.RepoListKeyMap.Select):
+		repo := ConvertToRepoType(m.List.SelectedItem())
+		if repo.AbsPath == "" {
+			break
+		}
+		domain.SaveInteraction(repo.Path)
+		cmds = append(cmds, commands.LazygitCmd(repo.AbsPath))
+
+	case key.Matches(msg, constants.RepoListKeyMap.Clone):
+		cmds = append(cmds, commands.SetState(domain.StateCloneRepo))
+
+	case key.Matches(msg, constants.RepoListKeyMap.Delete):
+		if ConvertToRepoType(m.List.SelectedItem()).AbsPath == "" {
+			break
+		}
+		cmds = append(cmds, commands.SetState(domain.StateConfirmDelete))
+
+	case key.Matches(msg, constants.RepoListKeyMap.VSCode):
+		repo := ConvertToRepoType(m.List.SelectedItem())
+		if repo.AbsPath == "" {
+			break
+		}
+		domain.SaveInteraction(repo.Path)
+		cmds = append(cmds, commands.OpenInVSCode(repo.AbsPath))
+
+	case key.Matches(msg, constants.RepoListKeyMap.Settings):
+		cmds = append(cmds, commands.SetState(domain.StateSettings))
+
+	case key.Matches(msg, constants.RepoListKeyMap.Refresh):
+		cmds = append(cmds, commands.RefreshReposCmd())
+
+	case key.Matches(msg, constants.RepoListKeyMap.CopyPath):
+		cmds = append(cmds, commands.CopyPathCmd(AbsRepoPath(m.List.SelectedItem())))
+
+	case key.Matches(msg, constants.RepoListKeyMap.Shell):
+		repo := ConvertToRepoType(m.List.SelectedItem())
+		if repo.AbsPath == "" {
+			break
+		}
+		domain.SaveInteraction(repo.Path)
+		cmds = append(cmds, commands.OpenShellCmd(repo.AbsPath))
+
+	case key.Matches(msg, constants.RepoListKeyMap.PullAll):
+		if m.pulling {
+			break // already pulling; ignore repeat presses
+		}
+		m.pulling = true
+		m.pullDone, m.pullTotal, m.pulled = 0, 0, 0
+		m.skipped = nil
+		m.applySize()
+		cmds = append(cmds, commands.PullAllReposCmd(), m.spinner.Tick)
+
+	case key.Matches(msg, constants.RepoListKeyMap.Forges):
+		repo := ConvertToRepoType(m.List.SelectedItem())
+		if repo.Path == "" {
+			break
+		}
+		cmds = append(cmds, commands.OpenRepoForgesCmd(repo.Path))
+
+	case key.Matches(msg, constants.RepoListKeyMap.Registry):
+		cmds = append(cmds, commands.SetState(domain.StateForgeRegistry))
+
+	case key.Matches(msg, constants.RepoListKeyMap.ToggleForge):
+		domain.ShowForge = !domain.ShowForge
+		m.List.SetDelegate(newDelegate())
+
+	case key.Matches(msg, constants.RepoListKeyMap.ToggleStats):
+		domain.ShowStats = !domain.ShowStats
+
+	case key.Matches(msg, constants.RepoListKeyMap.CycleSort):
+		domain.Sort = domain.Sort.Next()
+		cmds = append(cmds, m.Resort(), commands.SortModeChangedCmd(domain.Sort))
+
+	default:
+		return false, nil
+	}
+	return true, cmds
 }
 
 func (m *Model) View() string {

@@ -98,7 +98,7 @@ lazymux --version  # show the version
 lazymux mcp start  # serve the repo inventory to LLMs (see "MCP server")
 ```
 
-On first run, lazymux creates `~/lazymux/` and a `.lazymux.json` config (migrating an existing `~/.config/lazymux/config.toml` if present). It then lists any repos already under `~/lazymux/`. Register your forges (`F`), then clone (`Ctrl+N`) to start pulling repos in.
+On first run, lazymux creates `~/lazymux/` and a `.lazymux.json` config (migrating an existing `~/.config/lazymux/config.toml` if present). It then lists any repos already under `~/lazymux/`. Register your forges (`F`), then clone (`n`) to start pulling repos in.
 
 ---
 
@@ -111,17 +111,27 @@ On first run, lazymux creates `~/lazymux/` and a `.lazymux.json` config (migrati
 | `↑` / `↓` | Navigate the repository list |
 | `/` | Filter / search repositories |
 | `Tab` | Open selected repo in **lazygit** |
-| `Ctrl+O` | Open selected repo in your **editor** |
+| `o` | Open selected repo in your **editor** |
 | `s` | Open a **shell** in the repo's directory |
 | `y` | **Copy** the absolute repo path to clipboard |
 | `r` | **Refresh** the repo list |
-| `Ctrl+N` | **Clone** new repositories |
-| `Ctrl+P` | **Pull** every repo (`git pull --ff-only`, skips conflicts) |
+| `n` | **Clone** new repositories |
+| `p` | **Pull** every repo (`git pull --ff-only`, skips conflicts) |
+| `S` | Cycle the **sort order** (recent → name a-z → name z-a → namespace) |
+| `g` | Show/hide the **forge label** on rows |
+| `t` | Show/hide the **git stats** on rows |
 | `f` | Edit the selected repo's **forge links** — upstreams, origin, scheme |
 | `F` | Manage the **forge registry** |
-| `Ctrl+\` | **Delete** the selected repository |
-| `Ctrl+S` | Open **settings** |
+| `d` | **Delete** the selected repository |
+| `,` | Open **settings** |
 | `q` / `Ctrl+C` | Quit |
+
+Repo-list keys are unmodified letters. `s` is already the shell, so settings sits on `,`.
+Screens with a text field (clone, add-forge) keep their `Ctrl` shortcuts, since plain
+letters go into the input there.
+
+The active sort shows in the list title, and the order you pick is saved — the list comes
+back in it next launch. It's also in the settings screen as **Sort repos by**.
 
 ### Clone → Forge Select
 
@@ -271,7 +281,10 @@ Everything lives in a single JSON file at `~/lazymux/.lazymux.json` (override th
   },
   "ui": {
     "theme": "default",
-    "showFullPath": false
+    "showFullPath": false,
+    "showForge": true,
+    "showStats": true,
+    "sortMode": "recent"
   },
   "behavior": {
     "defaultProtocol": "https",
@@ -304,7 +317,9 @@ Everything lives in a single JSON file at `~/lazymux/.lazymux.json` (override th
 - `repos` — per-repo upstreams, origin, and scheme (managed in-app with `f`), plus the
   `purpose`/`context` the MCP server reads and writes.
 
-The in-app settings screen covers `editor`, `defaultProtocol`, `confirm_delete`, and `showFullPath`. Tool paths (`lazygit`, `shell`) and `theme` are file-only for now — edit and relaunch.
+- `ui.sortMode` — repo list order: `recent`, `name-asc`, `name-desc`, or `namespace` (cycled in-app with `S`).
+
+The in-app settings screen covers `editor`, `defaultProtocol`, `confirm_delete`, `showFullPath`, `showForge`, `showStats`, and `sortMode`. Tool paths (`lazygit`, `shell`) and `theme` are file-only for now — edit and relaunch.
 
 Repo interaction history (used for recency sorting) lives at `$XDG_DATA_HOME/lazymux/interactions.json` (fallback `~/.local/share/lazymux/interactions.json`).
 

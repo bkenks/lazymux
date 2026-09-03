@@ -18,6 +18,10 @@ import (
 // forge, so the stored remote never changes when the origin forge does.
 const DefaultPlaceholderHost = "lazymux-placeholder"
 
+// DefaultSortMode is the repo list ordering used when none is stored. It
+// mirrors domain.SortRecent, which config can't import without a cycle.
+const DefaultSortMode = "recent"
+
 // Defaults for the MCP server. It binds to loopback so the repo inventory
 // isn't exposed to the network unless the user opts in via `mcp set-url`.
 const (
@@ -43,6 +47,11 @@ type UI struct {
 	// unpushed commits, uncommitted files) on repo list rows. The list's `t`
 	// key toggles it for the session; this is the value restored on launch.
 	ShowStats bool `json:"showStats"`
+	// SortMode is the repo list ordering, one of the domain.SortMode values
+	// ("recent", "name-asc", "name-desc", "namespace"). The list's `S` key
+	// cycles it; this is the value restored on launch. An unknown value is
+	// resolved to the default when the app reads it.
+	SortMode string `json:"sortMode"`
 }
 
 type Behavior struct {
@@ -137,6 +146,7 @@ func Default() Config {
 			ShowFullPath: false,
 			ShowForge:    true,
 			ShowStats:    true,
+			SortMode:     DefaultSortMode,
 		},
 		Behavior: Behavior{
 			DefaultProtocol: "https",
@@ -215,6 +225,9 @@ func normalize(cfg Config) Config {
 	}
 	if cfg.PlaceholderHost == "" {
 		cfg.PlaceholderHost = d.PlaceholderHost
+	}
+	if cfg.UI.SortMode == "" {
+		cfg.UI.SortMode = d.UI.SortMode
 	}
 	if cfg.Behavior.DefaultProtocol == "" {
 		cfg.Behavior.DefaultProtocol = d.Behavior.DefaultProtocol

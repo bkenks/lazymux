@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
@@ -12,7 +11,7 @@ import (
 )
 
 // RefreshReposCmd walks the lazymux base dir and rebuilds the repo list,
-// most-recently-interacted first.
+// ordered by the current domain.Sort mode.
 func RefreshReposCmd() tea.Cmd {
 	return func() tea.Msg {
 		found, err := repomgr.List(cfg())
@@ -25,12 +24,7 @@ func RefreshReposCmd() tea.Cmd {
 			repos = append(repos, r)
 		}
 
-		// Most recently interacted first; never-interacted fall to the end.
-		sort.SliceStable(repos, func(i, j int) bool {
-			ri := repos[i].(domain.Repo)
-			rj := repos[j].(domain.Repo)
-			return ri.LastInteracted.After(rj.LastInteracted)
-		})
+		domain.SortRepos(repos, domain.Sort)
 
 		return events.ReposRefreshed{RepoList: repos}
 	}

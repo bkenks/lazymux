@@ -15,7 +15,20 @@ const (
 	skShowFullPath  = "show_full_path"
 	skShowForge     = "show_forge"
 	skShowStats     = "show_stats"
+	skSortMode      = "sort_mode"
 )
+
+// sortOptions are the repo list orderings offered in the settings screen, in
+// the same order the list's sort key cycles through them.
+var sortOptions = sortModeStrings()
+
+func sortModeStrings() []string {
+	opts := make([]string, 0, len(domain.SortModes))
+	for _, m := range domain.SortModes {
+		opts = append(opts, string(m))
+	}
+	return opts
+}
 
 var editorOptions = []string{"codium", "code", "nvim", "vim", "hx", "zed", "idea"}
 var protocolOptions = []string{"https", "ssh"}
@@ -62,6 +75,7 @@ func buildSettingsItems(cfg config.Config) []settings.Setting {
 		settings.NewToggle(skShowFullPath, "Show full path on rows", cfg.UI.ShowFullPath),
 		settings.NewToggle(skShowForge, "Show forge label on rows", cfg.UI.ShowForge),
 		settings.NewToggle(skShowStats, "Show git stats on rows", cfg.UI.ShowStats),
+		settings.NewSelect(skSortMode, "Sort repos by", sortOptions, indexOrZero(sortOptions, cfg.UI.SortMode)),
 	}
 }
 
@@ -92,6 +106,10 @@ func (m *ModelManager) applySettingChange(msg settings.SettingChanged) {
 			m.cfg.UI.ShowStats = v
 			domain.ShowStats = v // apply to the live repo list immediately
 		}
+	case skSortMode:
+		m.cfg.UI.SortMode = msg.Setting.ValueString()
+		domain.Sort = domain.ParseSortMode(m.cfg.UI.SortMode)
+		m.main.Resort() // reorder the live list; its cmd only matters while filtering
 	}
 	commands.SetDeps(m.cfg)
 }

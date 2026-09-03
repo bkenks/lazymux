@@ -75,6 +75,7 @@ func New(cfg config.Config, version string) *ModelManager {
 	// list, so its row height is sized correctly from the start.
 	domain.ShowForge = cfg.UI.ShowForge
 	domain.ShowStats = cfg.UI.ShowStats
+	domain.Sort = domain.ParseSortMode(cfg.UI.SortMode)
 
 	x, y := styles.DocStyle.GetFrameSize()
 	settingsItems := buildSettingsItems(cfg)
@@ -327,6 +328,14 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case events.ReposRefreshed:
 			cmds = append(cmds, m.main.UpdateRepoList(msg.RepoList))
+
+		case events.SortModeChanged:
+			m.cfg.UI.SortMode = string(msg.Mode)
+			commands.SetDeps(m.cfg)
+			if err := config.Save(m.cfg); err != nil {
+				cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("couldn't save sort order: %v", err)))
+			}
+			cmds = append(cmds, m.toastCmd(events.ToastInfo, "sorted by "+msg.Mode.Label()))
 
 		case events.OpenInVSCodeComplete:
 			if msg.Err != nil {
