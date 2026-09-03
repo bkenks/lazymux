@@ -71,13 +71,31 @@ lazymux is built for repos that live on more than one host — for example a sel
 ### Homebrew
 
 ```bash
-brew tap bkenks/lazymux https://fj.ktbcloud.com/bkenks/homebrew-lazymux.git
+brew tap bkenks/lazymux https://fj.ktbcloud.com/bkenks/lazymux.git
 brew install lazymux
 ```
 
-Builds from source against the tagged release. This is the route to take if you want the
-MCP server supervised by `brew services` — see [Running the MCP server as a
+This repo is its own tap — the formula lives in `Formula/lazymux.rb`, so there is no
+separate `homebrew-lazymux` repo to keep in sync. Naming the URL explicitly is what lets
+a tap live in a repo that isn't called `homebrew-something`.
+
+It installs the prebuilt binary for your platform straight from the release, so no Go
+toolchain is involved and there's nothing to compile. This is also the route to take if
+you want the MCP server supervised by `brew services` — see [Running the MCP server as a
 service](#running-the-mcp-server-as-a-service).
+
+### Prebuilt binary
+
+Every release carries binaries for macOS, Linux and Windows on both amd64 and arm64,
+plus a `SHA256SUMS` file. Grab one from the
+[releases page](https://fj.ktbcloud.com/bkenks/lazymux/releases), verify it, and drop it
+on your `$PATH`:
+
+```bash
+sha256sum -c SHA256SUMS --ignore-missing
+chmod +x lazymux-*-darwin-arm64
+mv lazymux-*-darwin-arm64 ~/.local/bin/lazymux
+```
 
 ### go install
 
