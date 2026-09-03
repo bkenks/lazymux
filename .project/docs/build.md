@@ -130,4 +130,9 @@ access token with the `write:repository` and `read:misc` scopes. The forge URL i
 taken from Woodpecker's own `$CI_FORGE_URL`, so nothing else is hardcoded.
 
 lazymux is not distributed through Homebrew. Releases ship prebuilt binaries; install
-one from the releases page or use `go install`.
+one from the releases page, or build from a clone with `mise run install`.
+
+Release tags are bare `X.Y.Z`, which is not a valid Go module version — the Go proxy
+only indexes `vX.Y.Z`. So `go install github.com/bkenks/lazymux@latest` resolves to
+`v1.1.0`, the last prefixed tag, and will not pick up newer releases. Installing an
+explicit newer version that way is not possible either.

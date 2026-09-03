@@ -81,13 +81,17 @@ chmod +x lazymux-*-darwin-arm64
 mv lazymux-*-darwin-arm64 ~/.local/bin/lazymux
 ```
 
-### go install
+### From source
 
 ```bash
-go install github.com/bkenks/lazymux@latest
+git clone https://fj.ktbcloud.com/bkenks/lazymux.git
+cd lazymux
+mise run install
 ```
 
-This builds and installs the `lazymux` binary into `$(go env GOPATH)/bin` — make sure that's on your `$PATH`.
+This installs the `lazymux` binary into `$GOBIN` (or `$(go env GOPATH)/bin`) — make sure
+that's on your `$PATH`. See [building lazymux](.project/docs/build.md) for the other
+build tasks.
 
 ---
 
@@ -212,36 +216,24 @@ claude mcp add --transport http lazymux http://127.0.0.1:7777/mcp
 `lazymux mcp start` has to be re-run after every reboot. To keep the endpoint up, hand
 `lazymux mcp serve` — the foreground mode — to a supervisor.
 
-**macOS (launchd).** Write `~/Library/LaunchAgents/com.bkenks.lazymux-mcp.plist`:
+**macOS (launchd).** [`contrib/com.bkenks.lazymux-mcp.plist`](contrib/com.bkenks.lazymux-mcp.plist)
+is the agent. It ships with a placeholder binary path, since launchd does not read your
+shell's `$PATH` and needs an absolute one — rewrite it as you install:
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>          <string>com.bkenks.lazymux-mcp</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/full/path/to/lazymux</string>
-    <string>mcp</string>
-    <string>serve</string>
-  </array>
-  <key>RunAtLoad</key>      <true/>
-  <key>KeepAlive</key>      <true/>
-  <key>StandardOutPath</key><string>/tmp/lazymux-mcp.log</string>
-  <key>StandardErrorPath</key><string>/tmp/lazymux-mcp.log</string>
-</dict>
-</plist>
+```bash
+sed "s|/usr/local/bin/lazymux|$(which lazymux)|" contrib/com.bkenks.lazymux-mcp.plist \
+  > ~/Library/LaunchAgents/com.bkenks.lazymux-mcp.plist
+
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.bkenks.lazymux-mcp.plist
 ```
 
 ```bash
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.bkenks.lazymux-mcp.plist
-launchctl print gui/$(id -u)/com.bkenks.lazymux-mcp   # status
-launchctl bootout gui/$(id -u)/com.bkenks.lazymux-mcp # stop and unload
+launchctl print gui/$(id -u)/com.bkenks.lazymux-mcp        # status
+launchctl kickstart -k gui/$(id -u)/com.bkenks.lazymux-mcp # restart, e.g. after an upgrade
+launchctl bootout gui/$(id -u)/com.bkenks.lazymux-mcp      # stop and unload
 ```
 
-`ProgramArguments` needs an absolute path — launchd does not read your shell's `$PATH`.
+It logs to `/tmp/lazymux-mcp.log`. Re-run the `sed` and `kickstart` if the binary moves.
 
 **Linux (systemd user unit).** Write `~/.config/systemd/user/lazymux-mcp.service`:
 

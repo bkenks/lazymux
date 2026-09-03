@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd agent for the lazymux MCP server. See "Running the MCP server as a
+  service" in the README.
+
+  launchd does not read your shell's $PATH, so ProgramArguments must name the
+  binary absolutely. Rewrite the placeholder below to wherever lazymux lives on
+  this machine before loading the agent.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.bkenks.lazymux-mcp</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/lazymux</string>
+    <string>mcp</string>
+    <string>serve</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/lazymux-mcp.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/tmp/lazymux-mcp.log</string>
+</dict>
+</plist>
