@@ -14,12 +14,13 @@ provisions everything. Each script carries its own PEP 723 header and runs under
 | `mise run build`              | `build/bin/lazymux` (this machine) |
 | `mise run build --all`        | `build/dist/*` — all 6 platforms + `SHA256SUMS` |
 | `mise run build --platform GOOS/GOARCH` | `build/dist/*` — one platform (repeatable) |
+| `mise run build --version vX.Y.Z` | stamps an explicit version instead of `git describe` |
 | `mise run build --list`       | prints the release matrix       |
 | `mise run dev`                | `build/bin/lazymux-dev`        |
 | `mise run install`            | installs `lazymux` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
 | `mise run install-dev`        | installs `lazymux-dev` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
 | `mise run clean`              | removes `build/bin` and `build/dist` |
-| `mise run release <bump>`     | tags, pushes and publishes a release (see below) |
+| `mise run release <bump>`     | tests, tags and pushes; CI builds and publishes (see below) |
 
 `install` and `install-dev` declare `#MISE depends=` on `build` / `dev`, so they
 compile first.
@@ -89,24 +90,42 @@ mise run release patch --dry-run   # print the plan, change nothing
 ```
 
 The new version is derived from the highest existing `vX.Y.Z` tag. Flags:
-`--dry-run`, `--yes` (skip the confirmation prompt; required when stdin is not a
-TTY), `--no-publish` (push the tag but skip the Forgejo release).
+`--dry-run` and `--yes` (skip the confirmation prompt; required when stdin is not
+a TTY).
 
 **Preflight** — the release aborts before touching anything if the working tree is
 dirty, the current branch is not `main`, `main` has diverged from `origin/main`,
 the target tag already exists, or the new version is not greater than the latest tag.
 
-**Order of operations** — `go vet` and `go test` run, then the full platform matrix
-is built with the *new* version injected, and only then is the tag created. A tree
-that fails to compile for any target never gets tagged. If `git push` of the tag
+**Order of operations** — `go vet` and `go test` run, then the tag is created and
+pushed. A tree that fails its tests never gets tagged. If `git push` of the tag
 fails, the local tag is deleted so a retry starts clean.
 
-**Publishing** — after the tag is pushed, the script calls `tea release create` to
-create the Forgejo release, attaching all six binaries plus `SHA256SUMS`. If `tea`
-is not installed the tag is still pushed and the script warns that the release was
-not created, pointing at `build/dist/` for a manual upload.
+**Publishing** — pushing the tag is the whole job. Woodpecker builds the binaries
+and creates the Forgejo release; see [CI](#ci) below. Nothing is built locally, so
+the task finishes in seconds.
 
-Release builds call `build_matrix()` from `_lib.py` directly rather than shelling
-out to `mise run build --all`. They have to: the artifacts must embed the new
-version, and at build time that tag does not exist yet, so `git describe` would
-stamp them with the *previous* version plus a `-dirty`/commit-count suffix.
+## CI
+
+`.woodpecker.yml` runs on a pushed `v*` tag and nothing else — no branch or PR
+builds. Three steps, in order:
+
+1. **test** — `mise install`, then `go vet ./...` and `go test ./...`.
+2. **build** — `mise run build --all --version $CI_COMMIT_TAG`, producing the six
+   binaries plus `SHA256SUMS` in `build/dist/`.
+3. **release** — [`woodpeckerci/plugin-release`](https://woodpecker-ci.org/plugins/release)
+   creates the Forgejo release for the tag and attaches everything in `build/dist/`.
+
+The version comes from `$CI_COMMIT_TAG` rather than `git describe`: Woodpecker
+clones shallowly, so the tag history `describe` needs may not be there. That is
+what `mise run build --version` exists for.
+
+The first two steps run in the `jdxcode/mise` image and provision the toolchain
+from `mise.toml`, so CI compiles with the same Go version as a local build.
+
+**Setup** — the pipeline needs one Woodpecker secret, `forgejo_token`: a Forgejo
+access token with the `write:repository` and `read:misc` scopes. The forge URL is
+taken from Woodpecker's own `$CI_FORGE_URL`, so nothing else is hardcoded.
+
+The Homebrew tap is *not* updated by this pipeline. Its formula pins a release
+tarball and its sha256, so a new version still needs that formula edited by hand.

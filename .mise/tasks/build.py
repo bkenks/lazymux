@@ -9,10 +9,12 @@
     mise run build                      build/bin/lazymux for this machine
     mise run build --all                build/dist/* for every release platform
     mise run build --platform linux/amd64   build/dist/* for one platform
+    mise run build --version v1.4.0     stamp an explicit version
     mise run build --list               print the release matrix and exit
 
 Plain `mise run build` stays host-only so the local edit-rebuild loop and
-`mise run install` stay fast. `release` calls this with --all.
+`mise run install` stay fast. CI calls this with --all --version <tag>, since a
+shallow clone has no tag history for `git describe` to read.
 """
 
 from __future__ import annotations
@@ -61,6 +63,11 @@ def parse_args() -> argparse.Namespace:
         help="cross-compile one platform into build/dist (repeatable)",
     )
     parser.add_argument(
+        "--version",
+        metavar="VERSION",
+        help="version to stamp into the binary (default: git describe)",
+    )
+    parser.add_argument(
         "--list", action="store_true", help="print the release matrix and exit"
     )
     return parser.parse_args()
@@ -77,7 +84,7 @@ def main() -> None:
     if args.all and args.platform:
         die("--all and --platform are mutually exclusive")
 
-    version = build_version()
+    version = args.version or build_version()
 
     if not args.all and not args.platform:
         output = build_lazymux(version)

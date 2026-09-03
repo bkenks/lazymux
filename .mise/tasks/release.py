@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.13"
 # ///
-#MISE description="Cut a release: bump the version tag, build every platform, push, publish"
+#MISE description="Cut a release: check the tree, tag the new version and push it"
 
 """Cut a lazymux release.
 
@@ -13,23 +13,25 @@
     mise run release patch --dry-run    print the plan, change nothing
 
 Preflight refuses to release from a dirty tree, a non-release branch, or a
-branch that has diverged from its remote. The full platform matrix is built and
-the test suite runs *before* the tag is created, so a broken build never gets
-tagged. Every artifact is attached to the Forgejo release.
+branch that has diverged from its remote, and the test suite runs *before* the
+tag is created, so a broken tree never gets tagged.
+
+Pushing the tag is the whole job: Woodpecker (`.woodpecker.yml`) picks up the
+`v*` tag, cross-compiles the release matrix and creates the Forgejo release with
+every binary attached.
 """
 
 from __future__ import annotations
 
 import argparse
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from _lib import PLATFORMS, build_matrix, capture, die, dist_dir, repo_root, run, write_checksums
+from _lib import capture, die, repo_root, run
 
 RELEASE_BRANCH = "main"
 REMOTE = "origin"
@@ -40,7 +42,7 @@ BUMPS = ("patch", "minor", "major")
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="mise run release",
-        description="Build every platform, tag, push and publish a lazymux release.",
+        description="Test, tag and push a lazymux release for CI to build and publish.",
     )
     parser.add_argument(
         "version",
@@ -50,18 +52,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="print what would happen without tagging, pushing or publishing",
+        help="print what would happen without tagging or pushing",
     )
     parser.add_argument(
         "-y",
         "--yes",
         action="store_true",
         help="skip the confirmation prompt (required when stdin is not a TTY)",
-    )
-    parser.add_argument(
-        "--no-publish",
-        action="store_true",
-        help="push the tag but do not create a Forgejo release",
     )
     return parser.parse_args()
 
@@ -134,32 +131,6 @@ def confirm(prompt: str, assume_yes: bool) -> None:
         die("aborted")
 
 
-def publish(version: str, assets: list[Path]) -> None:
-    """Create the Forgejo release via tea, attaching every build artifact."""
-    if shutil.which("tea") is None:
-        print(
-            f"warning: `tea` not found — tag {version} was pushed, but no Forgejo "
-            "release was created. Install tea, or create it in the web UI and "
-            f"upload the artifacts from {dist_dir()}.",
-            file=sys.stderr,
-        )
-        return
-    cmd: list[str | Path] = [
-        "tea",
-        "release",
-        "create",
-        "--tag",
-        version,
-        "--title",
-        version,
-        "--note",
-        f"lazymux {version}",
-    ]
-    for asset in assets:
-        cmd += ["--asset", asset]
-    run(*cmd)
-
-
 def main() -> None:
     args = parse_args()
 
@@ -170,30 +141,21 @@ def main() -> None:
     print(f"releasing {current} -> {new}")
     preflight(new)
 
-    # Build and test before tagging, so a broken tree never gets a tag. The
-    # matrix is built here rather than via `mise run build --all` because the
-    # artifacts must embed `new`, and that tag does not exist yet.
+    # Test before tagging, so a broken tree never gets a tag. The release
+    # binaries are built by CI from the tag, not here.
     run("go", "vet", "./...")
     run("go", "test", "./...")
-    artifacts = build_matrix(new)
-    assets = [*artifacts, write_checksums(artifacts)]
 
     if args.dry_run:
-        publish_line = (
-            "  (publish skipped)"
-            if args.no_publish
-            else f"  tea release create --tag {new} with {len(assets)} assets"
-        )
         print(
             f"\ndry run — would have:\n"
             f"  git tag -a {new} -m 'Release {new}'\n"
             f"  git push {REMOTE} {new}\n"
-            f"{publish_line}\n"
-            f"\nbuilt artifacts left in {dist_dir()}"
+            f"  (CI then builds the matrix and publishes the release)"
         )
         return
 
-    confirm(f"tag {new}, push it to {REMOTE}, and publish {len(assets)} assets?", args.yes)
+    confirm(f"tag {new} and push it to {REMOTE}?", args.yes)
 
     run("git", "tag", "-a", new, "-m", f"Release {new}")
     try:
@@ -203,12 +165,10 @@ def main() -> None:
         subprocess.run(["git", "tag", "-d", new], cwd=repo_root(), check=False)
         raise
 
-    if not args.no_publish:
-        publish(new, assets)
-
-    print(f"\nreleased {new} ({len(PLATFORMS)} platforms)")
-    for asset in assets:
-        print(f"  {asset.name}")
+    print(
+        f"\npushed {new} — Woodpecker is building the matrix and will create the "
+        "release with every binary attached."
+    )
 
 
 main()
