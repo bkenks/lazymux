@@ -103,9 +103,9 @@ func Start(cfg config.Config) error {
 	cmd := exec.Command(self, "mcp", "serve")
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
-	// Setsid detaches the child from this terminal's process group so it
-	// survives the shell that started it.
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	// Detach the child from this terminal so it survives the shell that
+	// started it. How that is done is platform-specific.
+	detach(cmd)
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("starting server: %w", err)
 	}
