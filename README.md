@@ -81,6 +81,16 @@ chmod +x lazymux-*-darwin-arm64
 mv lazymux-*-darwin-arm64 ~/.local/bin/lazymux
 ```
 
+### go install
+
+```bash
+go install github.com/bkenks/lazymux@latest
+```
+
+This builds and installs the `lazymux` binary into `$GOBIN` (or `$(go env GOPATH)/bin`) —
+make sure that's on your `$PATH`. It resolves through the GitHub mirror, so it lags a
+release until that mirror has the tag.
+
 ### From source
 
 ```bash
@@ -89,9 +99,8 @@ cd lazymux
 mise run install
 ```
 
-This installs the `lazymux` binary into `$GOBIN` (or `$(go env GOPATH)/bin`) — make sure
-that's on your `$PATH`. See [building lazymux](.project/docs/build.md) for the other
-build tasks.
+Same destination, built from your checkout. See [building
+lazymux](.project/docs/build.md) for the other build tasks.
 
 ---
 
@@ -216,26 +225,7 @@ claude mcp add --transport http lazymux http://127.0.0.1:7777/mcp
 `lazymux mcp start` has to be re-run after every reboot. To keep the endpoint up, hand
 `lazymux mcp serve` — the foreground mode — to a supervisor.
 
-**macOS (launchd).** [`contrib/com.bkenks.lazymux-mcp.plist`](contrib/com.bkenks.lazymux-mcp.plist)
-is the agent. It ships with a placeholder binary path, since launchd does not read your
-shell's `$PATH` and needs an absolute one — rewrite it as you install:
-
-```bash
-sed "s|/usr/local/bin/lazymux|$(which lazymux)|" contrib/com.bkenks.lazymux-mcp.plist \
-  > ~/Library/LaunchAgents/com.bkenks.lazymux-mcp.plist
-
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.bkenks.lazymux-mcp.plist
-```
-
-```bash
-launchctl print gui/$(id -u)/com.bkenks.lazymux-mcp        # status
-launchctl kickstart -k gui/$(id -u)/com.bkenks.lazymux-mcp # restart, e.g. after an upgrade
-launchctl bootout gui/$(id -u)/com.bkenks.lazymux-mcp      # stop and unload
-```
-
-It logs to `/tmp/lazymux-mcp.log`. Re-run the `sed` and `kickstart` if the binary moves.
-
-**Linux (systemd user unit).** Write `~/.config/systemd/user/lazymux-mcp.service`:
+**systemd user unit.** Write `~/.config/systemd/user/lazymux-mcp.service`:
 
 ```ini
 [Unit]
