@@ -68,22 +68,6 @@ lazymux is built for repos that live on more than one host — for example a sel
 
 ## Installation
 
-### Homebrew
-
-```bash
-brew tap bkenks/lazymux https://fj.ktbcloud.com/bkenks/lazymux.git
-brew install lazymux
-```
-
-This repo is its own tap — the formula lives in `Formula/lazymux.rb`, so there is no
-separate `homebrew-lazymux` repo to keep in sync. Naming the URL explicitly is what lets
-a tap live in a repo that isn't called `homebrew-something`.
-
-It installs the prebuilt binary for your platform straight from the release, so no Go
-toolchain is involved and there's nothing to compile. This is also the route to take if
-you want the MCP server supervised by `brew services` — see [Running the MCP server as a
-service](#running-the-mcp-server-as-a-service).
-
 ### Prebuilt binary
 
 Every release carries binaries for macOS, Linux and Windows on both amd64 and arm64,
@@ -228,21 +212,58 @@ claude mcp add --transport http lazymux http://127.0.0.1:7777/mcp
 `lazymux mcp start` has to be re-run after every reboot. To keep the endpoint up, hand
 `lazymux mcp serve` — the foreground mode — to a supervisor.
 
-With the Homebrew install, the formula ships a service definition:
+**macOS (launchd).** Write `~/Library/LaunchAgents/com.bkenks.lazymux-mcp.plist`:
 
-```bash
-brew services start lazymux   # starts now, and again at every login
-brew services stop lazymux
-brew services list            # status
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>          <string>com.bkenks.lazymux-mcp</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/full/path/to/lazymux</string>
+    <string>mcp</string>
+    <string>serve</string>
+  </array>
+  <key>RunAtLoad</key>      <true/>
+  <key>KeepAlive</key>      <true/>
+  <key>StandardOutPath</key><string>/tmp/lazymux-mcp.log</string>
+  <key>StandardErrorPath</key><string>/tmp/lazymux-mcp.log</string>
+</dict>
+</plist>
 ```
 
-Logs land in `$(brew --prefix)/var/log/lazymux-mcp.log`.
+```bash
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.bkenks.lazymux-mcp.plist
+launchctl print gui/$(id -u)/com.bkenks.lazymux-mcp   # status
+launchctl bootout gui/$(id -u)/com.bkenks.lazymux-mcp # stop and unload
+```
 
-For a non-Homebrew install, write a launchd agent to
-`~/Library/LaunchAgents/com.example.lazymux-mcp.plist` that runs `lazymux mcp serve` with
-`RunAtLoad` and `KeepAlive` set, then `launchctl bootstrap gui/$(id -u) <plist>`.
+`ProgramArguments` needs an absolute path — launchd does not read your shell's `$PATH`.
 
-Either way, run only one supervisor — two will fight over the port.
+**Linux (systemd user unit).** Write `~/.config/systemd/user/lazymux-mcp.service`:
+
+```ini
+[Unit]
+Description=lazymux MCP server
+
+[Service]
+ExecStart=%h/.local/bin/lazymux mcp serve
+Restart=always
+
+[Install]
+WantedBy=default.target
+```
+
+```bash
+systemctl --user enable --now lazymux-mcp
+loginctl enable-linger "$USER"   # keep it running when you are not logged in
+```
+
+Run only one supervisor — two will fight over the port. A supervised server replaces
+`lazymux mcp start`; don't run both.
 
 ### Tools
 

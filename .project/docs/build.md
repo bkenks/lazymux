@@ -20,7 +20,6 @@ provisions everything. Each script carries its own PEP 723 header and runs under
 | `mise run install`            | installs `lazymux` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
 | `mise run install-dev`        | installs `lazymux-dev` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
 | `mise run clean`              | removes `build/bin` and `build/dist` |
-| `mise run formula`            | rewrites `Formula/lazymux.rb` from `build/dist/SHA256SUMS` |
 | `mise run release <bump>`     | tests, tags and pushes; CI builds and publishes (see below) |
 
 `install` and `install-dev` declare `#MISE depends=` on `build` / `dev`, so they
@@ -118,10 +117,6 @@ PR builds. Three steps, in order:
    binaries plus `SHA256SUMS` in `build/dist/`.
 3. **release** — [`woodpeckerci/plugin-release`](https://woodpecker-ci.org/plugins/release)
    creates the Forgejo release for the tag and attaches everything in `build/dist/`.
-4. **bump-formula** — commits the regenerated `Formula/lazymux.rb` back to `main` and
-   pushes it. Only tags run this pipeline, so that push can't trigger another build. It
-   re-fetches `main` first and commits on top of it, so a `main` that moved after the tag
-   is not clobbered; if the formula is already current the step exits without a commit.
 
 The version comes from `$CI_COMMIT_TAG` rather than `git describe`: Woodpecker
 clones shallowly, so the tag history `describe` needs may not be there. That is
@@ -134,23 +129,5 @@ from `mise.toml`, so CI compiles with the same Go version as a local build.
 access token with the `write:repository` and `read:misc` scopes. The forge URL is
 taken from Woodpecker's own `$CI_FORGE_URL`, so nothing else is hardcoded.
 
-## Homebrew
-
-This repo *is* the tap. `brew tap bkenks/lazymux <repo url>` reads
-`Formula/lazymux.rb` from here, because the two-argument form of `brew tap` takes an
-explicit URL and so drops the `homebrew-*` repo naming rule. There is no separate tap
-repo to keep in sync.
-
-The formula installs the prebuilt release binary for the running platform — four URLs
-and four checksums, one per macOS/Linux × arm64/amd64. `mise run formula` renders the
-whole file from the `SHA256SUMS` that `mise run build --all` wrote, and CI runs it on
-every tag, so the version and checksums are never edited by hand. Windows binaries are
-published but not exposed through Homebrew.
-
-Regenerating it locally, for a formula change or to check a release by hand:
-
-```bash
-mise run build --all --version 1.4.0
-mise run formula --version 1.4.0
-brew style Formula/lazymux.rb
-```
+lazymux is not distributed through Homebrew. Releases ship prebuilt binaries; install
+one from the releases page or use `go install`.
