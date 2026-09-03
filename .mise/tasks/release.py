@@ -6,19 +6,23 @@
 
 """Cut a lazymux release.
 
-    mise run release patch          v1.0.2 -> v1.0.3
-    mise run release minor          v1.0.2 -> v1.1.0
-    mise run release major          v1.0.2 -> v2.0.0
-    mise run release v1.4.0         explicit version
+    mise run release patch          1.0.2 -> 1.0.3
+    mise run release minor          1.0.2 -> 1.1.0
+    mise run release major          1.0.2 -> 2.0.0
+    mise run release 1.4.0          explicit version
     mise run release patch --dry-run    print the plan, change nothing
 
 Preflight refuses to release from a dirty tree, a non-release branch, or a
 branch that has diverged from its remote, and the test suite runs *before* the
 tag is created, so a broken tree never gets tagged.
 
+Tags are bare `X.Y.Z` — no `v` prefix. Tags from the old `vX.Y.Z` scheme are
+still read when working out what to bump from, but every tag written from here on
+is unprefixed.
+
 Pushing the tag is the whole job: Woodpecker (`.woodpecker.yml`) picks up the
-`v*` tag, cross-compiles the release matrix and creates the Forgejo release with
-every binary attached.
+`X.Y.Z` tag, cross-compiles the release matrix and creates the Forgejo release
+with every binary attached.
 """
 
 from __future__ import annotations
@@ -35,7 +39,9 @@ from _lib import capture, die, repo_root, run
 
 RELEASE_BRANCH = "main"
 REMOTE = "origin"
-SEMVER = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
+# Tags are written as X.Y.Z. The optional `v` matches tags left over from the
+# old prefixed scheme so a bump can still be computed from them.
+SEMVER = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 BUMPS = ("patch", "minor", "major")
 
 
@@ -46,7 +52,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "version",
-        metavar="patch|minor|major|vX.Y.Z",
+        metavar="patch|minor|major|X.Y.Z",
         help="how to bump the latest tag, or an explicit version",
     )
     parser.add_argument(
@@ -64,32 +70,35 @@ def parse_args() -> argparse.Namespace:
 
 
 def latest_tag() -> str:
-    """Return the highest semver tag, or v0.0.0 if the repo has none."""
-    tags = capture("git", "tag", "--list", "v*", cwd=repo_root()).splitlines()
-    versions = [t for t in (tag.strip() for tag in tags) if SEMVER.match(t)]
+    """Return the highest semver tag as X.Y.Z, or 0.0.0 if the repo has none."""
+    tags = capture("git", "tag", "--list", cwd=repo_root()).splitlines()
+    matches = [SEMVER.match(tag.strip()) for tag in tags]
+    versions = [tuple(int(p) for p in m.groups()) for m in matches if m]
     if not versions:
-        return "v0.0.0"
-    return max(versions, key=lambda v: tuple(int(p) for p in SEMVER.match(v).groups()))
+        return "0.0.0"
+    return ".".join(str(part) for part in max(versions))
 
 
 def next_version(current: str, spec: str) -> str:
     """Apply a bump keyword to `current`, or validate `spec` as an explicit version."""
     if spec not in BUMPS:
-        if not SEMVER.match(spec):
-            die(f"{spec!r} is not a bump keyword ({', '.join(BUMPS)}) or a vX.Y.Z version")
-        return spec
+        match = SEMVER.match(spec)
+        if not match:
+            die(f"{spec!r} is not a bump keyword ({', '.join(BUMPS)}) or an X.Y.Z version")
+        # Normalize a `v`-prefixed argument onto the current bare scheme.
+        return ".".join(match.groups())
 
     major, minor, patch = (int(p) for p in SEMVER.match(current).groups())
     if spec == "major":
-        return f"v{major + 1}.0.0"
+        return f"{major + 1}.0.0"
     if spec == "minor":
-        return f"v{major}.{minor + 1}.0"
-    return f"v{major}.{minor}.{patch + 1}"
+        return f"{major}.{minor + 1}.0"
+    return f"{major}.{minor}.{patch + 1}"
 
 
 def check_newer(current: str, new: str) -> None:
     """Refuse to go backwards, which would produce a confusing tag history."""
-    if current == "v0.0.0":
+    if current == "0.0.0":
         return
     current_parts = tuple(int(p) for p in SEMVER.match(current).groups())
     new_parts = tuple(int(p) for p in SEMVER.match(new).groups())

@@ -1,6 +1,6 @@
 when:
   - event: tag
-    ref: refs/tags/v*
+    ref: refs/tags/*.*.*
 
 variables:
   - &mise_image jdxcode/mise:2026.9.1

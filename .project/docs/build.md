@@ -14,7 +14,7 @@ provisions everything. Each script carries its own PEP 723 header and runs under
 | `mise run build`              | `build/bin/lazymux` (this machine) |
 | `mise run build --all`        | `build/dist/*` — all 6 platforms + `SHA256SUMS` |
 | `mise run build --platform GOOS/GOARCH` | `build/dist/*` — one platform (repeatable) |
-| `mise run build --version vX.Y.Z` | stamps an explicit version instead of `git describe` |
+| `mise run build --version X.Y.Z` | stamps an explicit version instead of `git describe` |
 | `mise run build --list`       | prints the release matrix       |
 | `mise run dev`                | `build/bin/lazymux-dev`        |
 | `mise run install`            | installs `lazymux` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
@@ -82,14 +82,16 @@ from `git describe`); the dev build appends a `-dev` suffix to that version.
 ## Cutting a release
 
 ```bash
-mise run release patch        # v1.0.2 -> v1.0.3
-mise run release minor        # v1.0.2 -> v1.1.0
-mise run release major        # v1.0.2 -> v2.0.0
-mise run release v1.4.0       # explicit version
+mise run release patch        # 1.0.2 -> 1.0.3
+mise run release minor        # 1.0.2 -> 1.1.0
+mise run release major        # 1.0.2 -> 2.0.0
+mise run release 1.4.0        # explicit version
 mise run release patch --dry-run   # print the plan, change nothing
 ```
 
-The new version is derived from the highest existing `vX.Y.Z` tag. Flags:
+Tags are bare `X.Y.Z` — no `v` prefix. The new version is derived from the
+highest existing tag, including any left over from the old `vX.Y.Z` scheme, and
+is always written unprefixed. Flags:
 `--dry-run` and `--yes` (skip the confirmation prompt; required when stdin is not
 a TTY).
 
@@ -107,8 +109,8 @@ the task finishes in seconds.
 
 ## CI
 
-`.woodpecker.yml` runs on a pushed `v*` tag and nothing else — no branch or PR
-builds. Three steps, in order:
+`.woodpecker.yml` runs on a pushed `X.Y.Z` tag and nothing else — no branch or
+PR builds. Three steps, in order:
 
 1. **test** — `mise install`, then `go vet ./...` and `go test ./...`.
 2. **build** — `mise run build --all --version $CI_COMMIT_TAG`, producing the six
