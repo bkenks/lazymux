@@ -1,6 +1,11 @@
 package app
 
 import (
+	"errors"
+	"fmt"
+	"os/exec"
+	"strings"
+
 	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/domain"
@@ -30,7 +35,6 @@ func sortModeStrings() []string {
 	return opts
 }
 
-var editorOptions = []string{"codium", "code", "nvim", "vim", "hx", "zed", "idea"}
 var protocolOptions = []string{"https", "ssh"}
 
 // equalStrings reports whether two forge-name lists hold the same names in the
@@ -67,9 +71,26 @@ func indexOrZero(opts []string, want string) int {
 	return 0
 }
 
+// validateEditorCommand resolves an editor command the way exec.Command will
+// when a repo is opened, so a value the settings screen accepts is a value that
+// actually runs. The resolved path comes back as the confirmation hint.
+func validateEditorCommand(command string) (string, error) {
+	if command == "" {
+		return "", errors.New("editor cannot be empty")
+	}
+	if strings.ContainsAny(command, " \t") {
+		return "", errors.New("editor takes a command name only, no arguments")
+	}
+	path, err := exec.LookPath(command)
+	if err != nil {
+		return "", fmt.Errorf("%q not found on PATH", command)
+	}
+	return path, nil
+}
+
 func buildSettingsItems(cfg config.Config) []settings.Setting {
 	return []settings.Setting{
-		settings.NewSelect(skEditor, "Editor", editorOptions, indexOrZero(editorOptions, cfg.Tools.Editor)),
+		settings.NewText(skEditor, "Editor", cfg.Tools.Editor, validateEditorCommand),
 		settings.NewSelect(skProtocol, "Default clone protocol", protocolOptions, indexOrZero(protocolOptions, cfg.Behavior.DefaultProtocol)),
 		settings.NewToggle(skConfirmDelete, "Confirm before deleting", cfg.Behavior.ConfirmDelete),
 		settings.NewToggle(skShowFullPath, "Show full path on rows", cfg.UI.ShowFullPath),

@@ -47,7 +47,7 @@ lazymux is built for repos that live on more than one host — for example a sel
 - **Stable placeholder remotes** — switch a repo's forge without ever touching its `origin`
 - **Browse all repos** in a clean, filterable list, sorted by most-recently used
 - **Open with lazygit** to manage commits, branches, PRs, and more
-- **Open in your editor** — codium, code, nvim, vim, helix, zed, idea, or whatever you configure
+- **Open in your editor** — any command on your `PATH`; the settings screen checks it resolves before saving
 - **Drop into a shell** in the selected repo's directory
 - **Copy the repo's absolute path** to your clipboard
 - **Delete repos** with a confirmation prompt
@@ -340,7 +340,7 @@ Everything lives in a single JSON file at `~/lazymux/.lazymux.json` (override th
 
 - `ui.sortMode` — repo list order: `recent`, `name-asc`, `name-desc`, or `namespace` (cycled in-app with `S`).
 
-The in-app settings screen covers `editor`, `defaultProtocol`, `confirm_delete`, `showFullPath`, `showForge`, `showStats`, and `sortMode`. Tool paths (`lazygit`, `shell`) and `theme` are file-only for now — edit and relaunch.
+The in-app settings screen covers `editor`, `defaultProtocol`, `confirm_delete`, `showFullPath`, `showForge`, `showStats`, and `sortMode`. `editor` opens a text field on `enter` — type any command name and the field resolves it on `PATH` as you type, refusing to save one it cannot find. Tool paths (`lazygit`, `shell`) and `theme` are file-only for now — edit and relaunch.
 
 Repo interaction history (used for recency sorting) lives at `$XDG_DATA_HOME/lazymux/interactions.json` (fallback `~/.local/share/lazymux/interactions.json`).
 

@@ -66,3 +66,53 @@ func (s Select) Next() Setting {
 func (s Select) Prev() Setting {
 	return Select{key: s.key, label: s.label, options: s.options, index: (s.index - 1 + len(s.options)) % len(s.options)}
 }
+
+// Validator checks a candidate Text value. It returns a short hint describing
+// the accepted value (an editor's resolved path, say) or an error explaining
+// why the value cannot be used. A nil Validator accepts everything.
+type Validator func(candidate string) (hint string, err error)
+
+// Text is a free-form string setting. It has no options to cycle: the settings
+// screen opens an inline text input when the row is activated, and validate
+// gates what the user is allowed to commit.
+type Text struct {
+	key      string
+	label    string
+	value    string
+	validate Validator
+}
+
+func NewText(key, label, value string, validate Validator) Text {
+	return Text{key: key, label: label, value: value, validate: validate}
+}
+
+func (t Text) Key() string         { return t.key }
+func (t Text) Label() string       { return t.label }
+func (t Text) FilterValue() string { return t.label }
+func (t Text) ValueString() string { return t.value }
+func (t Text) Value() any          { return t.value }
+func (t Text) Title() string       { return t.label }
+func (t Text) Description() string {
+	if t.value == "" {
+		return "(unset)"
+	}
+	return t.value
+}
+
+// Next and Prev leave a Text unchanged: there is nothing to cycle through, and
+// the settings screen opens the inline editor instead of calling them.
+func (t Text) Next() Setting { return t }
+func (t Text) Prev() Setting { return t }
+
+func (t Text) Validate(candidate string) (string, error) {
+	if t.validate == nil {
+		return "", nil
+	}
+	return t.validate(candidate)
+}
+
+// WithValue returns a copy holding candidate, keeping key, label and validator.
+func (t Text) WithValue(candidate string) Text {
+	t.value = candidate
+	return t
+}
