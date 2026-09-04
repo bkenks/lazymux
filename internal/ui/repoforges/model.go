@@ -26,7 +26,7 @@ var keys = keyMap{
 	Toggle: key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "upstream")),
 	Origin: key.NewBinding(key.WithKeys("o"), key.WithHelp("o", "origin")),
 	Scheme: key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "scheme")),
-	Exit:   key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "save & back")),
+	Exit:   key.NewBinding(key.WithKeys("backspace", "delete"), key.WithHelp("backspace", "save & back")),
 }
 
 func helpKeys() []key.Binding {

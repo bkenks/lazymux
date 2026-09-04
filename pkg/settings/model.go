@@ -42,8 +42,8 @@ var keys = keyMap{
 		key.WithHelp("←/h", "prev"),
 	),
 	Exit: key.NewBinding(
-		key.WithKeys("esc"),
-		key.WithHelp("esc", "back"),
+		key.WithKeys("backspace", "delete"),
+		key.WithHelp("backspace", "back"),
 	),
 	Commit: key.NewBinding(
 		key.WithKeys("enter"),

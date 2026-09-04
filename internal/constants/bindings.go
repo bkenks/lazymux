@@ -222,8 +222,8 @@ var ConfirmKeyMap = confirmKeyMap{
 		key.WithHelp("ctrl+p", "delete now"),
 	),
 	Exit: key.NewBinding(
-		key.WithKeys(tea.KeyEsc.String()),
-		key.WithHelp(tea.KeyEsc.String(), "back"),
+		key.WithKeys(tea.KeyBackspace.String(), tea.KeyDelete.String()),
+		key.WithHelp(tea.KeyBackspace.String(), "back"),
 	),
 }
 

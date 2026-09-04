@@ -19,7 +19,7 @@ import (
 )
 
 type keyMap struct {
-	Add, Edit, Delete, Save, Field, Exit key.Binding
+	Add, Edit, Delete, Save, Field, Exit, Cancel key.Binding
 }
 
 var keys = keyMap{
@@ -28,7 +28,8 @@ var keys = keyMap{
 	Delete: key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "delete")),
 	Save:   key.NewBinding(key.WithKeys("enter")),
 	Field:  key.NewBinding(key.WithKeys("tab")),
-	Exit:   key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "save & back")),
+	Exit:   key.NewBinding(key.WithKeys("backspace", "delete"), key.WithHelp("backspace", "save & back")),
+	Cancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
 }
 
 func helpKeys() []key.Binding {
@@ -201,7 +202,7 @@ func (m *Model) startEdit(idx int) (tea.Model, tea.Cmd) {
 
 func (m *Model) updateEditing(km tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
-	case key.Matches(km, keys.Exit):
+	case key.Matches(km, keys.Cancel):
 		m.editing = false
 		m.resize()
 		m.nameInput.Blur()

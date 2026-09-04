@@ -23,7 +23,7 @@ import (
 )
 
 type keyMap struct {
-	Toggle, Origin, Scheme, Add, Confirm, Exit key.Binding
+	Toggle, Origin, Scheme, Add, Confirm, Exit, Cancel key.Binding
 }
 
 var keys = keyMap{
@@ -32,7 +32,8 @@ var keys = keyMap{
 	Scheme:  key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "scheme")),
 	Add:     key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "add forge")),
 	Confirm: key.NewBinding(key.WithKeys("enter", "ctrl+p"), key.WithHelp("enter", "next")),
-	Exit:    key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
+	Exit:    key.NewBinding(key.WithKeys("backspace", "delete"), key.WithHelp("backspace", "cancel")),
+	Cancel:  key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
 }
 
 func helpKeys() []key.Binding {
@@ -266,7 +267,7 @@ func (m *Model) startAdd() (tea.Model, tea.Cmd) {
 
 func (m *Model) updateAdding(km tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
-	case key.Matches(km, keys.Exit):
+	case key.Matches(km, keys.Cancel):
 		m.adding = false
 		m.resize()
 		m.nameInput.Blur()
