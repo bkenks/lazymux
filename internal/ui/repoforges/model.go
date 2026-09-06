@@ -26,11 +26,11 @@ var keys = keyMap{
 	Toggle: key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "upstream")),
 	Origin: key.NewBinding(key.WithKeys("o"), key.WithHelp("o", "origin")),
 	Scheme: key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "scheme")),
-	Exit:   key.NewBinding(key.WithKeys("backspace", "delete"), key.WithHelp("backspace", "save & back")),
+	Exit:   key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "save & back")),
 }
 
 func helpKeys() []key.Binding {
-	return []key.Binding{keys.Toggle, keys.Origin, keys.Scheme, keys.Exit}
+	return []key.Binding{keys.Toggle, keys.Origin, keys.Scheme, keys.Exit, constants.GlobalKeyMap.Quit}
 }
 
 type forgeItem struct {
@@ -127,6 +127,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
+	case key.Matches(km, constants.GlobalKeyMap.Quit):
+		return m, tea.Quit
 	case key.Matches(km, keys.Exit):
 		k, link := m.repoKey, m.link
 		return m, tea.Batch(

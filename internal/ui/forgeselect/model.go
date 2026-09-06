@@ -23,7 +23,7 @@ import (
 )
 
 type keyMap struct {
-	Toggle, Origin, Scheme, Add, Confirm, Exit, Cancel key.Binding
+	Toggle, Origin, Scheme, Add, Confirm, Exit key.Binding
 }
 
 var keys = keyMap{
@@ -32,12 +32,11 @@ var keys = keyMap{
 	Scheme:  key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "scheme")),
 	Add:     key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "add forge")),
 	Confirm: key.NewBinding(key.WithKeys("enter", "ctrl+p"), key.WithHelp("enter", "next")),
-	Exit:    key.NewBinding(key.WithKeys("backspace", "delete"), key.WithHelp("backspace", "cancel")),
-	Cancel:  key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
+	Exit:    key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
 }
 
 func helpKeys() []key.Binding {
-	return []key.Binding{keys.Toggle, keys.Origin, keys.Scheme, keys.Add, keys.Confirm, keys.Exit}
+	return []key.Binding{keys.Toggle, keys.Origin, keys.Scheme, keys.Add, keys.Confirm, keys.Exit, constants.GlobalKeyMap.Quit}
 }
 
 // forgeItem is a registry forge as shown in the selection list.
@@ -152,6 +151,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
+	case key.Matches(km, constants.GlobalKeyMap.Quit):
+		return m, tea.Quit
 	case key.Matches(km, keys.Exit):
 		return m, func() tea.Msg { return events.SetState{State: domain.StateMain} }
 	case key.Matches(km, keys.Toggle):
@@ -267,7 +268,7 @@ func (m *Model) startAdd() (tea.Model, tea.Cmd) {
 
 func (m *Model) updateAdding(km tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
-	case key.Matches(km, keys.Cancel):
+	case key.Matches(km, keys.Exit):
 		m.adding = false
 		m.resize()
 		m.nameInput.Blur()

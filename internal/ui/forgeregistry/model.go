@@ -19,7 +19,7 @@ import (
 )
 
 type keyMap struct {
-	Add, Edit, Delete, Save, Field, Exit, Cancel key.Binding
+	Add, Edit, Delete, Save, Field, Exit key.Binding
 }
 
 var keys = keyMap{
@@ -28,12 +28,11 @@ var keys = keyMap{
 	Delete: key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "delete")),
 	Save:   key.NewBinding(key.WithKeys("enter")),
 	Field:  key.NewBinding(key.WithKeys("tab")),
-	Exit:   key.NewBinding(key.WithKeys("backspace", "delete"), key.WithHelp("backspace", "save & back")),
-	Cancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
+	Exit:   key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "save & back")),
 }
 
 func helpKeys() []key.Binding {
-	return []key.Binding{keys.Add, keys.Edit, keys.Delete, keys.Exit}
+	return []key.Binding{keys.Add, keys.Edit, keys.Delete, keys.Exit, constants.GlobalKeyMap.Quit}
 }
 
 // forgeItem is a registry entry shown in the list.
@@ -150,6 +149,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
+	case key.Matches(km, constants.GlobalKeyMap.Quit):
+		return m, tea.Quit
 	case key.Matches(km, keys.Exit):
 		forges := m.forges
 		repos := m.repos
@@ -202,7 +203,7 @@ func (m *Model) startEdit(idx int) (tea.Model, tea.Cmd) {
 
 func (m *Model) updateEditing(km tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
-	case key.Matches(km, keys.Cancel):
+	case key.Matches(km, keys.Exit):
 		m.editing = false
 		m.resize()
 		m.nameInput.Blur()

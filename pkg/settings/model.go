@@ -28,6 +28,7 @@ type keyMap struct {
 	Next   key.Binding
 	Prev   key.Binding
 	Exit   key.Binding
+	Quit   key.Binding
 	Commit key.Binding
 	Cancel key.Binding
 }
@@ -42,8 +43,12 @@ var keys = keyMap{
 		key.WithHelp("←/h", "prev"),
 	),
 	Exit: key.NewBinding(
-		key.WithKeys("backspace", "delete"),
-		key.WithHelp("backspace", "back"),
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "back"),
+	),
+	Quit: key.NewBinding(
+		key.WithKeys("q", "ctrl+c"),
+		key.WithHelp("q", "quit"),
 	),
 	Commit: key.NewBinding(
 		key.WithKeys("enter"),
@@ -91,10 +96,10 @@ func New(title string, settings []Setting, width, height, widthPad, heightPad in
 	l.KeyMap.PrevPage = key.NewBinding()
 	l.KeyMap.NextPage = key.NewBinding()
 	l.AdditionalShortHelpKeys = func() []key.Binding {
-		return []key.Binding{keys.Prev, keys.Next, keys.Exit}
+		return []key.Binding{keys.Prev, keys.Next, keys.Exit, keys.Quit}
 	}
 	l.AdditionalFullHelpKeys = func() []key.Binding {
-		return []key.Binding{keys.Prev, keys.Next, keys.Exit}
+		return []key.Binding{keys.Prev, keys.Next, keys.Exit, keys.Quit}
 	}
 
 	input := textinput.New()
@@ -131,6 +136,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		idx := m.list.Index()
 		current := m.settingAt(idx)
 		switch {
+		case key.Matches(msg, keys.Quit):
+			return m, tea.Quit
+
 		case key.Matches(msg, keys.Exit):
 			return m, func() tea.Msg { return Exited{} }
 

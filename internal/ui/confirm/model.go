@@ -53,6 +53,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				commands.DeleteRepoCmd(m.AbsPath),
 				commands.SetState(domain.StateMain),
 			)
+		case key.Matches(msg, constants.GlobalKeyMap.Quit):
+			return m, tea.Quit
 		case key.Matches(msg, constants.ConfirmKeyMap.Exit):
 			cmds = append(cmds,
 				commands.SetState(domain.StateMain),

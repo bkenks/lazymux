@@ -35,6 +35,23 @@ func SetOnHelpType(helpType HelpType, bind key.Binding, shortHelp string, fullHe
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Global Key Map
+
+type globalKeyMap struct {
+	Quit key.Binding
+}
+
+var GlobalKeyMap = globalKeyMap{
+	Quit: key.NewBinding(
+		key.WithKeys("q", tea.KeyCtrlC.String()),
+		key.WithHelp("q", "quit"),
+	),
+}
+
+// End "Global Key Map"
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //// Default Key Map
 
 type defaultKeyMap struct {
@@ -222,8 +239,8 @@ var ConfirmKeyMap = confirmKeyMap{
 		key.WithHelp("ctrl+p", "delete now"),
 	),
 	Exit: key.NewBinding(
-		key.WithKeys(tea.KeyBackspace.String(), tea.KeyDelete.String()),
-		key.WithHelp(tea.KeyBackspace.String(), "back"),
+		key.WithKeys(tea.KeyEsc.String()),
+		key.WithHelp(tea.KeyEsc.String(), "back"),
 	),
 }
 
@@ -232,6 +249,7 @@ func (k confirmKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 		SetOnHelpType(helpType, ConfirmKeyMap.Move, "select", "select yes/no"),
 		SetOnHelpType(helpType, ConfirmKeyMap.Activate, "confirm", "confirm selection"),
 		SetOnHelpType(helpType, ConfirmKeyMap.Exit, "back", "back to menu"),
+		SetOnHelpType(helpType, GlobalKeyMap.Quit, "quit", "quit"),
 	}
 	return func() []key.Binding { return bindsWithHelp }
 }
