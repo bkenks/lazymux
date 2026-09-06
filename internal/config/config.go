@@ -32,8 +32,11 @@ const (
 
 type Tools struct {
 	Lazygit string `json:"lazygit"`
-	Editor  string `json:"editor"`
-	Shell   string `json:"shell"`
+	// LazygitEscQuit layers a lazymux-owned lazygit config (quitOnTopLevelReturn)
+	// over the user's own so esc at lazygit's top level returns to the repo list.
+	LazygitEscQuit bool   `json:"lazygitEscQuit"`
+	Editor         string `json:"editor"`
+	Shell          string `json:"shell"`
 }
 
 type UI struct {
@@ -137,9 +140,10 @@ func Default() Config {
 		BaseDir:         defaultBaseDir(),
 		PlaceholderHost: DefaultPlaceholderHost,
 		Tools: Tools{
-			Lazygit: "lazygit",
-			Editor:  "codium",
-			Shell:   "",
+			Lazygit:        "lazygit",
+			LazygitEscQuit: true,
+			Editor:         "codium",
+			Shell:          "",
 		},
 		UI: UI{
 			Theme:        "default",

@@ -14,13 +14,14 @@ import (
 
 // settings keys persisted in config.toml
 const (
-	skEditor        = "editor"
-	skProtocol      = "default_protocol"
-	skConfirmDelete = "confirm_delete"
-	skShowFullPath  = "show_full_path"
-	skShowForge     = "show_forge"
-	skShowStats     = "show_stats"
-	skSortMode      = "sort_mode"
+	skEditor         = "editor"
+	skLazygitEscQuit = "lazygit_esc_quit"
+	skProtocol       = "default_protocol"
+	skConfirmDelete  = "confirm_delete"
+	skShowFullPath   = "show_full_path"
+	skShowForge      = "show_forge"
+	skShowStats      = "show_stats"
+	skSortMode       = "sort_mode"
 )
 
 // sortOptions are the repo list orderings offered in the settings screen, in
@@ -91,6 +92,7 @@ func validateEditorCommand(command string) (string, error) {
 func buildSettingsItems(cfg config.Config) []settings.Setting {
 	return []settings.Setting{
 		settings.NewText(skEditor, "Editor", cfg.Tools.Editor, validateEditorCommand),
+		settings.NewToggle(skLazygitEscQuit, "Esc quits lazygit", cfg.Tools.LazygitEscQuit),
 		settings.NewSelect(skProtocol, "Default clone protocol", protocolOptions, indexOrZero(protocolOptions, cfg.Behavior.DefaultProtocol)),
 		settings.NewToggle(skConfirmDelete, "Confirm before deleting", cfg.Behavior.ConfirmDelete),
 		settings.NewToggle(skShowFullPath, "Show full path on rows", cfg.UI.ShowFullPath),
@@ -106,6 +108,10 @@ func (m *ModelManager) applySettingChange(msg settings.SettingChanged) {
 	switch msg.Key {
 	case skEditor:
 		m.cfg.Tools.Editor = msg.Setting.ValueString()
+	case skLazygitEscQuit:
+		if v, ok := msg.Setting.Value().(bool); ok {
+			m.cfg.Tools.LazygitEscQuit = v
+		}
 	case skProtocol:
 		m.cfg.Behavior.DefaultProtocol = msg.Setting.ValueString()
 	case skConfirmDelete:
