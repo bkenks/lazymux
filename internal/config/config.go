@@ -37,7 +37,21 @@ type Tools struct {
 	LazygitEscQuit bool   `json:"lazygitEscQuit"`
 	Editor         string `json:"editor"`
 	Shell          string `json:"shell"`
-	ClaudeWorkDir  string `json:"claudeWorkDir"`
+	ClaudeStartDir string `json:"claudeStartDir"`
+}
+
+func ResolveClaudeStartDir(dir string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return dir
+	}
+	if dir == "" || dir == "~" {
+		return home
+	}
+	if rest, ok := strings.CutPrefix(dir, "~/"); ok {
+		return filepath.Join(home, rest)
+	}
+	return dir
 }
 
 type UI struct {

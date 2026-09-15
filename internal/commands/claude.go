@@ -2,29 +2,19 @@ package commands
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 
+	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/events"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 var claudeAttachID = regexp.MustCompile(`claude attach ([0-9a-zA-Z]+)`)
 
-func resolveClaudeWorkDir() string {
-	if dir := cfg().Tools.ClaudeWorkDir; dir != "" {
-		return dir
-	}
-	if home, err := os.UserHomeDir(); err == nil {
-		return home
-	}
-	return "."
-}
-
 func OpenClaudeAgentsCmd() tea.Cmd {
-	return execClaude(resolveClaudeWorkDir(), "agents")
+	return execClaude(config.ResolveClaudeStartDir(cfg().Tools.ClaudeStartDir), "agents")
 }
 
 func NewClaudeSessionCmd(absPath string) tea.Cmd {
