@@ -37,6 +37,7 @@ type Tools struct {
 	LazygitEscQuit bool   `json:"lazygitEscQuit"`
 	Editor         string `json:"editor"`
 	Shell          string `json:"shell"`
+	ClaudeWorkDir  string `json:"claudeWorkDir"`
 }
 
 type UI struct {

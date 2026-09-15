@@ -186,6 +186,17 @@ func (m *Model) handleKey(msg tea.KeyMsg) (bool, []tea.Cmd) {
 	case key.Matches(msg, constants.RepoListKeyMap.CopyPath):
 		cmds = append(cmds, commands.CopyPathCmd(AbsRepoPath(m.List.SelectedItem())))
 
+	case key.Matches(msg, constants.RepoListKeyMap.NewClaude):
+		repo := ConvertToRepoType(m.List.SelectedItem())
+		if repo.AbsPath == "" {
+			break
+		}
+		domain.SaveInteraction(repo.Path)
+		cmds = append(cmds, commands.NewClaudeSessionCmd(repo.AbsPath))
+
+	case key.Matches(msg, constants.RepoListKeyMap.ClaudeView):
+		cmds = append(cmds, commands.OpenClaudeAgentsCmd())
+
 	case key.Matches(msg, constants.RepoListKeyMap.Shell):
 		repo := ConvertToRepoType(m.List.SelectedItem())
 		if repo.AbsPath == "" {

@@ -99,6 +99,8 @@ type repoListKeyMap struct {
 	Refresh     key.Binding
 	CopyPath    key.Binding
 	Shell       key.Binding
+	NewClaude   key.Binding
+	ClaudeView  key.Binding
 	Quit        key.Binding
 	PullAll     key.Binding
 	Forges      key.Binding
@@ -141,6 +143,14 @@ var RepoListKeyMap = repoListKeyMap{
 		key.WithKeys("s"),
 		key.WithHelp("s", "shell"),
 	),
+	NewClaude: key.NewBinding(
+		key.WithKeys("c"),
+		key.WithHelp("c", "new claude"),
+	),
+	ClaudeView: key.NewBinding(
+		key.WithKeys("a"),
+		key.WithHelp("a", "claude agents"),
+	),
 	Quit: key.NewBinding(
 		key.WithKeys("q", tea.KeyCtrlC.String()),
 		key.WithHelp("q", "quit"),
@@ -178,6 +188,8 @@ func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 		binds := []key.Binding{
 			SetOnHelpType(Short, RepoListKeyMap.Select, "lazygit", ""),
 			SetOnHelpType(Short, RepoListKeyMap.VSCode, "editor", ""),
+			SetOnHelpType(Short, RepoListKeyMap.NewClaude, "new claude", ""),
+			SetOnHelpType(Short, RepoListKeyMap.ClaudeView, "agents", ""),
 			SetOnHelpType(Short, RepoListKeyMap.Clone, "clone", ""),
 			SetOnHelpType(Short, RepoListKeyMap.Forges, "forges", ""),
 			SetOnHelpType(Short, RepoListKeyMap.Settings, "settings", ""),
@@ -189,6 +201,8 @@ func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 		SetOnHelpType(Full, RepoListKeyMap.Select, "lazygit", "open with lazygit"),
 		SetOnHelpType(Full, RepoListKeyMap.VSCode, "editor", "open in editor"),
 		SetOnHelpType(Full, RepoListKeyMap.Shell, "shell", "shell in repo dir"),
+		SetOnHelpType(Full, RepoListKeyMap.NewClaude, "new claude", "new claude session in repo"),
+		SetOnHelpType(Full, RepoListKeyMap.ClaudeView, "agents", "open claude agents view"),
 		SetOnHelpType(Full, RepoListKeyMap.CopyPath, "copy", "copy path"),
 		SetOnHelpType(Full, RepoListKeyMap.Refresh, "refresh", "refresh list"),
 		SetOnHelpType(Full, RepoListKeyMap.Clone, "clone", "clone new repos"),
