@@ -63,6 +63,26 @@ func TestForwardsKeysToProcess(t *testing.T) {
 	waitForScreen(t, m, "got:hi")
 }
 
+func TestOutputWaitEndsAfterEsc(t *testing.T) {
+	m := startSession(t, "sleep 30", t.TempDir())
+	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+
+	result := make(chan tea.Msg, 1)
+	go func() {
+		for {
+			if msg := m.waitForOutput()(); msg == nil {
+				result <- msg
+				return
+			}
+		}
+	}()
+	select {
+	case <-result:
+	case <-time.After(5 * time.Second):
+		t.Fatal("waiting for output never ended after esc; the goroutine leaks")
+	}
+}
+
 func TestStaysOpenAfterExitUntilEsc(t *testing.T) {
 	m := startSession(t, "echo done; exit 3", t.TempDir())
 	waitForScreen(t, m, "done")

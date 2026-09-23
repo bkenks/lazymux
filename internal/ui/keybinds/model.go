@@ -196,7 +196,13 @@ func (m *Model) applyForm() tea.Cmd {
 		m.keybinds = append(m.keybinds[:m.editIndex], m.keybinds[m.editIndex+1:]...)
 	case purposeEdit:
 		saved := *m.draft
-		saved.Keys, _ = keybind.Parse(saved.Keys)
+		keys, err := keybind.Parse(saved.Keys)
+		if err != nil {
+			return func() tea.Msg {
+				return events.Toast{Level: events.ToastError, Msg: "keybind not saved: " + err.Error()}
+			}
+		}
+		saved.Keys = keys
 		if m.editIndex < 0 {
 			m.keybinds = append(m.keybinds, saved)
 		} else {

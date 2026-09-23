@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/progress"
+	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/bkenks/lazymux/internal/commands"
@@ -420,9 +421,24 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	var cmd tea.Cmd
-	m.active, cmd = m.active.Update(msg)
+	if isPullProgress(msg) {
+		_, cmd = m.main.Update(msg)
+	} else {
+		m.active, cmd = m.active.Update(msg)
+	}
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
+}
+
+// isPullProgress reports whether msg drives the repo list's pull-all progress.
+// Those always go to the repo list, so a pull keeps going while another
+// screen is open.
+func isPullProgress(msg tea.Msg) bool {
+	switch msg.(type) {
+	case events.PullAllStarted, events.PullResult, events.PullAllDrained, spinner.TickMsg:
+		return true
+	}
+	return false
 }
 
 func (m *ModelManager) View() tea.View {
@@ -463,7 +479,7 @@ func (m *ModelManager) runKeybind(msg events.RunKeybind) tea.Cmd {
 		return m.toastCmd(events.ToastError, err.Error())
 	}
 	m.terminal = session
-	return tea.Batch(session.Init(), commands.SetState(domain.StateTerminal))
+	return tea.Sequence(commands.SetState(domain.StateTerminal), session.Init())
 }
 
 // renderCloneProgress draws a gradient bar while a clone batch is in flight.

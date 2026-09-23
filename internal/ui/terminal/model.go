@@ -60,6 +60,7 @@ func New(title string, cmd *exec.Cmd) (*Model, error) {
 		_ = pty.Close()
 		return nil, fmt.Errorf("start %s: %w", title, err)
 	}
+	releaseChildSide(pty)
 
 	m := &Model{
 		title:    title,
@@ -83,10 +84,12 @@ func (m *Model) Init() tea.Cmd {
 }
 
 // copyOutput feeds process output to the emulator until the pty closes, then
-// closes the emulator's input pipe to end forwardInput. The pipe is closed
-// rather than the emulator because Emulator.Close isn't safe alongside Read.
+// closes the output channel to end waitForOutput and the emulator's input pipe
+// to end forwardInput. The pipe is closed rather than the emulator because
+// Emulator.Close isn't safe alongside Read.
 func (m *Model) copyOutput() {
 	defer func() {
+		close(m.output)
 		if pipe, ok := m.emulator.InputPipe().(io.Closer); ok {
 			_ = pipe.Close()
 		}
@@ -113,7 +116,9 @@ func (m *Model) forwardInput() {
 
 func (m *Model) waitForOutput() tea.Cmd {
 	return func() tea.Msg {
-		<-m.output
+		if _, isOpen := <-m.output; !isOpen {
+			return nil
+		}
 		return outputMsg{model: m}
 	}
 }
@@ -140,7 +145,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.model == m {
 			m.hasExited = true
 			m.exitErr = msg.err
-			m.close()
 		}
 
 	case tea.KeyPressMsg:

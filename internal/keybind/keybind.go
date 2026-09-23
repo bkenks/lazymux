@@ -55,7 +55,8 @@ var namedKeys = map[string]string{
 
 // Parse turns a typed combo such as "Ctrl + Shift + K" into the canonical
 // keystroke "ctrl+shift+k". A lone uppercase letter is read as shift+letter,
-// matching how bubbletea reports it.
+// matching how bubbletea reports it; with modifiers, letter case is ignored so
+// "Ctrl+G" is ctrl+g.
 func Parse(input string) (string, error) {
 	tokens, err := splitCombo(input)
 	if err != nil {
@@ -81,7 +82,7 @@ func Parse(input string) (string, error) {
 			return "", err
 		}
 		keyName = name
-		if shifted {
+		if shifted && len(tokens) == 1 {
 			modifiers["shift"] = true
 		}
 	}

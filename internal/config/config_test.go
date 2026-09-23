@@ -3,8 +3,28 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestLoadCanonicalizesHandEditedKeybinds(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".lazymux.json")
+	t.Setenv("LAZYMUX_CONFIG", path)
+
+	edited := `{"keybinds":[{"name":"log","keys":"Ctrl + G","command":"git log"},` +
+		`{"name":"broken","keys":"ctrl + banana","command":"true"}]}`
+	if err := os.WriteFile(path, []byte(edited), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := Load()
+	if got := cfg.Keybinds[0].Keys; got != "ctrl+g" {
+		t.Errorf("Keys = %q, want ctrl+g", got)
+	}
+	if !strings.Contains(cfg.LoadWarning, "broken") {
+		t.Errorf("LoadWarning = %q, want it to name the unparseable keybind", cfg.LoadWarning)
+	}
+}
 
 func TestSaveLoadRoundtrip(t *testing.T) {
 	dir := t.TempDir()

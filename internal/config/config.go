@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/bkenks/lazymux/internal/keybind"
 )
 
 // DefaultPlaceholderHost is the fake host stored in every managed repo's
@@ -266,6 +267,14 @@ func normalize(cfg Config) Config {
 	}
 	if cfg.Keybinds == nil {
 		cfg.Keybinds = []Keybind{}
+	}
+	for i, bind := range cfg.Keybinds {
+		keys, err := keybind.Parse(bind.Keys)
+		if err != nil {
+			cfg.LoadWarning = fmt.Sprintf("keybind %q won't run: %v", bind.Name, err)
+			continue
+		}
+		cfg.Keybinds[i].Keys = keys
 	}
 	return cfg
 }

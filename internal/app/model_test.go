@@ -1,0 +1,51 @@
+package app
+
+import (
+	"testing"
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+	"github.com/bkenks/lazymux/internal/config"
+	"github.com/bkenks/lazymux/internal/domain"
+	"github.com/bkenks/lazymux/internal/events"
+)
+
+// collectMsgs runs cmd and any batch inside it, skipping commands that don't
+// return quickly (timers), and returns the messages produced.
+func collectMsgs(cmd tea.Cmd) []tea.Msg {
+	if cmd == nil {
+		return nil
+	}
+	result := make(chan tea.Msg, 1)
+	go func() { result <- cmd() }()
+	select {
+	case msg := <-result:
+		if batch, ok := msg.(tea.BatchMsg); ok {
+			var msgs []tea.Msg
+			for _, inner := range batch {
+				msgs = append(msgs, collectMsgs(inner)...)
+			}
+			return msgs
+		}
+		return []tea.Msg{msg}
+	case <-time.After(50 * time.Millisecond):
+		return nil
+	}
+}
+
+func TestPullKeepsGoingWhileAnotherScreenIsOpen(t *testing.T) {
+	t.Setenv("LAZYMUX_CONFIG", t.TempDir()+"/.lazymux.json")
+	m := New(config.Default(), "test")
+	m.Update(events.SetState{State: domain.StateSettings})
+
+	results := make(chan events.PullResult, 1)
+	results <- events.PullResult{RepoPath: "me/demo"}
+	_, cmd := m.Update(events.PullAllStarted{Total: 1, Results: results})
+
+	for _, msg := range collectMsgs(cmd) {
+		if _, ok := msg.(events.PullResult); ok {
+			return
+		}
+	}
+	t.Error("pull results stopped being read once another screen was active")
+}

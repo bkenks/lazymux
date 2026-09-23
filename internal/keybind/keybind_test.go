@@ -11,6 +11,8 @@ func TestParseCanonicalizes(t *testing.T) {
 		"option+command+6":     "alt+super+6",
 		"K":                    "shift+k",
 		"shift + K":            "shift+k",
+		"Ctrl + G":             "ctrl+g",
+		"alt+K":                "alt+k",
 		"tab":                  "tab",
 		"return":               "enter",
 		"del":                  "delete",
