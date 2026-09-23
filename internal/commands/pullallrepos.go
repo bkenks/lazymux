@@ -1,14 +1,20 @@
 package commands
 
 import (
+	"context"
+	"os"
 	"os/exec"
-	"strings"
 	"sync"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/repomgr"
 )
+
+// pullTimeout bounds one repo's `git pull`, so a hung network connection or a
+// credential prompt can't keep a pull-all from finishing.
+const pullTimeout = 2 * time.Minute
 
 // PullAllReposCmd scans every managed repo and kicks off `git pull --ff-only`
 // against each in parallel (capped at 8 concurrent network ops), streaming one
@@ -44,13 +50,7 @@ func PullAllReposCmd() tea.Cmd {
 				go func(path string) {
 					defer wg.Done()
 					defer func() { <-sem }()
-
-					output, err := exec.Command("git", "-C", path, "pull", "--ff-only").CombinedOutput()
-					if err != nil {
-						ch <- events.PullResult{RepoPath: path, Reason: firstLine(string(output))}
-						return
-					}
-					ch <- events.PullResult{RepoPath: path}
+					ch <- pullRepo(path)
 				}(p)
 			}
 			wg.Wait()
@@ -59,6 +59,23 @@ func PullAllReposCmd() tea.Cmd {
 
 		return events.PullAllStarted{Total: len(paths), Results: ch}
 	}
+}
+
+// pullRepo fast-forwards one repo. Git is told not to prompt for credentials,
+// since the TUI owns the terminal while a pull-all runs.
+func pullRepo(path string) events.PullResult {
+	ctx, cancel := context.WithTimeout(context.Background(), pullTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "git", "-C", path, "pull", "--ff-only")
+	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
+	output, err := cmd.CombinedOutput()
+	if ctx.Err() != nil {
+		return events.PullResult{RepoPath: path, Reason: "timed out after " + pullTimeout.String()}
+	}
+	if err != nil {
+		return events.PullResult{RepoPath: path, Reason: repomgr.FirstLine(string(output))}
+	}
+	return events.PullResult{RepoPath: path}
 }
 
 // WaitForPullCmd blocks on the next PullResult from the pull-all channel,
@@ -71,12 +88,4 @@ func WaitForPullCmd(ch <-chan events.PullResult) tea.Cmd {
 		}
 		return r
 	}
-}
-
-func firstLine(s string) string {
-	s = strings.TrimSpace(s)
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		return s[:i]
-	}
-	return s
 }

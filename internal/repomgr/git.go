@@ -2,10 +2,12 @@ package repomgr
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -18,54 +20,37 @@ func RepoDir(baseDir, key string) string {
 	return filepath.Join(baseDir, filepath.FromSlash(key))
 }
 
-// Clone clones from the real URL into <baseDir>/<key>, then rewrites the repo
-// to use a placeholder origin resolved to the origin forge via insteadOf.
-// Cloning happens against the real URL so existing credentials work; the
-// placeholder is applied only afterwards.
-func Clone(cfg config.Config, realURL string, u RepoURL, link config.RepoLink) error {
-	dest := RepoDir(cfg.BaseDir, u.Key())
-	if _, err := os.Stat(dest); err == nil {
-		return fmt.Errorf("%s already exists", dest)
-	}
-	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
-		return err
-	}
-	out, err := exec.Command("git", "clone", realURL, dest).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("git clone: %s", firstLine(string(out)))
-	}
-	return RenderGitConfig(cfg, u.Key(), link)
-}
-
 // RenderGitConfig makes a repo's git config match its RepoLink: origin points
 // at the placeholder host, a single local insteadOf rewrites the placeholder to
 // the origin forge (so fetch/pull go there), and one remote.origin.pushurl is
 // written per upstream forge, which makes a push fan out to all of them. It's
 // idempotent — stale lazymux-managed insteadOf rules and every existing pushurl
 // are cleared first — so it can be re-run whenever the links or scheme change.
+// The origin forge is looked up before anything is changed, so a missing forge
+// leaves the repo's existing config working.
 func RenderGitConfig(cfg config.Config, key string, link config.RepoLink) error {
 	dir := RepoDir(cfg.BaseDir, key)
-	scheme := normalizeScheme(link.Scheme)
-
-	if err := clearManagedInsteadOf(dir, cfg.PlaceholderHost); err != nil {
-		return err
-	}
+	scheme := config.NormalizeScheme(link.Scheme)
 
 	origin, ok := cfg.ForgeByName(link.Origin)
 	if !ok {
 		return fmt.Errorf("origin forge %q not in registry", link.Origin)
 	}
 
+	if err := clearManagedInsteadOf(dir, cfg.PlaceholderHost); err != nil {
+		return err
+	}
+
 	phBase := hostBase(scheme, cfg.PlaceholderHost)
 	originBase := hostBase(scheme, origin.Host)
 
 	// url.<originBase>.insteadOf = <placeholderBase>
-	if err := gitConfig(dir, "url."+originBase+".insteadOf", phBase); err != nil {
+	if _, err := runGit(dir, "config", "--local", "url."+originBase+".insteadOf", phBase); err != nil {
 		return err
 	}
 	// origin stores the stable placeholder URL.
-	placeholderURL := phBase + key + ".git"
-	if err := gitConfig(dir, "remote.origin.url", placeholderURL); err != nil {
+	placeholderURL := RemoteURL(scheme, cfg.PlaceholderHost, key)
+	if _, err := runGit(dir, "config", "--local", "remote.origin.url", placeholderURL); err != nil {
 		return err
 	}
 	return renderPushURLs(cfg, dir, key, scheme, link)
@@ -87,45 +72,40 @@ func renderPushURLs(cfg config.Config, dir, key, scheme string, link config.Repo
 		if !ok {
 			continue
 		}
-		if err := gitConfigAdd(dir, "remote.origin.pushurl", hostBase(scheme, forge.Host)+key+".git"); err != nil {
+		pushURL := RemoteURL(scheme, forge.Host, key)
+		if _, err := runGit(dir, "config", "--local", "--add", "remote.origin.pushurl", pushURL); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// clearManagedInsteadOf removes every url.<base>.insteadOf whose value points
-// at our placeholder host, so switching the origin forge never leaves two rules
-// competing for the same placeholder prefix.
+// clearManagedInsteadOf removes every url.<base>.insteadOf whose value is our
+// placeholder prefix (for either scheme), so switching the origin forge never
+// leaves two rules competing for the same placeholder prefix.
 func clearManagedInsteadOf(dir, placeholderHost string) error {
-	out, err := exec.Command("git", "-C", dir, "config", "--local",
-		"--get-regexp", `^url\..*\.insteadof$`).Output()
-	if err != nil {
-		// Exit status 1 just means no matching keys — not an error for us.
-		return nil
+	managed := []string{
+		hostBase(config.SchemeHTTPS, placeholderHost),
+		hostBase(config.SchemeSSH, placeholderHost),
 	}
-	sc := bufio.NewScanner(strings.NewReader(string(out)))
+	out, err := runGit(dir, "config", "--local", "--get-regexp", `^url\..*\.insteadof$`)
+	if exitCode(err) == 1 {
+		return nil // no insteadOf rules at all
+	}
+	if err != nil {
+		return err
+	}
+	sc := bufio.NewScanner(strings.NewReader(out))
 	for sc.Scan() {
 		keyName, value, ok := strings.Cut(sc.Text(), " ")
-		if !ok {
-			continue
-		}
-		if !strings.Contains(value, placeholderHost) {
+		if !ok || !slices.Contains(managed, value) {
 			continue
 		}
 		// keyName is url.<base>.insteadof — strip to the url.<base> section.
 		section := strings.TrimSuffix(keyName, ".insteadof")
-		_ = exec.Command("git", "-C", dir, "config", "--local",
-			"--remove-section", section).Run()
-	}
-	return nil
-}
-
-// gitConfigAdd appends a value to a multi-valued config key.
-func gitConfigAdd(dir, key, value string) error {
-	out, err := exec.Command("git", "-C", dir, "config", "--local", "--add", key, value).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("git config --add %s: %s", key, firstLine(string(out)))
+		if _, err := runGit(dir, "config", "--local", "--remove-section", section); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -133,20 +113,33 @@ func gitConfigAdd(dir, key, value string) error {
 // unsetAll drops every value of a config key. Exit status 5 means the key was
 // already absent, which is the desired end state.
 func unsetAll(dir, key string) error {
-	cmd := exec.Command("git", "-C", dir, "config", "--local", "--unset-all", key)
-	out, err := cmd.CombinedOutput()
-	if err != nil && cmd.ProcessState.ExitCode() != 5 {
-		return fmt.Errorf("git config --unset-all %s: %s", key, firstLine(string(out)))
+	_, err := runGit(dir, "config", "--local", "--unset-all", key)
+	if exitCode(err) == 5 {
+		return nil
 	}
-	return nil
+	return err
 }
 
-func gitConfig(dir, key, value string) error {
-	out, err := exec.Command("git", "-C", dir, "config", "--local", key, value).CombinedOutput()
+// runGit runs git with args in dir and returns its combined output. A failure
+// is reported as the git subcommand plus the first line git printed; the
+// underlying *exec.ExitError stays reachable through errors.As.
+func runGit(dir string, args ...string) (string, error) {
+	out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("git config %s: %s", key, firstLine(string(out)))
+		return string(out), fmt.Errorf("git %s: %s: %w", strings.Join(args[:min(len(args), 3)], " "),
+			FirstLine(string(out)), err)
 	}
-	return nil
+	return string(out), nil
+}
+
+// exitCode returns the exit status carried by an error from runGit, or -1 if
+// err is nil or git didn't run to completion.
+func exitCode(err error) int {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode()
+	}
+	return -1
 }
 
 // List walks baseDir and returns every git repo found, annotated with its
@@ -166,29 +159,33 @@ func ListMeta(cfg config.Config) ([]domain.Repo, error) {
 
 func list(cfg config.Config, withStats bool) ([]domain.Repo, error) {
 	base := cfg.BaseDir
-	if _, err := os.Stat(base); os.IsNotExist(err) {
+	// WalkDir doesn't follow a symlinked root, so walk its target and report
+	// paths under base as configured.
+	root, err := filepath.EvalSymlinks(base)
+	if os.IsNotExist(err) {
 		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("resolving %s: %w", base, err)
 	}
 	interactions := domain.LoadInteractions()
 
 	var repos []domain.Repo
-	err := filepath.WalkDir(base, func(path string, d os.DirEntry, err error) error {
+	err = filepath.WalkDir(root, func(walked string, d os.DirEntry, err error) error {
 		if err != nil {
 			return nil // skip unreadable dirs rather than aborting the whole walk
 		}
-		if !d.IsDir() {
+		if !d.IsDir() || walked == root {
 			return nil
 		}
-		if path == base {
-			return nil
-		}
-		if _, statErr := os.Stat(filepath.Join(path, ".git")); statErr != nil {
+		if _, statErr := os.Stat(filepath.Join(walked, ".git")); statErr != nil {
 			return nil // not a repo root; keep descending
 		}
-		rel, relErr := filepath.Rel(base, path)
+		rel, relErr := filepath.Rel(root, walked)
 		if relErr != nil {
 			return filepath.SkipDir
 		}
+		path := filepath.Join(base, rel)
 		key := filepath.ToSlash(rel)
 		link := cfg.Repos[key]
 		var stats repoStats
@@ -213,13 +210,17 @@ func list(cfg config.Config, withStats bool) ([]domain.Repo, error) {
 }
 
 // Remove deletes a repo directory and prunes now-empty namespace parents up to
-// (but not including) baseDir.
+// (but not including) baseDir. It refuses any path that isn't strictly inside
+// baseDir.
 func Remove(baseDir, absPath string) error {
+	if !isInside(baseDir, absPath) {
+		return fmt.Errorf("refusing to delete %s: not inside %s", absPath, baseDir)
+	}
 	if err := os.RemoveAll(absPath); err != nil {
 		return err
 	}
 	dir := filepath.Dir(absPath)
-	for dir != baseDir && strings.HasPrefix(dir, baseDir) {
+	for isInside(baseDir, dir) {
 		entries, err := os.ReadDir(dir)
 		if err != nil || len(entries) > 0 {
 			break
@@ -230,6 +231,15 @@ func Remove(baseDir, absPath string) error {
 		dir = filepath.Dir(dir)
 	}
 	return nil
+}
+
+// isInside reports whether path is strictly below dir.
+func isInside(dir, path string) bool {
+	rel, err := filepath.Rel(dir, path)
+	if err != nil {
+		return false
+	}
+	return rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // repoStats holds the local git signals shown in the repo list.
@@ -272,9 +282,9 @@ func countLines(s string) int {
 	return strings.Count(s, "\n") + 1
 }
 
-func firstLine(s string) string {
-	// Cut returns the whole string when there's no newline, which is what we
-	// want for single-line output.
+// FirstLine returns the first line of s with surrounding whitespace trimmed,
+// for turning a command's output into a one-line error.
+func FirstLine(s string) string {
 	first, _, _ := strings.Cut(strings.TrimSpace(s), "\n")
 	return first
 }

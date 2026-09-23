@@ -7,16 +7,13 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-)
 
-const (
-	SchemeHTTPS = "https"
-	SchemeSSH   = "ssh"
+	"github.com/bkenks/lazymux/internal/config"
 )
 
 // RepoURL is a parsed git remote, split into the parts lazymux cares about.
 type RepoURL struct {
-	Scheme    string // SchemeHTTPS | SchemeSSH
+	Scheme    string // config.SchemeHTTPS | config.SchemeSSH
 	Host      string // e.g. github.com
 	Namespace string // e.g. bkenks, or group/subgroup for nested namespaces
 	Name      string // repo name, without .git
@@ -46,9 +43,9 @@ func ParseRepoURL(raw string) (RepoURL, error) {
 	}
 
 	if m := urlRe.FindStringSubmatch(raw); m != nil {
-		scheme := SchemeHTTPS
+		scheme := config.SchemeHTTPS
 		if strings.EqualFold(m[1], "ssh") || strings.EqualFold(m[1], "git") {
-			scheme = SchemeSSH
+			scheme = config.SchemeSSH
 		}
 		ns, name, err := splitPath(m[3])
 		if err != nil {
@@ -62,32 +59,26 @@ func ParseRepoURL(raw string) (RepoURL, error) {
 		if err != nil {
 			return RepoURL{}, err
 		}
-		return RepoURL{Scheme: SchemeSSH, Host: m[2], Namespace: ns, Name: name}, nil
+		return RepoURL{Scheme: config.SchemeSSH, Host: m[2], Namespace: ns, Name: name}, nil
 	}
 
 	return RepoURL{}, fmt.Errorf("unrecognized git url: %q", raw)
 }
 
-// splitPath separates "group/subgroup/repo" into namespace + repo name.
+// splitPath separates "group/subgroup/repo" into namespace + repo name. Empty,
+// "." and ".." segments are rejected, since the result becomes both a config
+// key and a path under the base dir.
 func splitPath(p string) (namespace, name string, err error) {
 	p = strings.TrimPrefix(strings.TrimSuffix(p, "/"), "/")
 	p = strings.TrimSuffix(p, ".git")
-	idx := strings.LastIndex(p, "/")
-	if idx < 0 {
-		if p == "" {
-			return "", "", fmt.Errorf("url has no repo path")
+	segments := strings.Split(p, "/")
+	for _, s := range segments {
+		if s == "" || s == "." || s == ".." {
+			return "", "", fmt.Errorf("url path %q has an empty, . or .. segment", p)
 		}
-		return "", p, nil // no namespace
 	}
-	return p[:idx], p[idx+1:], nil
-}
-
-// normalizeScheme coerces an arbitrary scheme string to one we support.
-func normalizeScheme(scheme string) string {
-	if strings.EqualFold(scheme, SchemeSSH) {
-		return SchemeSSH
-	}
-	return SchemeHTTPS
+	last := len(segments) - 1
+	return strings.Join(segments[:last], "/"), segments[last], nil
 }
 
 // hostBase returns the URL prefix for a host under a given scheme — the value
@@ -96,7 +87,7 @@ func normalizeScheme(scheme string) string {
 //	https -> "https://host/"
 //	ssh   -> "git@host:"
 func hostBase(scheme, host string) string {
-	if normalizeScheme(scheme) == SchemeSSH {
+	if config.NormalizeScheme(scheme) == config.SchemeSSH {
 		return "git@" + host + ":"
 	}
 	return "https://" + host + "/"

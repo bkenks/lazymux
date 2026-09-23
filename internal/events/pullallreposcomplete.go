@@ -6,13 +6,9 @@ import (
 	"strings"
 )
 
-type SkippedPull struct {
-	RepoPath string
-	Reason   string
-}
-
 // PullResult reports one repo's `git pull` outcome as it lands. An empty Reason
 // means the pull succeeded; otherwise it carries the first line of git's output.
+// An empty RepoPath means the pull-all failed before reaching any repo.
 type PullResult struct {
 	RepoPath string
 	Reason   string
@@ -39,7 +35,7 @@ func (PullAllDrained) isEvent() {}
 // draining every PullResult; the app refreshes and toasts from it.
 type PullAllReposComplete struct {
 	Pulled  int
-	Skipped []SkippedPull
+	Skipped []PullResult
 }
 
 func (PullAllReposComplete) isEvent() {}
@@ -51,7 +47,11 @@ func (e PullAllReposComplete) Summary() string {
 	}
 	names := make([]string, 0, len(e.Skipped))
 	for _, s := range e.Skipped {
-		names = append(names, filepath.Base(s.RepoPath))
+		if s.RepoPath == "" {
+			names = append(names, s.Reason)
+		} else {
+			names = append(names, filepath.Base(s.RepoPath))
+		}
 	}
 	return fmt.Sprintf("Pulled %d, skipped %d: %s",
 		e.Pulled, len(e.Skipped), strings.Join(names, ", "))

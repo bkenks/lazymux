@@ -200,8 +200,9 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// hand off to the forge-select screen before cloning.
 			var pending []repomgr.PendingClone
 			var bad int
+			seen := map[string]bool{}
 			for _, raw := range msg.RepoUrls {
-				if raw == "" {
+				if strings.TrimSpace(raw) == "" {
 					continue
 				}
 				p, err := repomgr.NewPendingClone(m.cfg, raw)
@@ -209,6 +210,10 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					bad++
 					continue
 				}
+				if seen[p.URL.Key()] {
+					continue // the same repo pasted twice would clone into one directory
+				}
+				seen[p.URL.Key()] = true
 				pending = append(pending, p)
 			}
 			if bad > 0 {

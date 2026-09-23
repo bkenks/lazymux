@@ -28,7 +28,7 @@ type Model struct {
 	pullDone  int
 	pullTotal int
 	pulled    int
-	skipped   []events.SkippedPull
+	skipped   []events.PullResult
 	progress  progress.Model
 	spinner   spinner.Model
 }
@@ -123,7 +123,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Reason == "" {
 			m.pulled++
 		} else {
-			m.skipped = append(m.skipped, events.SkippedPull{RepoPath: msg.RepoPath, Reason: msg.Reason})
+			m.skipped = append(m.skipped, msg)
 		}
 		cmds = append(cmds, commands.WaitForPullCmd(m.pullCh))
 

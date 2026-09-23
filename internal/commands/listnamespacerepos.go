@@ -11,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/events"
+	"github.com/bkenks/lazymux/internal/repomgr"
 )
 
 // giteaPageSize and giteaMaxPages bound the `tea repos list` pagination loop
@@ -56,7 +57,7 @@ func listGitHubRepos(namespace, protocol string) ([]string, error) {
 	out, err := exec.Command("gh", "repo", "list", namespace,
 		"--json", "sshUrl,url", "--limit", strconv.Itoa(githubListCap)).CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("gh repo list %s: %s", namespace, firstLine(string(out)))
+		return nil, fmt.Errorf("gh repo list %s: %s", namespace, repomgr.FirstLine(string(out)))
 	}
 	var repos []struct {
 		SSHUrl string `json:"sshUrl"`
@@ -67,11 +68,7 @@ func listGitHubRepos(namespace, protocol string) ([]string, error) {
 	}
 	urls := make([]string, 0, len(repos))
 	for _, r := range repos {
-		if protocol == "ssh" {
-			urls = append(urls, r.SSHUrl)
-		} else {
-			urls = append(urls, r.URL)
-		}
+		urls = append(urls, pickCloneURL(protocol, r.SSHUrl, r.URL))
 	}
 	return urls, nil
 }
@@ -96,7 +93,7 @@ func listGiteaRepos(forge config.Forge, namespace, protocol string) ([]string, e
 			"--limit", strconv.Itoa(giteaPageSize),
 		).CombinedOutput()
 		if err != nil {
-			return nil, fmt.Errorf("tea repos list %s: %s", namespace, firstLine(string(out)))
+			return nil, fmt.Errorf("tea repos list %s: %s", namespace, repomgr.FirstLine(string(out)))
 		}
 		var repos []struct {
 			SSH string `json:"ssh"`
@@ -106,11 +103,7 @@ func listGiteaRepos(forge config.Forge, namespace, protocol string) ([]string, e
 			return nil, fmt.Errorf("tea repos list %s: unexpected output: %w", namespace, err)
 		}
 		for _, r := range repos {
-			if protocol == "ssh" {
-				urls = append(urls, r.SSH)
-			} else {
-				urls = append(urls, r.URL)
-			}
+			urls = append(urls, pickCloneURL(protocol, r.SSH, r.URL))
 		}
 		if len(repos) < giteaPageSize {
 			break
@@ -119,12 +112,20 @@ func listGiteaRepos(forge config.Forge, namespace, protocol string) ([]string, e
 	return urls, nil
 }
 
+// pickCloneURL returns sshURL when protocol is ssh, and httpsURL otherwise.
+func pickCloneURL(protocol, sshURL, httpsURL string) string {
+	if config.NormalizeScheme(protocol) == config.SchemeSSH {
+		return sshURL
+	}
+	return httpsURL
+}
+
 // teaLoginForHost finds the `tea login` whose URL host matches the forge's
 // host, since `tea repos list --login` takes a login name, not a host.
 func teaLoginForHost(host string) (string, error) {
 	out, err := exec.Command("tea", "login", "list", "-o", "json").CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("tea login list: %s", firstLine(string(out)))
+		return "", fmt.Errorf("tea login list: %s", repomgr.FirstLine(string(out)))
 	}
 	var logins []struct {
 		Name string `json:"name"`
