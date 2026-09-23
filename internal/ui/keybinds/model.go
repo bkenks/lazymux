@@ -136,7 +136,10 @@ func (m *Model) startEdit(index int) tea.Cmd {
 	}
 	m.editIndex = index
 	m.purpose = purposeEdit
-	m.form = newForm(huh.NewGroup(
+	formKeys := cancelableKeyMap()
+	formKeys.Confirm.Accept.SetEnabled(false)
+	formKeys.Confirm.Reject.SetEnabled(false)
+	m.form = newForm(formKeys, huh.NewGroup(
 		huh.NewInput().Title("Name").Placeholder("Git log").
 			Value(&m.draft.Name).Validate(requireText("name")),
 		huh.NewInput().Title("Keybind").Placeholder("ctrl + l").
@@ -155,7 +158,7 @@ func (m *Model) startDelete(index int) tea.Cmd {
 	m.purpose = purposeDelete
 	m.isDeleteConfirmed = false
 	name := lipgloss.NewStyle().Bold(true).Render(m.keybinds[index].Name)
-	m.form = newForm(huh.NewGroup(
+	m.form = newForm(cancelableKeyMap(), huh.NewGroup(
 		huh.NewConfirm().
 			Title(fmt.Sprintf("Are you sure you'd like to delete %s?", name)).
 			Affirmative("Yes").
@@ -165,10 +168,15 @@ func (m *Model) startDelete(index int) tea.Cmd {
 	return m.form.Init()
 }
 
-// newForm builds a form that esc cancels, like every other lazymux screen.
-func newForm(group *huh.Group) *huh.Form {
+// cancelableKeyMap is huh's default key map with esc cancelling the form, like
+// every other lazymux screen.
+func cancelableKeyMap() *huh.KeyMap {
 	formKeys := huh.NewDefaultKeyMap()
 	formKeys.Quit = key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel"))
+	return formKeys
+}
+
+func newForm(formKeys *huh.KeyMap, group *huh.Group) *huh.Form {
 	return huh.NewForm(group).WithKeyMap(formKeys).WithShowHelp(true).WithTheme(styles.FormTheme)
 }
 

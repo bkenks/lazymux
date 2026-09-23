@@ -139,3 +139,26 @@ func TestNewKeybindIsSavedCanonical(t *testing.T) {
 		t.Errorf("saved %+v, want %+v", got, want)
 	}
 }
+
+func TestReturnOnExitIgnoresYAndN(t *testing.T) {
+	m := newTestModel()
+
+	press(m, tea.KeyPressMsg{Code: 'n', Text: "n"})
+	for _, field := range []string{"Tests", "ctrl + t", "go test ./..."} {
+		for _, r := range field {
+			press(m, tea.KeyPressMsg{Code: r, Text: string(r)})
+		}
+		press(m, enterKey)
+	}
+	for _, r := range "yYnN" {
+		if changed := press(m, tea.KeyPressMsg{Code: r, Text: string(r)}); len(changed) != 0 {
+			t.Fatalf("pressing %q saved the keybind", r)
+		}
+	}
+	press(m, leftKey)
+	press(m, enterKey)
+
+	if got := m.keybinds[len(m.keybinds)-1]; !got.ReturnOnExit {
+		t.Errorf("saved %+v, want ReturnOnExit toggled on by left", got)
+	}
+}
