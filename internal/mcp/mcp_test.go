@@ -75,6 +75,25 @@ func TestApplyURL(t *testing.T) {
 	}
 }
 
+func TestUsageAndUnknownCommandErrorListEverySubcommand(t *testing.T) {
+	usage := composeUsage()
+	err := Run([]string{"bogus"}, "test")
+	if err == nil {
+		t.Fatal("Run with an unknown subcommand should fail")
+	}
+	for _, sub := range subcommands {
+		if !strings.Contains(usage, "  "+sub.name) {
+			t.Errorf("usage does not list %q:\n%s", sub.name, usage)
+		}
+		if sub.alias != "" && !strings.Contains(usage, sub.alias) {
+			t.Errorf("usage does not document the %q alias:\n%s", sub.alias, usage)
+		}
+		if !strings.Contains(err.Error(), sub.name) {
+			t.Errorf("error %q does not suggest %q", err, sub.name)
+		}
+	}
+}
+
 func TestEndpoint(t *testing.T) {
 	m := config.MCP{Host: "127.0.0.1", Port: 8080, Path: "/mcp"}
 	if got, want := m.Endpoint(), "http://127.0.0.1:8080/mcp"; got != want {

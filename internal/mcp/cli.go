@@ -11,6 +11,52 @@ import (
 	"github.com/bkenks/lazymux/internal/config"
 )
 
+// subcommand is one `lazymux mcp` command. The table below drives dispatch,
+// the usage text, and the unknown-command error alike.
+type subcommand struct {
+	name    string
+	alias   string
+	args    string
+	summary string
+	run     func(args []string, version string) error
+}
+
+var subcommands = []subcommand{
+	{
+		name:    "start",
+		summary: "start the server in the background",
+		run:     func([]string, string) error { return Start(config.Load()) },
+	},
+	{
+		name:    "stop",
+		summary: "stop the background server",
+		run:     func([]string, string) error { return Stop() },
+	},
+	{
+		name:    "serve",
+		summary: "run the server in the foreground (for supervisors / debugging)",
+		run:     func(_ []string, version string) error { return runServe(version) },
+	},
+	{
+		name:    "list",
+		alias:   "status",
+		summary: "show configuration, endpoint, and running status",
+		run:     func([]string, string) error { return runList() },
+	},
+	{
+		name:    "set-url",
+		args:    "<v>",
+		summary: "set the bind host — accepts a host, host:port, or full URL",
+		run:     func(args []string, _ string) error { return runSetURL(args) },
+	},
+	{
+		name:    "set-port",
+		args:    "<n>",
+		summary: "set the port",
+		run:     func(args []string, _ string) error { return runSetPort(args) },
+	},
+}
+
 // Run dispatches `lazymux mcp <subcommand> [args...]`. args excludes the
 // "mcp" word itself. It returns an error for the caller to print and exit on.
 func Run(args []string, version string) error {
@@ -19,24 +65,18 @@ func Run(args []string, version string) error {
 		return nil
 	}
 	switch args[0] {
-	case "start":
-		return Start(config.Load())
-	case "stop":
-		return Stop()
-	case "serve":
-		return runServe(version)
-	case "list", "status":
-		return runList()
-	case "set-url":
-		return runSetURL(args[1:])
-	case "set-port":
-		return runSetPort(args[1:])
 	case "-h", "--help", "help":
 		printUsage()
 		return nil
-	default:
-		return fmt.Errorf("unknown mcp subcommand %q (try: start, stop, serve, list, set-url, set-port)", args[0])
 	}
+	names := make([]string, 0, len(subcommands))
+	for _, sub := range subcommands {
+		if args[0] == sub.name || (sub.alias != "" && args[0] == sub.alias) {
+			return sub.run(args[1:], version)
+		}
+		names = append(names, sub.name)
+	}
+	return fmt.Errorf("unknown mcp subcommand %q (try: %s)", args[0], strings.Join(names, ", "))
 }
 
 // runServe runs the server in the foreground. `mcp start` re-execs the binary
@@ -182,20 +222,20 @@ func warnIfRunning() {
 	}
 }
 
-func printUsage() {
-	fmt.Print(`lazymux mcp — serve the repo inventory to LLMs over MCP
+func printUsage() { fmt.Print(composeUsage()) }
 
-Usage: lazymux mcp <command>
-
-Commands:
-  start          start the server in the background
-  stop           stop the background server
-  serve          run the server in the foreground (for supervisors / debugging)
-  list           show configuration, endpoint, and running status
-  set-url <v>    set the bind host — accepts a host, host:port, or full URL
-  set-port <n>   set the port
-
-The endpoint speaks streamable HTTP. Point an MCP client at it, e.g.:
-  claude mcp add --transport http lazymux <endpoint>
-`)
+func composeUsage() string {
+	var b strings.Builder
+	b.WriteString("lazymux mcp — serve the repo inventory to LLMs over MCP\n\n")
+	b.WriteString("Usage: lazymux mcp <command>\n\nCommands:\n")
+	for _, sub := range subcommands {
+		label := strings.TrimSpace(sub.name + " " + sub.args)
+		if sub.alias != "" {
+			label += ", " + sub.alias
+		}
+		fmt.Fprintf(&b, "  %-14s %s\n", label, sub.summary)
+	}
+	b.WriteString("\nThe endpoint speaks streamable HTTP. Point an MCP client at it, e.g.:\n")
+	b.WriteString("  claude mcp add --transport http lazymux <endpoint>\n")
+	return b.String()
 }
