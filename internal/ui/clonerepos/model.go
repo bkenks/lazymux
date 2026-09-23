@@ -183,11 +183,7 @@ func footerView(mode mode) string {
 func sizeBuffer() (w, h int) {
 	headerHeight := lipgloss.Height(headerView(modeURLs))
 	footerHeight := lipgloss.Height(footerView(modeURLs))
-
-	widthBuffer := 2
-
-	return constants.WindowSize.Width - widthBuffer,
-		constants.WindowSize.Height - headerHeight - footerHeight - constants.FooterReservedLines
+	return styles.ContentSize(headerHeight + footerHeight)
 }
 
 func (m *Model) View() tea.View {
@@ -205,11 +201,8 @@ func (m *Model) View() tea.View {
 		footerView(m.mode),
 	)
 
-	placedContent := lipgloss.PlaceVertical(
-		constants.WindowSize.Height,
-		lipgloss.Center,
-		content,
-	)
+	_, height := styles.ContentSize(0)
+	placedContent := lipgloss.PlaceVertical(height, lipgloss.Center, content)
 	return tea.NewView(placedContent)
 }
 

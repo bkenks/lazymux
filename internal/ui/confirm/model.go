@@ -96,9 +96,10 @@ func (m *Model) View() tea.View {
 
 	renderedDialog := styles.DialogStyle.Render(content)
 
+	width, height := styles.ContentSize(0)
 	placedContent := lipgloss.Place(
-		constants.WindowSize.Width,
-		constants.WindowSize.Height,
+		width,
+		height,
 		lipgloss.Center,
 		lipgloss.Center,
 		renderedDialog,

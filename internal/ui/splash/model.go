@@ -10,7 +10,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/bkenks/lazymux/internal/commands"
-	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/styles"
 	colorful "github.com/lucasb-eyer/go-colorful"
@@ -58,9 +57,10 @@ func (m *Model) View() tea.View {
 	)
 	box := styles.DialogStyle.Render(inner)
 
+	width, height := styles.ContentSize(0)
 	return tea.NewView(lipgloss.Place(
-		constants.WindowSize.Width,
-		constants.WindowSize.Height,
+		width,
+		height,
 		lipgloss.Center,
 		lipgloss.Center,
 		box,

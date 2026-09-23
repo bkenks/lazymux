@@ -58,9 +58,9 @@ Flags:
   -v, --version  show version
 
 Commands:
-  mcp            serve the repo inventory to LLMs over MCP
-                 (start, stop, serve, list, set-url, set-port)
-
+  mcp            serve the repo inventory to LLMs over MCP`)
+	fmt.Printf("                 (%s)\n", strings.Join(mcp.CommandNames(), ", "))
+	fmt.Println(`
 Configuration:
   All settings, the forge registry, and per-repo forge links live in a single
   ~/lazymux/.lazymux.json (override the path with $LAZYMUX_CONFIG). Repos are

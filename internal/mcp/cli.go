@@ -209,8 +209,8 @@ func parsePort(s string) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("port %q is not a number", s)
 	}
-	if port < 1 || port > 65535 {
-		return 0, fmt.Errorf("port %d is out of range (1-65535)", port)
+	if err := config.ValidatePort(port); err != nil {
+		return 0, err
 	}
 	return port, nil
 }
@@ -220,6 +220,19 @@ func warnIfRunning() {
 		fmt.Printf("note: the server is still running on the old address (pid %d) — "+
 			"run `lazymux mcp stop && lazymux mcp start` to apply\n", pid)
 	}
+}
+
+// CommandNames lists the `lazymux mcp` subcommands, aliases included, in the
+// order the usage text shows them.
+func CommandNames() []string {
+	var names []string
+	for _, sub := range subcommands {
+		names = append(names, sub.name)
+		if sub.alias != "" {
+			names = append(names, sub.alias)
+		}
+	}
+	return names
 }
 
 func printUsage() { fmt.Print(composeUsage()) }

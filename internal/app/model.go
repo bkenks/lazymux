@@ -84,16 +84,13 @@ func New(cfg config.Config, version string) *ModelManager {
 	domain.ShowFullPath = cfg.UI.ShowFullPath
 	domain.Sort = domain.ParseSortMode(cfg.UI.SortMode)
 
-	x, y := styles.DocStyle.GetFrameSize()
-	settingsItems := buildSettingsItems(cfg)
-
 	m := &ModelManager{
 		cfg:           cfg,
 		splash:        *splash.New(version),
 		main:          *repolist.New(),
 		confirmDelete: *confirm.New(),
 		clonerepos:    *clonerepos.New(cfg),
-		settingsModel: settings.New("Settings", settingsItems, constants.WindowSize.Width, constants.WindowSize.Height, x, y),
+		settingsModel: newSettingsScreen(cfg),
 		cloneProgress: progress.New(progress.WithDefaultBlend(), progress.WithoutPercentage()),
 	}
 
@@ -157,9 +154,7 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case domain.StateSettings:
 				// Rebuild with the live window size (and current cfg) — like the
 				// other screens — since the startup build ran at size 0×0.
-				x, y := styles.DocStyle.GetFrameSize()
-				m.settingsModel = settings.New("Settings", buildSettingsItems(m.cfg),
-					constants.WindowSize.Width, constants.WindowSize.Height, x, y)
+				m.settingsModel = newSettingsScreen(m.cfg)
 				m.active = &m.settingsModel
 
 			case domain.StateForgeSelect:

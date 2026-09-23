@@ -251,7 +251,7 @@ func (m *Model) applyListSize() {
 	if m.editing {
 		height -= editPaneHeight
 	}
-	m.list.SetSize(m.width-m.widthPad, height)
+	m.list.SetSize(max(m.width-m.widthPad, 1), max(height, 1))
 }
 
 func (m *Model) rebuildItems(selectedIdx int) {

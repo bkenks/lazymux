@@ -182,3 +182,14 @@ func TestRepoLinkWithForgeLinksKeepsDescription(t *testing.T) {
 		t.Errorf("got %+v", got)
 	}
 }
+
+func TestLoadReplacesOutOfRangeMCPPort(t *testing.T) {
+	writeConfigFile(t, `{"mcp": {"port": 99999}}`)
+	cfg := Load()
+	if cfg.MCP.Port != DefaultMCPPort {
+		t.Errorf("Port = %d, want the default", cfg.MCP.Port)
+	}
+	if len(cfg.Warnings) != 1 {
+		t.Errorf("Warnings = %q, want one for the bad port", cfg.Warnings)
+	}
+}

@@ -9,8 +9,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/bkenks/lazymux/internal/config"
+	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
+	"github.com/bkenks/lazymux/internal/styles"
 	"github.com/bkenks/lazymux/pkg/settings"
 )
 
@@ -120,6 +122,15 @@ func validateEditorCommand(command string) (string, error) {
 		return "", fmt.Errorf("%q not found on PATH", command)
 	}
 	return path, nil
+}
+
+// newSettingsScreen builds the settings screen for cfg at the current window
+// size, leaving room for DocStyle's frame and the app's footer.
+func newSettingsScreen(cfg config.Config) settings.Model {
+	x, y := styles.DocStyle.GetFrameSize()
+	size := constants.WindowSize
+	return settings.New("Settings", buildSettingsItems(cfg),
+		size.Width, size.Height, x, y+constants.FooterReservedLines)
 }
 
 func buildSettingsItems(cfg config.Config) []settings.Setting {

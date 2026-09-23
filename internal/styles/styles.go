@@ -10,17 +10,19 @@ import (
 	colorful "github.com/lucasb-eyer/go-colorful"
 )
 
+// The palette colors and every style built from them are set by Apply, which
+// init runs with the default theme; rebuildStyles is their one definition.
 var (
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Colors
-	DarkPink         color.Color = adaptive("#EE6FF8", "#EE6FF8")
-	DullGrey         color.Color = adaptive("#C2B8C2", "#4D4D4D")
-	Purple           color.Color = adaptive("#F793FF", "#AD58B4")
-	VerySubduedColor color.Color = adaptive("#DDDADA", "#4b4b4b")
-	SubduedColor     color.Color = adaptive("#9B9B9B", "#5C5C5C")
-	MediumGrey       color.Color = adaptive("#A49FA5", "#777777")
-	DarkPurple       color.Color = lipgloss.Color("62")
-	White            color.Color = lipgloss.Color("230")
+	DarkPink         color.Color
+	DullGrey         color.Color
+	Purple           color.Color
+	VerySubduedColor color.Color
+	SubduedColor     color.Color
+	MediumGrey       color.Color
+	DarkPurple       color.Color
+	White            color.Color
 
 	// End "Colors"
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -37,19 +39,12 @@ var (
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Menu
 
-	MenuTitle = lipgloss.NewStyle().
-			Background(DarkPurple).
-			Foreground(White).
-			Padding(0, 1).
-			Margin(1, 0, 1, 2)
+	MenuTitle lipgloss.Style
 
 	MenuHelpStyle = lipgloss.NewStyle().
 			Margin(1, 0, 0, 2)
 
-	MenuSubStyle = lipgloss.NewStyle().
-			Foreground(MediumGrey).
-			MarginLeft(2).
-			MarginBottom(1)
+	MenuSubStyle lipgloss.Style
 
 	// End "Menu"
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -61,14 +56,8 @@ var (
 			Padding(0, 2).
 			Margin(0, 1)
 
-	SelectedButton = ButtonStyle.
-			Background(DarkPurple).
-			Foreground(White).
-			Bold(true)
-
-	UnselectedButton = ButtonStyle.
-				Background(DullGrey).
-				Foreground(lipgloss.Color("250"))
+	SelectedButton   lipgloss.Style
+	UnselectedButton lipgloss.Style
 
 	// End "Buttons"
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,40 +65,23 @@ var (
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Dialog
 
-	DialogStyle = lipgloss.NewStyle().
-			Padding(1, 6, 1).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(SubduedColor)
-
-	DialogTitleStyle = lipgloss.NewStyle().
-				Background(DarkPurple).
-				Foreground(White).
-				Padding(0, 1).
-				Margin(0, 0, 2)
+	DialogStyle      lipgloss.Style
+	DialogTitleStyle lipgloss.Style
 
 	// FormBoxStyle frames the inline add/edit forms on the forge screens so the
 	// "you're in edit mode" state reads clearly against the list above it.
-	FormBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(Purple).
-			Padding(0, 1).
-			MarginTop(1)
+	FormBoxStyle lipgloss.Style
 
 	// TerminalFrameStyle borders a keybind command's output so it reads as a
 	// process running inside lazymux.
-	TerminalFrameStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(Purple)
+	TerminalFrameStyle lipgloss.Style
 
 	DialogHelpStyle = lipgloss.NewStyle()
 
 	DialogSubtitleStyle = lipgloss.NewStyle().
 				MarginBottom(1)
 
-	DialogRepoPath = lipgloss.NewStyle().
-			Bold(true).
-			MarginBottom(2).
-			Foreground(DarkPink)
+	DialogRepoPath lipgloss.Style
 
 	// End "Dialog"
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,14 +92,8 @@ var (
 	ToastIdleStyle = lipgloss.NewStyle().
 			Padding(0, 1)
 
-	ToastInfoStyle = lipgloss.NewStyle().
-			Padding(0, 1).
-			Foreground(SubduedColor)
-
-	ToastErrorStyle = lipgloss.NewStyle().
-			Padding(0, 1).
-			Foreground(DarkPink).
-			Bold(true)
+	ToastInfoStyle  lipgloss.Style
+	ToastErrorStyle lipgloss.Style
 
 	// End "Status footer / toasts"
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -139,7 +105,7 @@ var (
 	// (confirm, clone) so their key hints match the palette and separators the
 	// list screens already render through help internally.
 
-	Help = newHelpModel()
+	Help help.Model
 
 	// End "Help"
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////

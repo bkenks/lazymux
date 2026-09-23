@@ -45,6 +45,8 @@ var themes = map[string]Palette{
 	},
 }
 
+func init() { Apply("default") }
+
 // Apply swaps the package-level color vars and rebuilds every style that
 // depends on them. Safe to call at startup before the program runs; calling
 // it after the program has rendered will not retroactively re-style frames
@@ -98,6 +100,10 @@ func rebuildStyles() {
 		BorderForeground(Purple).
 		Padding(0, 1).
 		MarginTop(1)
+
+	TerminalFrameStyle = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(Purple)
 
 	DialogTitleStyle = lipgloss.NewStyle().
 		Background(DarkPurple).

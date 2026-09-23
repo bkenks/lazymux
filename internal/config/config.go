@@ -211,6 +211,14 @@ func (m MCP) Endpoint() string {
 	return fmt.Sprintf("http://%s%s", m.Addr(), m.Path)
 }
 
+// ValidatePort reports an error unless port is a usable TCP port.
+func ValidatePort(port int) error {
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("port %d is out of range (1-65535)", port)
+	}
+	return nil
+}
+
 // Addr is the host:port pair passed to net.Listen.
 func (m MCP) Addr() string {
 	return net.JoinHostPort(m.Host, strconv.Itoa(m.Port))
@@ -388,6 +396,10 @@ func normalize(cfg Config) Config {
 		cfg.MCP.Host = d.MCP.Host
 	}
 	if cfg.MCP.Port == 0 {
+		cfg.MCP.Port = d.MCP.Port
+	} else if err := ValidatePort(cfg.MCP.Port); err != nil {
+		cfg.Warnings = append(cfg.Warnings,
+			fmt.Sprintf("mcp %v, using %d", err, d.MCP.Port))
 		cfg.MCP.Port = d.MCP.Port
 	}
 	// A hand-edited path like "mcp" or "/mcp/" would otherwise never match the
