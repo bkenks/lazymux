@@ -19,7 +19,6 @@ import (
 
 type Model struct {
 	List     list.Model
-	RepoList []list.Item
 	keybinds []config.Keybind
 
 	// pull-all progress: streamed one PullResult at a time off pullCh while a
@@ -48,7 +47,7 @@ func newDelegate() list.DefaultDelegate {
 }
 
 func New() *Model {
-	w, h := SizeBuffer()
+	w, h := styles.ContentSize(0)
 	newList := list.New(
 		[]list.Item{},
 		newDelegate(),
@@ -288,22 +287,13 @@ func (m *Model) pullView() string {
 // applySize lays out the list, leaving a row for the pull-progress line while a
 // pull-all is running, and fits the progress bar to the available width.
 func (m *Model) applySize() {
-	w, h := SizeBuffer()
+	reserved := 0
 	if m.pulling {
-		if h--; h < 1 {
-			h = 1
-		}
+		reserved = 1
 	}
+	w, h := styles.ContentSize(reserved)
 	m.List.SetSize(w, h)
-
-	bar := w - 24 // leave room for the spinner glyph and count label
-	switch {
-	case bar > 40:
-		bar = 40
-	case bar < 10:
-		bar = 10
-	}
-	m.progress.SetWidth(bar)
+	m.progress.SetWidth(styles.ProgressBarWidth(w))
 }
 
 // SyncForgeVisibility re-applies the row delegate so a change in

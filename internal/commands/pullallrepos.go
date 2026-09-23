@@ -17,8 +17,9 @@ import (
 // WaitForPullCmd to drive a live progress bar. --ff-only guarantees we never
 // leave a repo half-merged, so repos that can't fast-forward are just skipped.
 func PullAllReposCmd() tea.Cmd {
+	snapshot := cfg().Clone()
 	return func() tea.Msg {
-		found, err := repomgr.List(cfg())
+		found, err := repomgr.List(snapshot)
 		if err != nil {
 			ch := make(chan events.PullResult, 1)
 			ch <- events.PullResult{Reason: "scan failed: " + err.Error()}

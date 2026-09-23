@@ -2,6 +2,8 @@ package app
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/progress"
@@ -64,8 +66,6 @@ type ModelManager struct {
 	cloneFail     int
 	cloneProgress progress.Model
 
-	pendingDeleteKey string
-
 	toast        string
 	toastLevel   events.ToastLevel
 	toastSeq     int
@@ -80,6 +80,7 @@ func New(cfg config.Config, version string) *ModelManager {
 	// list, so its row height is sized correctly from the start.
 	domain.ShowForge = cfg.UI.ShowForge
 	domain.ShowStats = cfg.UI.ShowStats
+	domain.ShowFullPath = cfg.UI.ShowFullPath
 	domain.Sort = domain.ParseSortMode(cfg.UI.SortMode)
 
 	x, y := styles.DocStyle.GetFrameSize()
@@ -103,8 +104,8 @@ func New(cfg config.Config, version string) *ModelManager {
 
 func (m *ModelManager) Init() tea.Cmd {
 	cmds := []tea.Cmd{m.splash.Init(), commands.RefreshReposCmd()}
-	if w := m.cfg.LoadWarning; w != "" {
-		cmds = append(cmds, m.toastCmd(events.ToastError, w))
+	if len(m.cfg.Warnings) > 0 {
+		cmds = append(cmds, m.toastCmd(events.ToastError, strings.Join(m.cfg.Warnings, "; ")))
 	}
 	return tea.Batch(cmds...)
 }
@@ -131,11 +132,19 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.active = &m.main
 
 			case domain.StateConfirmDelete:
+				repo, ok := m.main.List.SelectedItem().(domain.Repo)
+				if !m.cfg.Behavior.ConfirmDelete {
+					m.state = domain.StateMain
+					m.active = &m.main
+					if ok {
+						cmds = append(cmds, commands.DeleteRepoCmd(repo.Path, repo.AbsPath))
+					}
+					break
+				}
 				m.confirmDelete = *confirm.New()
-				if repo, ok := m.main.List.SelectedItem().(domain.Repo); ok {
+				if ok {
 					m.confirmDelete.RepoPath = repo.Path
 					m.confirmDelete.AbsPath = repo.AbsPath
-					m.pendingDeleteKey = repo.Path
 				}
 				m.active = &m.confirmDelete
 
@@ -220,11 +229,9 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case events.ForgeSelectComplete:
 			// Persist any inline-added forges, then start the clones.
 			if len(msg.NewForges) > 0 {
-				m.cfg.Forges = append(m.cfg.Forges, msg.NewForges...)
-				commands.SetDeps(m.cfg)
-				if err := config.Save(m.cfg); err != nil {
-					cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("couldn't save forges: %v", err)))
-				}
+				cmds = append(cmds, m.saveConfig("forges", func(c *config.Config) {
+					c.Forges = append(c.Forges, msg.NewForges...)
+				}))
 			}
 			m.cloneTotal = len(msg.Clones)
 			m.cloneDone = 0
@@ -247,18 +254,17 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// URL per upstream.
 				key := msg.Clone.URL.Key()
 				link := msg.Clone.Link()
-				m.cfg.Repos[key] = link
-				if err := repomgr.RenderGitConfig(m.cfg, key, link); err != nil {
-					cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("%s: %v", key, err)))
-				}
+				cmds = append(cmds,
+					m.saveConfig("repo link", func(c *config.Config) {
+						c.Repos[key] = c.Repos[key].WithForgeLinks(link)
+					}),
+					m.renderGitConfig(key, link),
+				)
 			}
 			if m.cloneDone < m.cloneTotal {
 				m.cloneDone++
 			}
 			if m.cloneDone == m.cloneTotal {
-				if err := config.Save(m.cfg); err != nil {
-					cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("couldn't save config: %v", err)))
-				}
 				summary := fmt.Sprintf("cloned %d/%d", m.cloneTotal-m.cloneFail, m.cloneTotal)
 				cmds = append(cmds,
 					commands.RefreshReposCmd(),
@@ -267,37 +273,26 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case events.ForgesChanged:
-			prevForges := m.cfg.Forges
-			prevRepos := m.cfg.Repos
-			m.cfg.Forges = msg.Forges
-			m.cfg.Repos = msg.Repos
-			commands.SetDeps(m.cfg)
+			prev := m.cfg.Clone()
+			cmds = append(cmds, m.saveConfig("forges", func(c *config.Config) {
+				c.Forges = msg.Forges
+				for key, link := range msg.Repos {
+					c.Repos[key] = c.Repos[key].WithForgeLinks(link)
+				}
+			}))
 
-			// Re-render the git remotes for any repo whose links changed name or
-			// host (promotion after a delete, a rename, or a host edit). A repo
-			// left unlinked keeps its existing remote — the insteadOf rule
+			// Re-render the git remotes for any repo whose links or forge hosts
+			// changed (promotion after a delete, a rename, or a host edit). A
+			// repo left unlinked keeps its existing remote — the insteadOf rule
 			// already written still resolves.
 			for key, link := range m.cfg.Repos {
-				if link.Origin == "" {
+				if _, ok := m.cfg.ForgeByName(link.Origin); !ok {
+					continue // unlinked or dangling origin; leave the existing config alone
+				}
+				if slices.Equal(remoteHosts(prev, prev.Repos[key]), remoteHosts(m.cfg, link)) {
 					continue
 				}
-				newForge, ok := m.cfg.ForgeByName(link.Origin)
-				if !ok {
-					continue // dangling origin; leave the existing config alone
-				}
-				prev := prevRepos[key]
-				if prev.Origin == link.Origin &&
-					forgeHost(prevForges, prev.Origin) == newForge.Host &&
-					equalStrings(prev.Upstreams, link.Upstreams) {
-					continue // nothing affecting the remotes changed
-				}
-				if err := repomgr.RenderGitConfig(m.cfg, key, link); err != nil {
-					cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("%s: %v", key, err)))
-				}
-			}
-
-			if err := config.Save(m.cfg); err != nil {
-				cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("couldn't save forges: %v", err)))
+				cmds = append(cmds, m.renderGitConfig(key, link))
 			}
 			cmds = append(cmds, commands.RefreshReposCmd())
 
@@ -312,19 +307,16 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, commands.SetState(domain.StateRepoForges))
 
 		case events.RepoLinkChanged:
-			if len(msg.Link.Upstreams) == 0 {
-				delete(m.cfg.Repos, msg.Key)
-			} else {
-				m.cfg.Repos[msg.Key] = msg.Link
-				if msg.Link.Origin != "" {
-					if err := repomgr.RenderGitConfig(m.cfg, msg.Key, msg.Link); err != nil {
-						cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("%s: %v", msg.Key, err)))
-					}
+			cmds = append(cmds, m.saveConfig("repo link", func(c *config.Config) {
+				link := c.Repos[msg.Key].WithForgeLinks(msg.Link)
+				if link.IsEmpty() {
+					delete(c.Repos, msg.Key)
+				} else {
+					c.Repos[msg.Key] = link
 				}
-			}
-			commands.SetDeps(m.cfg)
-			if err := config.Save(m.cfg); err != nil {
-				cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("couldn't save config: %v", err)))
+			}))
+			if msg.Link.Origin != "" {
+				cmds = append(cmds, m.renderGitConfig(msg.Key, msg.Link))
 			}
 			cmds = append(cmds, commands.RefreshReposCmd())
 
@@ -332,13 +324,10 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.Err != nil {
 				cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("delete failed: %v", msg.Err)))
 			} else {
-				if m.pendingDeleteKey != "" {
-					delete(m.cfg.Repos, m.pendingDeleteKey)
-					m.pendingDeleteKey = ""
-					_ = config.Save(m.cfg)
-					commands.SetDeps(m.cfg)
-				}
-				cmds = append(cmds, m.toastCmd(events.ToastInfo, "repo deleted"))
+				cmds = append(cmds,
+					m.saveConfig("config", func(c *config.Config) { delete(c.Repos, msg.Key) }),
+					m.toastCmd(events.ToastInfo, "repo deleted"),
+				)
 			}
 			cmds = append(cmds, commands.RefreshReposCmd())
 
@@ -352,12 +341,11 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.main.UpdateRepoList(msg.RepoList))
 
 		case events.SortModeChanged:
-			m.cfg.UI.SortMode = string(msg.Mode)
-			commands.SetDeps(m.cfg)
-			if err := config.Save(m.cfg); err != nil {
-				cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("couldn't save sort order: %v", err)))
+			if cmd := m.saveConfig("sort order", func(c *config.Config) { c.UI.SortMode = string(msg.Mode) }); cmd != nil {
+				cmds = append(cmds, cmd)
+			} else {
+				cmds = append(cmds, m.toastCmd(events.ToastInfo, "sorted by "+msg.Mode.Label()))
 			}
-			cmds = append(cmds, m.toastCmd(events.ToastInfo, "sorted by "+msg.Mode.Label()))
 
 		case events.OpenInVSCodeComplete:
 			if msg.Err != nil {
@@ -409,12 +397,7 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case settings.SettingChanged:
-		m.applySettingChange(msg)
-		if err := config.Save(m.cfg); err != nil {
-			cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("couldn't save config: %v", err)))
-		} else {
-			cmds = append(cmds, m.toastCmd(events.ToastInfo, "settings saved"))
-		}
+		cmds = append(cmds, m.applySettingChange(msg))
 
 	case settings.Exited:
 		cmds = append(cmds, commands.SetState(domain.StateMain))
@@ -462,13 +445,51 @@ func (m *ModelManager) View() tea.View {
 }
 
 func (m *ModelManager) saveKeybinds(keybinds []config.Keybind) tea.Cmd {
-	m.cfg.Keybinds = keybinds
 	m.main.SetKeybinds(keybinds)
-	commands.SetDeps(m.cfg)
-	if err := config.Save(m.cfg); err != nil {
-		return m.toastCmd(events.ToastError, fmt.Sprintf("couldn't save keybinds: %v", err))
+	if cmd := m.saveConfig("keybinds", func(c *config.Config) { c.Keybinds = keybinds }); cmd != nil {
+		return cmd
 	}
 	return m.toastCmd(events.ToastInfo, "keybinds saved")
+}
+
+// saveConfig applies change to the config file, re-read first so edits the MCP
+// server made meanwhile survive, and adopts the result as the app's config. If
+// the write fails, change is still applied in memory for this session and the
+// returned command toasts the error, naming what couldn't be saved. It returns
+// nil on success.
+func (m *ModelManager) saveConfig(what string, change func(*config.Config)) tea.Cmd {
+	saved, err := config.Update(change)
+	if err != nil {
+		change(&m.cfg)
+		commands.SetDeps(m.cfg)
+		return m.toastCmd(events.ToastError, fmt.Sprintf("couldn't save %s: %v", what, err))
+	}
+	m.cfg = saved
+	commands.SetDeps(m.cfg)
+	return nil
+}
+
+// renderGitConfig rewrites a repo's remotes to match link, returning an error
+// toast command if that fails, or nil.
+func (m *ModelManager) renderGitConfig(key string, link config.RepoLink) tea.Cmd {
+	if err := repomgr.RenderGitConfig(m.cfg, key, link); err != nil {
+		return m.toastCmd(events.ToastError, fmt.Sprintf("%s: %v", key, err))
+	}
+	return nil
+}
+
+// remoteHosts lists the host each of the link's forges resolves to in cfg,
+// origin first, so a change to any of them shows up as a difference. A forge
+// missing from the registry resolves to "".
+func remoteHosts(cfg config.Config, link config.RepoLink) []string {
+	names := append([]string{link.Origin}, link.Upstreams...)
+	hosts := make([]string, len(names))
+	for i, name := range names {
+		if forge, ok := cfg.ForgeByName(name); ok {
+			hosts[i] = forge.Host
+		}
+	}
+	return hosts
 }
 
 // runKeybind starts the keybind's command in the embedded terminal screen.
@@ -488,14 +509,7 @@ func (m *ModelManager) renderCloneProgress() string {
 	if m.cloneTotal == 0 || m.cloneDone >= m.cloneTotal {
 		return ""
 	}
-	bar := constants.WindowSize.Width - 24
-	switch {
-	case bar > 40:
-		bar = 40
-	case bar < 10:
-		bar = 10
-	}
-	m.cloneProgress.SetWidth(bar)
+	m.cloneProgress.SetWidth(styles.ProgressBarWidth(constants.WindowSize.Width))
 	pct := float64(m.cloneDone) / float64(m.cloneTotal)
 	label := styles.Subtle(fmt.Sprintf(" cloning %d/%d", m.cloneDone+1, m.cloneTotal))
 	return "  " + m.cloneProgress.ViewAs(pct) + label

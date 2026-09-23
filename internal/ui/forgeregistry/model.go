@@ -11,6 +11,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
@@ -71,19 +72,10 @@ type Model struct {
 }
 
 func New(cfg config.Config) *Model {
-	forges := make([]config.Forge, len(cfg.Forges))
-	copy(forges, cfg.Forges)
-
-	// Deep-copy the repo links so edits here don't mutate the app's config
-	// until ForgesChanged is applied on exit.
-	repos := make(map[string]config.RepoLink, len(cfg.Repos))
-	for k, v := range cfg.Repos {
-		repos[k] = config.RepoLink{
-			Upstreams: append([]string(nil), v.Upstreams...),
-			Origin:    v.Origin,
-			Scheme:    v.Scheme,
-		}
-	}
+	// Work on a copy so edits here don't mutate the app's config until
+	// ForgesChanged is applied on exit.
+	working := cfg.Clone()
+	forges, repos := working.Forges, working.Repos
 
 	name := textinput.New()
 	name.Placeholder = "name (e.g. github)"
@@ -92,7 +84,7 @@ func New(cfg config.Config) *Model {
 	host.Placeholder = "host (e.g. github.com)"
 	host.CharLimit = 100
 
-	w, h := sizeBuffer()
+	w, h := styles.ContentSize(0)
 	l := list.New(nil, list.NewDefaultDelegate(), w, h)
 	l.Title = "Forge Registry"
 	l.KeyMap.Quit = constants.ListQuit
@@ -157,7 +149,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		repos := m.repos
 		return m, tea.Batch(
 			func() tea.Msg { return events.ForgesChanged{Forges: forges, Repos: repos} },
-			func() tea.Msg { return events.SetState{State: domain.StateMain} },
+			commands.SetState(domain.StateMain),
 		)
 	case key.Matches(km, keys.Add):
 		return m.startEdit(-1)
@@ -274,17 +266,10 @@ func (m *Model) saveEdit() (tea.Model, tea.Cmd) {
 // repo is left unlinked (empty origin).
 func (m *Model) applyForgeRemoved(name string) {
 	for key, link := range m.repos {
-		if !contains(link.Upstreams, name) {
-			continue
+		if link.HasUpstream(name) {
+			link.RemoveUpstream(name)
+			m.repos[key] = link
 		}
-		link.Upstreams = without(link.Upstreams, name)
-		if link.Origin == name {
-			link.Origin = ""
-			if len(link.Upstreams) > 0 {
-				link.Origin = link.Upstreams[0]
-			}
-		}
-		m.repos[key] = link
 	}
 }
 
@@ -292,43 +277,11 @@ func (m *Model) applyForgeRemoved(name string) {
 // (and their origin), so a rename never orphans a repo.
 func (m *Model) applyForgeRenamed(old, newName string) {
 	for key, link := range m.repos {
-		if !contains(link.Upstreams, old) {
-			continue
-		}
-		forges := make([]string, 0, len(link.Upstreams))
-		for _, f := range link.Upstreams {
-			if f == old {
-				f = newName
-			}
-			if !contains(forges, f) {
-				forges = append(forges, f)
-			}
-		}
-		link.Upstreams = forges
-		if link.Origin == old {
-			link.Origin = newName
-		}
-		m.repos[key] = link
-	}
-}
-
-func contains(s []string, v string) bool {
-	for _, x := range s {
-		if x == v {
-			return true
+		if link.HasUpstream(old) {
+			link.RenameUpstream(old, newName)
+			m.repos[key] = link
 		}
 	}
-	return false
-}
-
-func without(s []string, v string) []string {
-	out := make([]string, 0, len(s))
-	for _, x := range s {
-		if x != v {
-			out = append(out, x)
-		}
-	}
-	return out
 }
 
 func (m *Model) View() tea.View {
@@ -363,21 +316,9 @@ const editFormLines = 8
 
 // resize lays out the list, leaving room for the framed edit form when it's open.
 func (m *Model) resize() {
-	w, h := sizeBuffer()
+	reserved := 0
 	if m.editing {
-		if h -= editFormLines; h < 1 {
-			h = 1
-		}
+		reserved = editFormLines
 	}
-	m.list.SetSize(w, h)
-}
-
-func sizeBuffer() (w, h int) {
-	x, y := styles.DocStyle.GetFrameSize()
-	w = constants.WindowSize.Width - x
-	h = constants.WindowSize.Height - y - constants.FooterReservedLines
-	if h < 1 {
-		h = 1
-	}
-	return
+	m.list.SetSize(styles.ContentSize(reserved))
 }

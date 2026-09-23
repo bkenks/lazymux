@@ -6,11 +6,12 @@ import (
 	"github.com/bkenks/lazymux/internal/repomgr"
 )
 
-// DeleteRepoCmd removes a repo directory (and now-empty namespace parents).
-func DeleteRepoCmd(absPath string) tea.Cmd {
+// DeleteRepoCmd removes the repo stored under key at absPath, along with any
+// namespace parents it leaves empty.
+func DeleteRepoCmd(key, absPath string) tea.Cmd {
 	baseDir := cfg().BaseDir
 	return func() tea.Msg {
 		err := repomgr.Remove(baseDir, absPath)
-		return events.RepoDeleted{Err: err}
+		return events.RepoDeleted{Key: key, Err: err}
 	}
 }

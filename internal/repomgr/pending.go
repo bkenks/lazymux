@@ -1,16 +1,18 @@
 package repomgr
 
-import "github.com/bkenks/lazymux/internal/config"
+import (
+	"strings"
+
+	"github.com/bkenks/lazymux/internal/config"
+)
 
 // PendingClone is a repo the user is about to clone, together with the forge
 // links they've chosen for it. It's built with auto-matched defaults and then
 // adjusted in the forge-select screen before the clone runs.
 type PendingClone struct {
-	RealURL   string  // the URL the user pasted — cloned against directly
-	URL       RepoURL // parsed form
-	Upstreams []string
-	Origin    string
-	Scheme    string
+	RealURL string  // the URL the user pasted, trimmed — cloned against directly
+	URL     RepoURL // parsed form
+	config.RepoLink
 }
 
 // NewPendingClone parses raw and pre-selects the forge whose host matches the
@@ -20,25 +22,15 @@ func NewPendingClone(cfg config.Config, raw string) (PendingClone, error) {
 	if err != nil {
 		return PendingClone{}, err
 	}
-	p := PendingClone{RealURL: raw, URL: u, Scheme: u.Scheme}
+	p := PendingClone{RealURL: strings.TrimSpace(raw), URL: u}
+	p.Scheme = u.Scheme
 	if f, ok := cfg.ForgeByHost(u.Host); ok {
-		p.Upstreams = []string{f.Name}
-		p.Origin = f.Name
+		p.SetOrigin(f.Name)
 	}
 	return p, nil
 }
 
 // Link converts the selection into the config record persisted for the repo.
 func (p PendingClone) Link() config.RepoLink {
-	return config.RepoLink{Upstreams: p.Upstreams, Origin: p.Origin, Scheme: p.Scheme}
-}
-
-// HasForge reports whether name is among the selected upstream forges.
-func (p PendingClone) HasForge(name string) bool {
-	for _, f := range p.Upstreams {
-		if f == name {
-			return true
-		}
-	}
-	return false
+	return p.RepoLink.Clone()
 }

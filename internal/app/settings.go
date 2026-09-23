@@ -4,24 +4,86 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"slices"
 	"strings"
 
-	"github.com/bkenks/lazymux/internal/commands"
+	tea "charm.land/bubbletea/v2"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/domain"
+	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/pkg/settings"
 )
 
-// settings keys persisted in config.toml
-const (
-	skEditor        = "editor"
-	skProtocol      = "default_protocol"
-	skConfirmDelete = "confirm_delete"
-	skShowFullPath  = "show_full_path"
-	skShowForge     = "show_forge"
-	skShowStats     = "show_stats"
-	skSortMode      = "sort_mode"
-)
+// settingField ties one row of the settings screen to the config field it
+// edits: build renders the row from a config, apply writes an edited row back
+// into one, and show (if set) applies the new value to the live repo list.
+type settingField struct {
+	build func(cfg config.Config) settings.Setting
+	apply func(cfg *config.Config, s settings.Setting)
+	show  func(m *ModelManager)
+}
+
+// settingFields are the settings screen's rows, keyed by setting key.
+var settingFields = map[string]settingField{
+	"editor": {
+		build: func(cfg config.Config) settings.Setting {
+			return settings.NewText("editor", "Editor", cfg.Tools.Editor, validateEditorCommand)
+		},
+		apply: func(cfg *config.Config, s settings.Setting) { cfg.Tools.Editor = s.ValueString() },
+	},
+	"default_protocol": {
+		build: func(cfg config.Config) settings.Setting {
+			return settings.NewSelect("default_protocol", "Default clone protocol", protocolOptions,
+				indexOrZero(protocolOptions, cfg.Behavior.DefaultProtocol))
+		},
+		apply: func(cfg *config.Config, s settings.Setting) { cfg.Behavior.DefaultProtocol = s.ValueString() },
+	},
+	"confirm_delete": {
+		build: func(cfg config.Config) settings.Setting {
+			return settings.NewToggle("confirm_delete", "Confirm before deleting", cfg.Behavior.ConfirmDelete)
+		},
+		apply: func(cfg *config.Config, s settings.Setting) { cfg.Behavior.ConfirmDelete = isOn(s) },
+	},
+	"show_full_path": {
+		build: func(cfg config.Config) settings.Setting {
+			return settings.NewToggle("show_full_path", "Show full path on rows", cfg.UI.ShowFullPath)
+		},
+		apply: func(cfg *config.Config, s settings.Setting) { cfg.UI.ShowFullPath = isOn(s) },
+		show:  func(m *ModelManager) { domain.ShowFullPath = m.cfg.UI.ShowFullPath },
+	},
+	"show_forge": {
+		build: func(cfg config.Config) settings.Setting {
+			return settings.NewToggle("show_forge", "Show forge label on rows", cfg.UI.ShowForge)
+		},
+		apply: func(cfg *config.Config, s settings.Setting) { cfg.UI.ShowForge = isOn(s) },
+		show: func(m *ModelManager) {
+			domain.ShowForge = m.cfg.UI.ShowForge
+			m.main.SyncForgeVisibility()
+		},
+	},
+	"show_stats": {
+		build: func(cfg config.Config) settings.Setting {
+			return settings.NewToggle("show_stats", "Show git stats on rows", cfg.UI.ShowStats)
+		},
+		apply: func(cfg *config.Config, s settings.Setting) { cfg.UI.ShowStats = isOn(s) },
+		show:  func(m *ModelManager) { domain.ShowStats = m.cfg.UI.ShowStats },
+	},
+	"sort_mode": {
+		build: func(cfg config.Config) settings.Setting {
+			return settings.NewSelect("sort_mode", "Sort repos by", sortOptions, indexOrZero(sortOptions, cfg.UI.SortMode))
+		},
+		apply: func(cfg *config.Config, s settings.Setting) { cfg.UI.SortMode = s.ValueString() },
+		show: func(m *ModelManager) {
+			domain.Sort = domain.ParseSortMode(m.cfg.UI.SortMode)
+			m.main.Resort()
+		},
+	},
+}
+
+// settingOrder is the order rows appear on the settings screen.
+var settingOrder = []string{
+	"editor", "default_protocol", "confirm_delete", "show_full_path", "show_forge", "show_stats", "sort_mode",
+}
 
 // sortOptions are the repo list orderings offered in the settings screen, in
 // the same order the list's sort key cycles through them.
@@ -35,40 +97,12 @@ func sortModeStrings() []string {
 	return opts
 }
 
-var protocolOptions = []string{"https", "ssh"}
+var protocolOptions = []string{config.SchemeHTTPS, config.SchemeSSH}
 
-// equalStrings reports whether two forge-name lists hold the same names in the
-// same order.
-func equalStrings(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
-// forgeHost returns the host of the named forge in the given slice, or "" if
-// it isn't present.
-func forgeHost(forges []config.Forge, name string) string {
-	for _, f := range forges {
-		if f.Name == name {
-			return f.Host
-		}
-	}
-	return ""
-}
+func isOn(s settings.Setting) bool { return s.Value() == true }
 
 func indexOrZero(opts []string, want string) int {
-	for i, v := range opts {
-		if v == want {
-			return i
-		}
-	}
-	return 0
+	return max(slices.Index(opts, want), 0)
 }
 
 // validateEditorCommand resolves an editor command the way exec.Command will
@@ -89,48 +123,26 @@ func validateEditorCommand(command string) (string, error) {
 }
 
 func buildSettingsItems(cfg config.Config) []settings.Setting {
-	return []settings.Setting{
-		settings.NewText(skEditor, "Editor", cfg.Tools.Editor, validateEditorCommand),
-		settings.NewSelect(skProtocol, "Default clone protocol", protocolOptions, indexOrZero(protocolOptions, cfg.Behavior.DefaultProtocol)),
-		settings.NewToggle(skConfirmDelete, "Confirm before deleting", cfg.Behavior.ConfirmDelete),
-		settings.NewToggle(skShowFullPath, "Show full path on rows", cfg.UI.ShowFullPath),
-		settings.NewToggle(skShowForge, "Show forge label on rows", cfg.UI.ShowForge),
-		settings.NewToggle(skShowStats, "Show git stats on rows", cfg.UI.ShowStats),
-		settings.NewSelect(skSortMode, "Sort repos by", sortOptions, indexOrZero(sortOptions, cfg.UI.SortMode)),
+	items := make([]settings.Setting, 0, len(settingOrder))
+	for _, key := range settingOrder {
+		items = append(items, settingFields[key].build(cfg))
 	}
+	return items
 }
 
-// applySettingChange mutates the in-memory cfg and propagates to commands.SetDeps
-// so subsequent commands pick up the new value immediately.
-func (m *ModelManager) applySettingChange(msg settings.SettingChanged) {
-	switch msg.Key {
-	case skEditor:
-		m.cfg.Tools.Editor = msg.Setting.ValueString()
-	case skProtocol:
-		m.cfg.Behavior.DefaultProtocol = msg.Setting.ValueString()
-	case skConfirmDelete:
-		if v, ok := msg.Setting.Value().(bool); ok {
-			m.cfg.Behavior.ConfirmDelete = v
-		}
-	case skShowFullPath:
-		if v, ok := msg.Setting.Value().(bool); ok {
-			m.cfg.UI.ShowFullPath = v
-		}
-	case skShowForge:
-		if v, ok := msg.Setting.Value().(bool); ok {
-			m.cfg.UI.ShowForge = v
-			domain.ShowForge = v // apply to the live repo list immediately
-			m.main.SyncForgeVisibility()
-		}
-	case skShowStats:
-		if v, ok := msg.Setting.Value().(bool); ok {
-			m.cfg.UI.ShowStats = v
-			domain.ShowStats = v // apply to the live repo list immediately
-		}
-	case skSortMode:
-		m.cfg.UI.SortMode = msg.Setting.ValueString()
-		domain.Sort = domain.ParseSortMode(m.cfg.UI.SortMode)
-		m.main.Resort() // reorder the live list; its cmd only matters while filtering
+// applySettingChange saves an edited setting and applies it to the live repo
+// list, returning the toast that reports the outcome.
+func (m *ModelManager) applySettingChange(msg settings.SettingChanged) tea.Cmd {
+	field, ok := settingFields[msg.Key]
+	if !ok {
+		return m.toastCmd(events.ToastError, fmt.Sprintf("unknown setting %q", msg.Key))
 	}
-	commands.SetDeps(m.cfg)
+	saveErr := m.saveConfig("config", func(c *config.Config) { field.apply(c, msg.Setting) })
+	if field.show != nil {
+		field.show(m)
+	}
+	if saveErr != nil {
+		return saveErr
+	}
+	return m.toastCmd(events.ToastInfo, "settings saved")
 }

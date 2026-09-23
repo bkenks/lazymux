@@ -59,8 +59,15 @@ var ShowForge = true
 // like ShowForge.
 var ShowStats = true
 
+// ShowFullPath makes Description() lead with the repo's absolute path instead
+// of its namespace. Set from the settings screen.
+var ShowFullPath = false
+
 func (r Repo) Description() string {
 	line := r.Namespace()
+	if ShowFullPath {
+		line = r.AbsPath
+	}
 	if stats := r.GitStatsLabel(); ShowStats && stats != "" {
 		if line != "" {
 			line += "  ·  "

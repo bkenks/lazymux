@@ -154,12 +154,13 @@ func termScore(r RepoInfo, term string) int {
 }
 
 // setDescription writes purpose/context for one repo back to .lazymux.json.
-// The config is re-read immediately before the write so a concurrently running
-// TUI's edits to unrelated fields survive.
+// The write goes through config.Update, which re-reads the file first so a
+// concurrently running TUI's edits to other fields survive.
 func setDescription(key, purpose, context string) (RepoInfo, error) {
 	cfg := config.Load()
-	if cfg.LoadWarning != "" {
-		return RepoInfo{}, fmt.Errorf("refusing to write over an unreadable config: %s", cfg.LoadWarning)
+	if cfg.LoadFailed {
+		return RepoInfo{}, fmt.Errorf("refusing to write over an unreadable config: %s",
+			strings.Join(cfg.Warnings, "; "))
 	}
 	infos, err := inventory(cfg)
 	if err != nil {
@@ -173,19 +174,19 @@ func setDescription(key, purpose, context string) (RepoInfo, error) {
 		return RepoInfo{}, fmt.Errorf("repo %q is listed but missing at %s", key, info.Path)
 	}
 
-	link := cfg.Repos[key]
-	if purpose != "" {
-		link.Purpose = purpose
-		info.Purpose = purpose
+	saved, err := config.Update(func(c *config.Config) {
+		link := c.Repos[key]
+		if purpose != "" {
+			link.Purpose = purpose
+		}
+		if context != "" {
+			link.Context = context
+		}
+		c.Repos[key] = link
+	})
+	if err != nil {
+		return RepoInfo{}, err
 	}
-	if context != "" {
-		link.Context = context
-		info.Context = context
-	}
-	cfg.Repos[key] = link
-
-	if err := config.Save(cfg); err != nil {
-		return RepoInfo{}, fmt.Errorf("writing %s: %w", config.Path(), err)
-	}
+	info.Purpose, info.Context = saved.Repos[key].Purpose, saved.Repos[key].Context
 	return info, nil
 }

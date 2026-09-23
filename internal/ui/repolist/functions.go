@@ -2,9 +2,7 @@ package repolist
 
 import (
 	"charm.land/bubbles/v2/list"
-	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
-	"github.com/bkenks/lazymux/internal/styles"
 )
 
 func ConvertToRepoType(i list.Item) domain.Repo {
@@ -16,14 +14,4 @@ func ConvertToRepoType(i list.Item) domain.Repo {
 
 func AbsRepoPath(i list.Item) string {
 	return ConvertToRepoType(i).AbsPath
-}
-
-func SizeBuffer() (width, height int) {
-	x, y := styles.DocStyle.GetFrameSize()
-	width = constants.WindowSize.Width - x
-	height = constants.WindowSize.Height - y - constants.FooterReservedLines
-	if height < 1 {
-		height = 1
-	}
-	return width, height
 }

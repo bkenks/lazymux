@@ -13,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
@@ -64,7 +65,7 @@ type Model struct {
 // New builds the screen over a copy of cfg's keybinds. reserved lists the keys
 // the repo list already uses, which custom keybinds may not take.
 func New(cfg config.Config, reserved []string) *Model {
-	w, h := sizeBuffer()
+	w, h := styles.ContentSize(0)
 	l := list.New(nil, list.NewDefaultDelegate(), w, h)
 	l.Title = "Keybinds"
 	l.KeyMap.Quit = constants.ListQuit
@@ -93,7 +94,7 @@ func (m *Model) refresh() {
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if _, ok := msg.(tea.WindowSizeMsg); ok {
-		w, h := sizeBuffer()
+		w, h := styles.ContentSize(0)
 		m.list.SetSize(w, h)
 	}
 	if m.form != nil {
@@ -111,7 +112,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case key.Matches(keyMsg, constants.GlobalKeyMap.Quit):
 		return m, tea.Quit
 	case key.Matches(keyMsg, keys.Exit):
-		return m, func() tea.Msg { return events.SetState{State: domain.StateMain} }
+		return m, commands.SetState(domain.StateMain)
 	case key.Matches(keyMsg, keys.New):
 		return m, m.startEdit(-1)
 	case key.Matches(keyMsg, keys.Edit):
@@ -256,19 +257,9 @@ func (m *Model) View() tea.View {
 	}
 	rows := []string{styles.MenuTitle.Render(title), m.form.View()}
 	if m.purpose == purposeEdit {
-		width, _ := sizeBuffer()
+		width, _ := styles.ContentSize(0)
 		keyNamesHelp := styles.Subtle(keybind.KeyNamesHelp)
 		rows = append(rows, lipgloss.NewStyle().Width(width).Render(keyNamesHelp))
 	}
 	return tea.NewView(lipgloss.JoinVertical(lipgloss.Left, rows...))
-}
-
-func sizeBuffer() (w, h int) {
-	x, y := styles.DocStyle.GetFrameSize()
-	w = constants.WindowSize.Width - x
-	h = constants.WindowSize.Height - y - constants.FooterReservedLines
-	if h < 1 {
-		h = 1
-	}
-	return w, h
 }

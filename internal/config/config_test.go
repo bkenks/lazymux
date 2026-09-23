@@ -21,8 +21,11 @@ func TestLoadCanonicalizesHandEditedKeybinds(t *testing.T) {
 	if got := cfg.Keybinds[0].Keys; got != "ctrl+g" {
 		t.Errorf("Keys = %q, want ctrl+g", got)
 	}
-	if !strings.Contains(cfg.LoadWarning, "broken") {
-		t.Errorf("LoadWarning = %q, want it to name the unparseable keybind", cfg.LoadWarning)
+	if len(cfg.Warnings) != 1 || !strings.Contains(cfg.Warnings[0], "broken") {
+		t.Errorf("Warnings = %q, want one naming the unparseable keybind", cfg.Warnings)
+	}
+	if cfg.LoadFailed {
+		t.Error("a bad keybind must not mark the whole config as failed to load")
 	}
 }
 
@@ -38,8 +41,8 @@ func TestSaveLoadRoundtrip(t *testing.T) {
 	}
 
 	got := Load()
-	if got.LoadWarning != "" {
-		t.Fatalf("warning: %s", got.LoadWarning)
+	if got.LoadFailed || len(got.Warnings) > 0 {
+		t.Fatalf("LoadFailed=%v warnings=%q", got.LoadFailed, got.Warnings)
 	}
 	if len(got.Forges) != 1 || got.Forges[0].Name != "github" {
 		t.Errorf("forges = %+v", got.Forges)

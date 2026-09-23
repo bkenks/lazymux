@@ -45,12 +45,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cursor = choiceNo
 		case key.Matches(msg, constants.ConfirmKeyMap.Activate):
 			if m.cursor == choiceYes {
-				cmds = append(cmds, commands.DeleteRepoCmd(m.AbsPath))
+				cmds = append(cmds, commands.DeleteRepoCmd(m.RepoPath, m.AbsPath))
 			}
 			cmds = append(cmds, commands.SetState(domain.StateMain))
 		case key.Matches(msg, constants.ConfirmKeyMap.Proceed):
 			cmds = append(cmds,
-				commands.DeleteRepoCmd(m.AbsPath),
+				commands.DeleteRepoCmd(m.RepoPath, m.AbsPath),
 				commands.SetState(domain.StateMain),
 			)
 		case key.Matches(msg, constants.GlobalKeyMap.Quit):

@@ -13,8 +13,10 @@ import (
 // RefreshReposCmd walks the lazymux base dir and rebuilds the repo list,
 // ordered by the current domain.Sort mode.
 func RefreshReposCmd() tea.Cmd {
+	snapshot := cfg().Clone()
+	sortMode := domain.Sort
 	return func() tea.Msg {
-		found, err := repomgr.List(cfg())
+		found, err := repomgr.List(snapshot)
 		if err != nil {
 			return events.Toast{Level: events.ToastError, Msg: fmt.Sprintf("scan failed: %v", err)}
 		}
@@ -24,7 +26,7 @@ func RefreshReposCmd() tea.Cmd {
 			repos = append(repos, r)
 		}
 
-		domain.SortRepos(repos, domain.Sort)
+		domain.SortRepos(repos, sortMode)
 
 		return events.ReposRefreshed{RepoList: repos}
 	}

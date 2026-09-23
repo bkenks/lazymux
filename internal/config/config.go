@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -22,6 +23,12 @@ const DefaultPlaceholderHost = "lazymux-placeholder"
 // DefaultSortMode is the repo list ordering used when none is stored. It
 // mirrors domain.SortRecent, which config can't import without a cycle.
 const DefaultSortMode = "recent"
+
+// Clone schemes a repo link or the default protocol can take.
+const (
+	SchemeHTTPS = "https"
+	SchemeSSH   = "ssh"
+)
 
 // Defaults for the MCP server. It binds to loopback so the repo inventory
 // isn't exposed to the network unless the user opts in via `mcp set-url`.
@@ -92,6 +99,101 @@ type RepoLink struct {
 	Context string `json:"context,omitempty"`
 }
 
+// Clone returns a copy of the link that shares no slices with the original.
+func (l RepoLink) Clone() RepoLink {
+	l.Upstreams = slices.Clone(l.Upstreams)
+	l.LegacyForges = slices.Clone(l.LegacyForges)
+	return l
+}
+
+// HasUpstream reports whether name is one of the forges the repo is pushed to.
+func (l RepoLink) HasUpstream(name string) bool {
+	return slices.Contains(l.Upstreams, name)
+}
+
+// ToggleUpstream adds name as an upstream, or removes it if it already is one.
+// The first upstream added becomes the origin.
+func (l *RepoLink) ToggleUpstream(name string) {
+	if l.HasUpstream(name) {
+		l.RemoveUpstream(name)
+		return
+	}
+	l.Upstreams = append(slices.Clip(l.Upstreams), name)
+	if l.Origin == "" {
+		l.Origin = name
+	}
+}
+
+// RemoveUpstream drops name from the upstreams. When it was the origin, the
+// first remaining upstream takes over, or the origin is cleared if none remain.
+func (l *RepoLink) RemoveUpstream(name string) {
+	l.Upstreams = slices.DeleteFunc(slices.Clone(l.Upstreams), func(u string) bool { return u == name })
+	if l.Origin == name {
+		l.Origin = ""
+		if len(l.Upstreams) > 0 {
+			l.Origin = l.Upstreams[0]
+		}
+	}
+}
+
+// SetOrigin makes name the forge the repo is fetched from, adding it to the
+// upstreams if it isn't one already.
+func (l *RepoLink) SetOrigin(name string) {
+	if !l.HasUpstream(name) {
+		l.Upstreams = append(slices.Clip(l.Upstreams), name)
+	}
+	l.Origin = name
+}
+
+// RenameUpstream rewrites forge oldName to newName in the upstreams and origin,
+// dropping the duplicate if the repo already linked newName.
+func (l *RepoLink) RenameUpstream(oldName, newName string) {
+	renamed := make([]string, 0, len(l.Upstreams))
+	for _, u := range l.Upstreams {
+		if u == oldName {
+			u = newName
+		}
+		if !slices.Contains(renamed, u) {
+			renamed = append(renamed, u)
+		}
+	}
+	l.Upstreams = renamed
+	if l.Origin == oldName {
+		l.Origin = newName
+	}
+}
+
+// ToggleScheme switches the link between https and ssh.
+func (l *RepoLink) ToggleScheme() {
+	if NormalizeScheme(l.Scheme) == SchemeSSH {
+		l.Scheme = SchemeHTTPS
+	} else {
+		l.Scheme = SchemeSSH
+	}
+}
+
+// WithForgeLinks returns l with Upstreams, Origin and Scheme taken from src,
+// keeping l's Purpose and Context.
+func (l RepoLink) WithForgeLinks(src RepoLink) RepoLink {
+	l.Upstreams = slices.Clone(src.Upstreams)
+	l.Origin = src.Origin
+	l.Scheme = src.Scheme
+	return l
+}
+
+// IsEmpty reports whether the link records neither forges nor a description.
+func (l RepoLink) IsEmpty() bool {
+	return len(l.Upstreams) == 0 && l.Origin == "" && l.Purpose == "" && l.Context == ""
+}
+
+// NormalizeScheme maps any scheme string to SchemeSSH or SchemeHTTPS.
+func NormalizeScheme(scheme string) string {
+	if strings.EqualFold(scheme, SchemeSSH) {
+		return SchemeSSH
+	}
+	return SchemeHTTPS
+}
+
 // MCP configures the MCP server that exposes the repo inventory to LLMs.
 type MCP struct {
 	// Host is the bind address ("127.0.0.1" to stay local, "0.0.0.0" to expose
@@ -136,10 +238,14 @@ type Config struct {
 	// Repos maps a repo key ("<namespace>/<repo>") to its forge links.
 	Repos map[string]RepoLink `json:"repos"`
 
-	// LoadWarning is set when loading produced a recoverable issue
-	// (e.g. parse failure → falling back to defaults). Surfaced to the
-	// user as a startup toast. Not persisted.
-	LoadWarning string `json:"-"`
+	// LoadFailed is set when the config file exists but couldn't be read or
+	// parsed. The Config holds defaults, and Update refuses to write over the
+	// file until it is fixed. Not persisted.
+	LoadFailed bool `json:"-"`
+
+	// Warnings lists recoverable issues found while loading, such as a keybind
+	// that won't parse. Surfaced to the user at startup. Not persisted.
+	Warnings []string `json:"-"`
 }
 
 func Default() Config {
@@ -158,7 +264,7 @@ func Default() Config {
 			SortMode:     DefaultSortMode,
 		},
 		Behavior: Behavior{
-			DefaultProtocol: "https",
+			DefaultProtocol: SchemeHTTPS,
 			ConfirmDelete:   true,
 		},
 		MCP: MCP{
@@ -196,50 +302,79 @@ func Path() string {
 }
 
 // Load reads .lazymux.json, migrating a legacy TOML config on first run and
-// writing a default file if none exists. On parse errors it returns defaults
-// with a non-empty LoadWarning so the caller can surface the issue.
+// writing a default file if none exists. If the file exists but can't be read
+// or parsed, it returns defaults with LoadFailed set.
 func Load() Config {
-	cfg := Default()
 	path := Path()
-
-	data, err := os.ReadFile(path)
+	cfg, err := readFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		// First run: migrate a legacy config.toml if present, else defaults.
+		cfg = Default()
 		if migrated, ok := migrateLegacy(cfg); ok {
 			cfg = migrated
 		}
 		if writeErr := Save(cfg); writeErr != nil {
-			cfg.LoadWarning = fmt.Sprintf("couldn't write config: %v", writeErr)
+			cfg.Warnings = append(cfg.Warnings, fmt.Sprintf("couldn't write config: %v", writeErr))
 		}
 		return cfg
 	}
 	if err != nil {
-		cfg.LoadWarning = fmt.Sprintf("couldn't read %s: %v", path, err)
-		return cfg
+		cfg = Default()
+		cfg.LoadFailed = true
+		cfg.Warnings = []string{fmt.Sprintf("using defaults, changes won't be saved: %v", err)}
 	}
+	return cfg
+}
 
+// Update re-reads the config file, applies change to it and saves the result,
+// so edits another process made since this one loaded survive. It refuses to
+// write when the file exists but can't be read or parsed.
+func Update(change func(*Config)) (Config, error) {
+	path := Path()
+	cfg, err := readFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		cfg, err = Default(), nil
+	}
+	if err != nil {
+		return Config{}, fmt.Errorf("refusing to overwrite unreadable config: %w", err)
+	}
+	change(&cfg)
+	if err := Save(cfg); err != nil {
+		return Config{}, fmt.Errorf("writing %s: %w", path, err)
+	}
+	return cfg, nil
+}
+
+func readFile(path string) (Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return Config{}, err
+	}
 	loaded := Default()
 	if err := json.Unmarshal(data, &loaded); err != nil {
-		cfg.LoadWarning = fmt.Sprintf("config invalid, using defaults: %v", err)
-		return cfg
+		return Config{}, fmt.Errorf("parsing %s: %w", path, err)
 	}
-	return normalize(loaded)
+	return normalize(loaded), nil
 }
 
 // normalize backfills fields an older/partial file may have left empty so the
 // rest of the app can assume sane values.
 func normalize(cfg Config) Config {
 	d := Default()
-	if cfg.BaseDir == "" {
-		cfg.BaseDir = d.BaseDir
-	}
+	cfg.BaseDir = normalizeBaseDir(cfg.BaseDir, d.BaseDir)
 	if cfg.PlaceholderHost == "" {
 		cfg.PlaceholderHost = d.PlaceholderHost
 	}
 	if cfg.UI.SortMode == "" {
 		cfg.UI.SortMode = d.UI.SortMode
 	}
-	if cfg.Behavior.DefaultProtocol == "" {
+	cfg.Behavior.DefaultProtocol = strings.ToLower(cfg.Behavior.DefaultProtocol)
+	switch cfg.Behavior.DefaultProtocol {
+	case SchemeHTTPS, SchemeSSH:
+	case "":
+		cfg.Behavior.DefaultProtocol = d.Behavior.DefaultProtocol
+	default:
+		cfg.Warnings = append(cfg.Warnings, fmt.Sprintf("defaultProtocol %q isn't https or ssh, using %s",
+			cfg.Behavior.DefaultProtocol, d.Behavior.DefaultProtocol))
 		cfg.Behavior.DefaultProtocol = d.Behavior.DefaultProtocol
 	}
 	if cfg.MCP.Host == "" {
@@ -271,12 +406,29 @@ func normalize(cfg Config) Config {
 	for i, bind := range cfg.Keybinds {
 		keys, err := keybind.Parse(bind.Keys)
 		if err != nil {
-			cfg.LoadWarning = fmt.Sprintf("keybind %q won't run: %v", bind.Name, err)
+			cfg.Warnings = append(cfg.Warnings, fmt.Sprintf("keybind %q won't run: %v", bind.Name, err))
 			continue
 		}
 		cfg.Keybinds[i].Keys = keys
 	}
 	return cfg
+}
+
+// normalizeBaseDir expands a leading ~ and makes dir absolute and clean, so
+// path comparisons against it hold. An empty dir falls back to fallback.
+func normalizeBaseDir(dir, fallback string) string {
+	if dir == "" {
+		return fallback
+	}
+	if dir == "~" || strings.HasPrefix(dir, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			dir = filepath.Join(home, strings.TrimPrefix(dir, "~"))
+		}
+	}
+	if abs, err := filepath.Abs(dir); err == nil {
+		return abs
+	}
+	return filepath.Clean(dir)
 }
 
 // migrateRepoLink folds the pre-upstream forges/primary fields of a repo link
@@ -355,6 +507,9 @@ func migrateLegacy(base Config) (Config, bool) {
 // place, so a crash (or the MCP server and the TUI writing at once) can't
 // leave a half-written config behind.
 func Save(cfg Config) error {
+	if cfg.LoadFailed {
+		return errors.New("config file couldn't be read at startup; fix it and restart before saving")
+	}
 	path := Path()
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -383,6 +538,20 @@ func Save(cfg Config) error {
 	return os.Rename(tmpName, path)
 }
 
+// Clone returns a copy of the config that shares no maps or slices with c, so
+// it can be read from another goroutine while c is changed.
+func (c Config) Clone() Config {
+	c.Forges = slices.Clone(c.Forges)
+	c.Keybinds = slices.Clone(c.Keybinds)
+	c.Warnings = slices.Clone(c.Warnings)
+	repos := make(map[string]RepoLink, len(c.Repos))
+	for key, link := range c.Repos {
+		repos[key] = link.Clone()
+	}
+	c.Repos = repos
+	return c
+}
+
 // ForgeByName returns the registry forge with the given name.
 func (c Config) ForgeByName(name string) (Forge, bool) {
 	for _, f := range c.Forges {
@@ -396,28 +565,9 @@ func (c Config) ForgeByName(name string) (Forge, bool) {
 // ForgeByHost returns the registry forge whose host matches (case-insensitive).
 func (c Config) ForgeByHost(host string) (Forge, bool) {
 	for _, f := range c.Forges {
-		if eqFold(f.Host, host) {
+		if strings.EqualFold(f.Host, host) {
 			return f, true
 		}
 	}
 	return Forge{}, false
-}
-
-func eqFold(a, b string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := 0; i < len(a); i++ {
-		ca, cb := a[i], b[i]
-		if 'A' <= ca && ca <= 'Z' {
-			ca += 'a' - 'A'
-		}
-		if 'A' <= cb && cb <= 'Z' {
-			cb += 'a' - 'A'
-		}
-		if ca != cb {
-			return false
-		}
-	}
-	return true
 }

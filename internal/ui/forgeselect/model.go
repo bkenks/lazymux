@@ -7,6 +7,7 @@ package forgeselect
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
@@ -14,12 +15,14 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/repomgr"
 	"github.com/bkenks/lazymux/internal/styles"
+	"github.com/bkenks/lazymux/internal/ui/forgepick"
 )
 
 type keyMap struct {
@@ -38,31 +41,6 @@ var keys = keyMap{
 func helpKeys() []key.Binding {
 	return []key.Binding{keys.Toggle, keys.Origin, keys.Scheme, keys.Add, keys.Confirm, keys.Exit, constants.GlobalKeyMap.Quit}
 }
-
-// forgeItem is a registry forge as shown in the selection list.
-type forgeItem struct {
-	name, host      string
-	checked, origin bool
-}
-
-func (i forgeItem) Title() string {
-	box := styles.GlyphCheckOff
-	if i.checked {
-		box = styles.GlyphCheckOn
-	}
-	t := box + " " + i.name
-	if i.origin {
-		t += " " + styles.GlyphOrigin
-	}
-	return t
-}
-func (i forgeItem) Description() string {
-	if i.origin {
-		return i.host + "  · origin (fetch)"
-	}
-	return i.host
-}
-func (i forgeItem) FilterValue() string { return i.name }
 
 type Model struct {
 	list      list.Model
@@ -83,10 +61,9 @@ func New(cfg config.Config, pending []repomgr.PendingClone) *Model {
 	ti.Placeholder = "forge name"
 	ti.CharLimit = 40
 
-	forges := make([]config.Forge, len(cfg.Forges))
-	copy(forges, cfg.Forges)
+	forges := slices.Clone(cfg.Forges)
 
-	w, h := sizeBuffer()
+	w, h := styles.ContentSize(0)
 	l := list.New(nil, list.NewDefaultDelegate(), w, h)
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(true)
@@ -111,23 +88,16 @@ func (m *Model) refresh() {
 		return
 	}
 	p := m.cur()
-	items := make([]list.Item, len(m.forges))
-	for i, f := range m.forges {
-		items[i] = forgeItem{name: f.Name, host: f.Host, checked: p.HasForge(f.Name), origin: p.Origin == f.Name}
-	}
 	idx := m.list.Index()
-	m.list.SetItems(items)
+	m.list.SetItems(forgepick.Items(m.forges, p.RepoLink))
 	m.list.Select(idx)
 	m.list.Title = fmt.Sprintf("Link Forges · repo %d/%d · %s · %s",
-		m.idx+1, len(m.pending), p.URL.Key(), schemeLabel(p.Scheme))
+		m.idx+1, len(m.pending), p.URL.Key(), config.NormalizeScheme(p.Scheme))
 }
 
 func (m *Model) selectOrigin() {
-	for i, f := range m.forges {
-		if f.Name == m.cur().Origin {
-			m.list.Select(i)
-			return
-		}
+	if i := forgepick.IndexOf(m.forges, m.cur().Origin); i >= 0 {
+		m.list.Select(i)
 	}
 }
 
@@ -155,7 +125,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case key.Matches(km, constants.GlobalKeyMap.Quit):
 		return m, tea.Quit
 	case key.Matches(km, keys.Exit):
-		return m, func() tea.Msg { return events.SetState{State: domain.StateMain} }
+		return m, commands.SetState(domain.StateMain)
 	case key.Matches(km, keys.Toggle):
 		m.toggleSelected()
 		m.refresh()
@@ -165,11 +135,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.refresh()
 		return m, nil
 	case key.Matches(km, keys.Scheme):
-		if m.cur().Scheme == repomgr.SchemeSSH {
-			m.cur().Scheme = repomgr.SchemeHTTPS
-		} else {
-			m.cur().Scheme = repomgr.SchemeSSH
-		}
+		m.cur().ToggleScheme()
 		m.refresh()
 		return m, nil
 	case key.Matches(km, keys.Add):
@@ -196,21 +162,7 @@ func (m *Model) toggleSelected() {
 	if !ok {
 		return
 	}
-	p := m.cur()
-	if p.HasForge(f.Name) {
-		p.Upstreams = removeStr(p.Upstreams, f.Name)
-		if p.Origin == f.Name {
-			p.Origin = ""
-			if len(p.Upstreams) > 0 {
-				p.Origin = p.Upstreams[0]
-			}
-		}
-	} else {
-		p.Upstreams = append(p.Upstreams, f.Name)
-		if p.Origin == "" {
-			p.Origin = f.Name
-		}
-	}
+	m.cur().ToggleUpstream(f.Name)
 	m.err = ""
 }
 
@@ -221,11 +173,7 @@ func (m *Model) setOriginSelected() {
 	if !ok {
 		return
 	}
-	p := m.cur()
-	if !p.HasForge(f.Name) {
-		p.Upstreams = append(p.Upstreams, f.Name)
-	}
-	p.Origin = f.Name
+	m.cur().SetOrigin(f.Name)
 	m.err = ""
 }
 
@@ -281,7 +229,7 @@ func (m *Model) updateAdding(km tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.err = "forge name can't be empty"
 			return m, nil
 		}
-		if _, exists := forgeByName(m.forges, name); exists {
+		if forgepick.IndexOf(m.forges, name) >= 0 {
 			m.err = fmt.Sprintf("forge %q already exists", name)
 			return m, nil
 		}
@@ -335,30 +283,11 @@ const addFormLines = 7
 
 // resize lays out the list, leaving room for the framed add form when it's open.
 func (m *Model) resize() {
-	w, h := sizeBuffer()
+	reserved := 0
 	if m.adding {
-		if h -= addFormLines; h < 1 {
-			h = 1
-		}
+		reserved = addFormLines
 	}
-	m.list.SetSize(w, h)
-}
-
-func sizeBuffer() (w, h int) {
-	x, y := styles.DocStyle.GetFrameSize()
-	w = constants.WindowSize.Width - x
-	h = constants.WindowSize.Height - y - constants.FooterReservedLines
-	if h < 1 {
-		h = 1
-	}
-	return
-}
-
-func schemeLabel(s string) string {
-	if s == repomgr.SchemeSSH {
-		return "ssh"
-	}
-	return "https"
+	m.list.SetSize(styles.ContentSize(reserved))
 }
 
 func suggestName(host string) string {
@@ -366,23 +295,4 @@ func suggestName(host string) string {
 		return host[:i]
 	}
 	return host
-}
-
-func removeStr(s []string, v string) []string {
-	out := s[:0]
-	for _, x := range s {
-		if x != v {
-			out = append(out, x)
-		}
-	}
-	return out
-}
-
-func forgeByName(forges []config.Forge, name string) (config.Forge, bool) {
-	for _, f := range forges {
-		if f.Name == name {
-			return f, true
-		}
-	}
-	return config.Forge{}, false
 }
