@@ -211,7 +211,7 @@ func (m *Model) header() string {
 
 // innerSize is the area inside the border available to the process.
 func innerSize() (width, height int) {
-	x, y := styles.DocStyle.GetFrameSize()
+	x, y := styles.TerminalDocStyle.GetFrameSize()
 	width = max(constants.WindowSize.Width-x-borderSize, 1)
 	reservedHeight := y + constants.FooterReservedLines + borderSize + headerHeight
 	height = max(constants.WindowSize.Height-reservedHeight, 1)

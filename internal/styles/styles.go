@@ -32,6 +32,11 @@ var (
 	DocStyle = lipgloss.NewStyle().
 			Margin(3, 1)
 
+	// TerminalDocStyle replaces DocStyle on the keybind terminal screen, whose
+	// bordered pane fills the window up to this margin.
+	TerminalDocStyle = lipgloss.NewStyle().
+				Margin(1, 2)
+
 	// End "Terminal Window"
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
