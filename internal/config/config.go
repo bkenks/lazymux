@@ -285,6 +285,10 @@ func Default() Config {
 // is fully sandboxed from the normal ~/lazymux tree.
 var dirName = "lazymux"
 
+// DirName is the per-build directory name ("lazymux", or "lazymux-dev" for
+// the dev binary) that every piece of on-disk state should be keyed by.
+func DirName() string { return dirName }
+
 func defaultBaseDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {

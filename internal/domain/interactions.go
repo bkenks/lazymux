@@ -5,20 +5,25 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/bkenks/lazymux/internal/config"
 )
 
 type InteractionStore map[string]time.Time
 
 // interactionsFilePath honors XDG_DATA_HOME, falling back to ~/.local/share.
+// The directory follows config.DirName, so the dev build keeps its own
+// recency history.
 func interactionsFilePath() string {
+	dir := config.DirName()
 	if x := os.Getenv("XDG_DATA_HOME"); x != "" {
-		return filepath.Join(x, "lazymux", "interactions.json")
+		return filepath.Join(x, dir, "interactions.json")
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return filepath.Join(".", "lazymux-interactions.json")
+		return filepath.Join(".", dir+"-interactions.json")
 	}
-	return filepath.Join(home, ".local", "share", "lazymux", "interactions.json")
+	return filepath.Join(home, ".local", "share", dir, "interactions.json")
 }
 
 func LoadInteractions() InteractionStore {
