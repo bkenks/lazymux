@@ -19,13 +19,12 @@ provisions everything. Each script carries its own PEP 723 header and runs under
 | `mise run build --list`       | prints the release matrix       |
 | `mise run build --dev`        | `build/bin/lazymux-dev` (this machine) |
 | `mise run install`            | installs `lazymux` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
-| `mise run install-dev`        | installs `lazymux-dev` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
+| `mise run install --dev`      | installs `lazymux-dev` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
 | `mise run clean`              | removes `build/bin` and `build/dist` |
 | `mise run check`              | `go vet`, `go test`, `golangci-lint`, `ruff` and `ty` |
 | `mise run release <bump>`     | tests, tags and pushes; CI builds and publishes (see below) |
 
-`install` and `install-dev` declare `# MISE depends=` on `build` / `build --dev`, so they
-compile first.
+`install` builds before it installs, so it never copies a stale binary.
 
 ## Cross-compilation
 
@@ -56,7 +55,6 @@ pairs from that list.
   build.py      \
   check.py       |
   install.py     |  executable PEP 723 scripts, one per task
-  install-dev.py |
   clean.py       |
   release.py    /
 ```
