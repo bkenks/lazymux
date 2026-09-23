@@ -140,7 +140,8 @@ func TestSearchEmptyQueryReturnsEverything(t *testing.T) {
 func TestHandleSearchRejectsBlankQuery(t *testing.T) {
 	newTestWorkspace(t, "bkenks/lazymux")
 	for _, query := range []string{"", "   ", "\t\n"} {
-		if _, out, err := handleSearch(context.Background(), nil, searchInput{Query: query}); err == nil {
+		_, out, err := handleSearch(context.Background(), nil, searchInput{Query: query})
+		if err == nil {
 			t.Errorf("handleSearch(%q) = %d repos, want an error pointing at list_repositories",
 				query, out.Count)
 		}

@@ -17,7 +17,8 @@ func TestScreensFitTheWindow(t *testing.T) {
 
 	for _, state := range []domain.SessionState{
 		domain.StateSplash, domain.StateMain, domain.StateConfirmDelete,
-		domain.StateCloneRepo, domain.StateSettings, domain.StateForgeRegistry, domain.StateKeybinds,
+		domain.StateCloneRepo, domain.StateSettings, domain.StateForgeRegistry,
+		domain.StateKeybinds,
 	} {
 		m := New(config.Default(), "test")
 		m.Update(window)

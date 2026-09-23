@@ -193,11 +193,11 @@ func tailLog(offset int64) string {
 	if offset > int64(len(data)) {
 		offset = 0
 	}
-	data = data[offset:]
-	if strings.TrimSpace(string(data)) == "" {
+	output := strings.TrimSpace(string(data[offset:]))
+	if output == "" {
 		return "(the server wrote nothing to " + LogPath() + ")"
 	}
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	lines := strings.Split(output, "\n")
 	if len(lines) > 10 {
 		lines = lines[len(lines)-10:]
 	}

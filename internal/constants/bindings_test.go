@@ -14,7 +14,8 @@ func TestReadmeListsEveryRepoListKey(t *testing.T) {
 	for _, c := range RepoListKeyMap.Commands() {
 		row := "| `" + c.Binding.Help().Key + "`"
 		if !strings.Contains(string(readme), row) {
-			t.Errorf("README keybindings table has no row for %q (%s)", c.Binding.Help().Key, c.Full)
+			t.Errorf("README keybindings table has no row for %q (%s)",
+				c.Binding.Help().Key, c.Full)
 		}
 	}
 }

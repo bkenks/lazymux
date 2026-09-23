@@ -94,8 +94,7 @@ func (m *Model) refresh() {
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if _, ok := msg.(tea.WindowSizeMsg); ok {
-		w, h := styles.ContentSize(0)
-		m.list.SetSize(w, h)
+		m.list.SetSize(styles.ContentSize(0))
 	}
 	if m.form != nil {
 		return m.updateForm(msg)

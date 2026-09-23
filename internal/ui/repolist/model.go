@@ -230,7 +230,10 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) (bool, []tea.Cmd) {
 // returns an error toast if that can't be saved, or nil.
 func recordInteraction(key string) tea.Cmd {
 	if err := domain.SaveInteraction(key); err != nil {
-		msg := events.Toast{Level: events.ToastError, Msg: fmt.Sprintf("couldn't record recent use: %v", err)}
+		msg := events.Toast{
+			Level: events.ToastError,
+			Msg:   fmt.Sprintf("couldn't record recent use: %v", err),
+		}
 		return func() tea.Msg { return msg }
 	}
 	return nil

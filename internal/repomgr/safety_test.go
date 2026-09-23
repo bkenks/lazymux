@@ -39,15 +39,18 @@ func TestRenderGitConfigLeavesRepoAloneWhenOriginIsMissing(t *testing.T) {
 		PlaceholderHost: config.DefaultPlaceholderHost,
 		Forges:          []config.Forge{{Name: "github", Host: "github.com"}},
 	}
-	if err := RenderGitConfig(cfg, "me/demo", config.RepoLink{Upstreams: []string{"github"}, Origin: "github"}); err != nil {
+	link := config.RepoLink{Upstreams: []string{"github"}, Origin: "github"}
+	if err := RenderGitConfig(cfg, "me/demo", link); err != nil {
 		t.Fatal(err)
 	}
 
-	err := RenderGitConfig(cfg, "me/demo", config.RepoLink{Upstreams: []string{"gone"}, Origin: "gone"})
+	missing := config.RepoLink{Upstreams: []string{"gone"}, Origin: "gone"}
+	err := RenderGitConfig(cfg, "me/demo", missing)
 	if err == nil {
 		t.Fatal("expected an error for an origin forge missing from the registry")
 	}
-	if got := gitCfg(t, dir, "url.https://github.com/.insteadOf"); got != "https://lazymux-placeholder/" {
+	got := gitCfg(t, dir, "url.https://github.com/.insteadOf")
+	if got != "https://lazymux-placeholder/" {
 		t.Errorf("working insteadOf rule removed, now %q", got)
 	}
 }
@@ -55,14 +58,16 @@ func TestRenderGitConfigLeavesRepoAloneWhenOriginIsMissing(t *testing.T) {
 func TestRenderGitConfigKeepsUnrelatedInsteadOfRules(t *testing.T) {
 	base := t.TempDir()
 	dir := initRepo(t, base, "me/demo")
-	mustGit(t, dir, "config", "--local", "url.https://mirror.example/.insteadOf", "https://lazymux-placeholder2.example/")
+	mustGit(t, dir, "config", "--local",
+		"url.https://mirror.example/.insteadOf", "https://lazymux-placeholder2.example/")
 	cfg := config.Config{
 		BaseDir:         base,
 		PlaceholderHost: config.DefaultPlaceholderHost,
 		Forges:          []config.Forge{{Name: "github", Host: "github.com"}},
 	}
 
-	if err := RenderGitConfig(cfg, "me/demo", config.RepoLink{Upstreams: []string{"github"}, Origin: "github"}); err != nil {
+	link := config.RepoLink{Upstreams: []string{"github"}, Origin: "github"}
+	if err := RenderGitConfig(cfg, "me/demo", link); err != nil {
 		t.Fatal(err)
 	}
 	if got := gitCfg(t, dir, "url.https://mirror.example/.insteadOf"); got == "" {
@@ -76,7 +81,8 @@ func TestRenderGitConfigReportsGitFailures(t *testing.T) {
 		PlaceholderHost: config.DefaultPlaceholderHost,
 		Forges:          []config.Forge{{Name: "github", Host: "github.com"}},
 	}
-	err := RenderGitConfig(cfg, "me/missing", config.RepoLink{Upstreams: []string{"github"}, Origin: "github"})
+	link := config.RepoLink{Upstreams: []string{"github"}, Origin: "github"}
+	err := RenderGitConfig(cfg, "me/missing", link)
 	if err == nil {
 		t.Fatal("expected an error for a repo directory that doesn't exist")
 	}
@@ -89,7 +95,8 @@ func TestRemoveRefusesPathsOutsideBaseDir(t *testing.T) {
 	if err := os.MkdirAll(outside, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for _, target := range []string{outside, base, filepath.Join(base, "..", "lazymux-other", "repo")} {
+	escaping := filepath.Join(base, "..", "lazymux-other", "repo")
+	for _, target := range []string{outside, base, escaping} {
 		if err := Remove(base, target); err == nil {
 			t.Errorf("Remove(%q, %q) succeeded", base, target)
 		}

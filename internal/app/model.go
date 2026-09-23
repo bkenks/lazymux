@@ -509,7 +509,8 @@ func (m *ModelManager) keybindClashes() []string {
 				fmt.Sprintf("keybind %q won't run: %s is a lazymux key", bind.Name, used))
 		} else if first, ok := claimed[bind.Keys]; ok {
 			clashes = append(clashes,
-				fmt.Sprintf("keybind %q won't run: %s is already bound to %q", bind.Name, bind.Keys, first))
+				fmt.Sprintf("keybind %q won't run: %s is already bound to %q",
+					bind.Name, bind.Keys, first))
 		} else {
 			claimed[bind.Keys] = bind.Name
 		}

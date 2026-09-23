@@ -70,7 +70,8 @@ func selectField(
 	return settingField{
 		key: key,
 		build: func(cfg config.Config) settings.Setting {
-			return settings.NewSelect(key, label, options, max(slices.Index(options, *field(&cfg)), 0))
+			selected := max(slices.Index(options, *field(&cfg)), 0)
+			return settings.NewSelect(key, label, options, selected)
 		},
 		apply: func(cfg *config.Config, s settings.Setting) { *field(cfg) = s.ValueString() },
 	}
@@ -149,12 +150,12 @@ func (m *ModelManager) applySettingChange(msg settings.SettingChanged) tea.Cmd {
 		return m.toastCmd(events.ToastError, fmt.Sprintf("unknown setting %q", msg.Key))
 	}
 	field := settingFields[i]
-	saveErr := m.saveConfig("config", func(c *config.Config) { field.apply(c, msg.Setting) })
+	saveFailed := m.saveConfig("config", func(c *config.Config) { field.apply(c, msg.Setting) })
 	if field.show != nil {
 		field.show(m)
 	}
-	if saveErr != nil {
-		return saveErr
+	if saveFailed != nil {
+		return saveFailed
 	}
 	return m.toastCmd(events.ToastInfo, "settings saved")
 }

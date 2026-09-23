@@ -26,7 +26,8 @@ func describedRepoConfig() config.Config {
 	cfg := config.Default()
 	cfg.Forges = []config.Forge{{Name: "github", Host: "github.com"}}
 	cfg.Repos["me/demo"] = config.RepoLink{
-		Upstreams: []string{"github"}, Origin: "github", Purpose: "demo purpose", Context: "demo context",
+		Upstreams: []string{"github"}, Origin: "github",
+		Purpose: "demo purpose", Context: "demo context",
 	}
 	return cfg
 }
@@ -60,7 +61,8 @@ func TestAppSaveKeepsDescriptionWrittenByAnotherProcess(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	m.Update(events.KeybindsChanged{Keybinds: []config.Keybind{{Name: "log", Keys: "ctrl+g", Command: "git log"}}})
+	keybinds := []config.Keybind{{Name: "log", Keys: "ctrl+g", Command: "git log"}}
+	m.Update(events.KeybindsChanged{Keybinds: keybinds})
 
 	if got := config.Load().Repos["me/demo"].Purpose; got != "set over MCP" {
 		t.Errorf("Purpose = %q, want the MCP write to survive", got)
@@ -103,7 +105,8 @@ func TestSettingsSaveDoesNotOverwriteUnparseableConfig(t *testing.T) {
 	}
 	m := New(config.Load(), "test")
 
-	m.Update(settings.SettingChanged{Key: "confirm_delete", Setting: settings.NewToggle("confirm_delete", "", false)})
+	toggledOff := settings.NewToggle("confirm_delete", "", false)
+	m.Update(settings.SettingChanged{Key: "confirm_delete", Setting: toggledOff})
 
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -127,7 +130,8 @@ func TestInitWarnsAboutClashingKeybinds(t *testing.T) {
 	m := newPersistedApp(t, cfg)
 
 	clashes := m.keybindClashes()
-	if len(clashes) != 2 || !strings.Contains(clashes[0], "shadow") || !strings.Contains(clashes[1], "second") {
+	if len(clashes) != 2 ||
+		!strings.Contains(clashes[0], "shadow") || !strings.Contains(clashes[1], "second") {
 		t.Errorf("clashes = %q", clashes)
 	}
 }

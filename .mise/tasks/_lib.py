@@ -96,7 +96,8 @@ def go_capture(*args: str) -> str:
         return capture("go", *args, cwd=repo_root())
     except (subprocess.CalledProcessError, FileNotFoundError):
         die(
-            f"could not run `go {' '.join(args)}` — is the Go toolchain installed? (try `mise install`)"
+            f"could not run `go {' '.join(args)}` — "
+            "is the Go toolchain installed? (try `mise install`)"
         )
 
 
@@ -146,7 +147,8 @@ def build_lazymux_dev(version: str | None = None) -> Path:
     reported = capture(output, "--version")
     if not reported.endswith(DEV_SUFFIX):
         die(
-            f"{output} reports {reported!r}, not a {DEV_SUFFIX} version — the -X flags did not apply"
+            f"{output} reports {reported!r}, not a {DEV_SUFFIX} version — "
+            "the -X flags did not apply"
         )
     return output
 
