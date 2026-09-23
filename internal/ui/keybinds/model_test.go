@@ -120,18 +120,21 @@ func TestNewKeybindIsSavedCanonical(t *testing.T) {
 	m := newTestModel()
 
 	press(m, tea.KeyPressMsg{Code: 'n', Text: "n"})
-	var changed []events.KeybindsChanged
 	for _, field := range []string{"Tests", "Ctrl + Shift + T", "go test ./..."} {
 		for _, r := range field {
 			press(m, tea.KeyPressMsg{Code: r, Text: string(r)})
 		}
-		changed = press(m, enterKey)
+		press(m, enterKey)
 	}
+	press(m, leftKey)
+	changed := press(m, enterKey)
 
 	if len(changed) != 1 {
 		t.Fatalf("form emitted %d KeybindsChanged, want 1 (form open: %v)", len(changed), m.form != nil)
 	}
-	want := config.Keybind{Name: "Tests", Keys: "ctrl+shift+t", Command: "go test ./..."}
+	want := config.Keybind{
+		Name: "Tests", Keys: "ctrl+shift+t", Command: "go test ./...", ReturnOnExit: true,
+	}
 	if got := m.keybinds[len(m.keybinds)-1]; got != want {
 		t.Errorf("saved %+v, want %+v", got, want)
 	}

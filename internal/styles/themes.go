@@ -139,10 +139,6 @@ func rebuildStyles() {
 		Padding(0, 1).
 		MarginTop(1)
 
-	TerminalFrameStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(Purple)
-
 	DialogTitleStyle = lipgloss.NewStyle().
 		Background(DarkPurple).
 		Foreground(White).

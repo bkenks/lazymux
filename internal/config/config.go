@@ -229,11 +229,13 @@ func (m MCP) Addr() string {
 
 // Keybind binds a key combo on the repo list to a shell command that runs in
 // the selected repo's directory. Keys holds the canonical keystroke produced by
-// keybind.Parse (e.g. "ctrl+shift+k").
+// keybind.Parse (e.g. "ctrl+shift+k"). ReturnOnExit goes straight back to
+// lazymux when the command ends instead of waiting for enter.
 type Keybind struct {
-	Name    string `json:"name"`
-	Keys    string `json:"keys"`
-	Command string `json:"command"`
+	Name         string `json:"name"`
+	Keys         string `json:"keys"`
+	Command      string `json:"command"`
+	ReturnOnExit bool   `json:"returnOnExit"`
 }
 
 type Config struct {

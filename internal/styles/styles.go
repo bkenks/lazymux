@@ -32,11 +32,6 @@ var (
 	DocStyle = lipgloss.NewStyle().
 			Margin(3, 1)
 
-	// TerminalDocStyle replaces DocStyle on the keybind terminal screen, whose
-	// bordered pane fills the window up to this margin.
-	TerminalDocStyle = lipgloss.NewStyle().
-				Margin(1, 2)
-
 	// End "Terminal Window"
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -75,10 +70,6 @@ var (
 	// FormBoxStyle frames the inline add/edit forms on the forge screens so the
 	// "you're in edit mode" state reads clearly against the list above it.
 	FormBoxStyle lipgloss.Style
-
-	// TerminalFrameStyle borders a keybind command's output so it reads as a
-	// process running inside lazymux.
-	TerminalFrameStyle lipgloss.Style
 
 	DialogHelpStyle = lipgloss.NewStyle()
 

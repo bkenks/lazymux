@@ -27,7 +27,6 @@ import (
 	"github.com/bkenks/lazymux/internal/ui/repolist"
 	"github.com/bkenks/lazymux/internal/ui/settings"
 	"github.com/bkenks/lazymux/internal/ui/splash"
-	"github.com/bkenks/lazymux/internal/ui/terminal"
 )
 
 const (
@@ -57,7 +56,6 @@ type ModelManager struct {
 	forgeRegistry *forgeregistry.Model
 	repoForges    *repoforges.Model
 	keybinds      *keybinds.Model
-	terminal      *terminal.Model
 
 	active tea.Model
 
@@ -174,12 +172,6 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case domain.StateKeybinds:
 				m.keybinds = keybinds.New(m.cfg, m.main.ReservedKeys())
 				m.active = m.keybinds
-
-			case domain.StateTerminal:
-				// m.terminal is built in the RunKeybind handler.
-				if m.terminal != nil {
-					m.active = m.terminal
-				}
 			}
 
 			// Re-broadcast the window size so the newly-active screen lays out at
@@ -300,7 +292,7 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.saveKeybinds(msg.Keybinds))
 
 		case events.RunKeybind:
-			cmds = append(cmds, m.runKeybind(msg))
+			cmds = append(cmds, commands.RunKeybindCmd(msg.Keybind, msg.Dir))
 
 		case events.OpenRepoForges:
 			m.repoForges = repoforges.New(m.cfg, msg.Key)
@@ -423,11 +415,7 @@ func isPullProgress(msg tea.Msg) bool {
 
 func (m *ModelManager) View() tea.View {
 	active := m.active.View()
-	docStyle := styles.DocStyle
-	if m.state == domain.StateTerminal {
-		docStyle = styles.TerminalDocStyle
-	}
-	body := docStyle.Render(active.Content)
+	body := styles.DocStyle.Render(active.Content)
 	// The footer region is a single reserved line (FooterReservedLines). A clone
 	// batch in flight owns it — showing a live gradient bar between the per-repo
 	// terminal handovers — otherwise it's the toast line.
@@ -439,8 +427,8 @@ func (m *ModelManager) View() tea.View {
 	v.AltScreen = true
 	if active.Cursor != nil {
 		v.Cursor = active.Cursor
-		v.Cursor.X += docStyle.GetMarginLeft()
-		v.Cursor.Y += docStyle.GetMarginTop()
+		v.Cursor.X += styles.DocStyle.GetMarginLeft()
+		v.Cursor.Y += styles.DocStyle.GetMarginTop()
 	}
 	return v
 }
@@ -514,17 +502,6 @@ func (m *ModelManager) keybindClashes() []string {
 		}
 	}
 	return clashes
-}
-
-// runKeybind starts the keybind's command in the embedded terminal screen.
-func (m *ModelManager) runKeybind(msg events.RunKeybind) tea.Cmd {
-	shellCmd := commands.ShellCommand(msg.Keybind.Command, msg.Dir)
-	session, err := terminal.New(msg.Keybind.Name, shellCmd)
-	if err != nil {
-		return m.toastCmd(events.ToastError, err.Error())
-	}
-	m.terminal = session
-	return tea.Sequence(commands.SetState(domain.StateTerminal), session.Init())
 }
 
 // renderCloneProgress draws a gradient bar while a clone batch is in flight.

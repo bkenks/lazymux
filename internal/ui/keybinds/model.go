@@ -143,6 +143,9 @@ func (m *Model) startEdit(index int) tea.Cmd {
 			Value(&m.draft.Keys).Validate(m.validateKeys),
 		huh.NewInput().Title("Command").Placeholder("git log --oneline --graph").
 			Value(&m.draft.Command).Validate(requireText("command")),
+		huh.NewConfirm().Title("Return to lazymux on command end").
+			Affirmative("Yes").Negative("No").
+			Value(&m.draft.ReturnOnExit),
 	))
 	return m.form.Init()
 }

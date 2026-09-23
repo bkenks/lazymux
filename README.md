@@ -46,7 +46,7 @@ lazymux is built for repos that live on more than one host — for example a sel
 - **Forge registry** — register git hosts and link repos to one or more of them as upstreams, with a per-repo origin
 - **Stable placeholder remotes** — switch a repo's forge without ever touching its `origin`
 - **Browse all repos** in a clean, filterable list, sorted by most-recently used
-- **Custom keybinds** — bind a key to any shell command (e.g. `lazygit`); it runs in the selected repo inside a bordered pane
+- **Custom keybinds** — bind a key to any shell command (e.g. `lazygit`); it runs in the selected repo with the whole terminal
 - **Open in your editor** — any command on your `PATH`; the settings screen checks it resolves before saving
 - **Drop into a shell** in the selected repo's directory
 - **Copy the repo's absolute path** to your clipboard
@@ -138,7 +138,7 @@ On first run, lazymux creates `~/lazymux/` and a `.lazymux.json` config (migrati
 | `d` | **Delete** the selected repository |
 | `1` | Open **settings** |
 | `2` | Manage **custom keybinds** |
-| `Esc` | Clear the filter — `Esc` is back on every screen (`Ctrl+]` inside a keybind's pane) and never quits |
+| `Esc` | Clear the filter — `Esc` is back on every screen and never quits |
 | `q` / `Ctrl+C` | Quit |
 
 Repo-list keys are unmodified letters, with the settings-style screens on numbers.
@@ -195,17 +195,19 @@ Each row shows how many repos link it. Deleting or renaming a forge cascades int
 | `Ctrl+\` | **Delete** the selected keybind (asks Yes / No) |
 | `Esc` | Back (cancels the form when one is open) |
 
-Each keybind has a **Name**, a **Keybind** and a **Command**. Type the keybind as
+Each keybind has a **Name**, a **Keybind**, a **Command** and a **Return to lazymux on
+command end** toggle. Type the keybind as
 text, e.g. `ctrl + g` or `cmd + shift + r`. Key names: `ctrl`, `alt`, `cmd`,
 `shift`, `tab`, `caps`, `return`, `esc`, `space`, `backspace`, `del`, arrows,
 `home`, `end`, `pgup`, `pgdown`, `insert`, `f1`–`f12`, plus any single character.
 A keybind lazymux already uses, or another custom keybind already has, is refused.
 
 Pressing a keybind on the repo list runs its command with your shell (`sh -c`
-style) in the selected repo's directory, inside a bordered pane. The pane is
-interactive, so TUIs like lazygit work in it, `Esc` included. `Ctrl+]` returns
-to the repo list and ends the command if it is still running; a command that
-finishes stays on screen until you press `Ctrl+]`.
+style) in the selected repo's directory and hands it the whole terminal, the way
+`s` opens a shell. lazymux comes back when the command ends: straight away when
+**Return to lazymux on command end** is on (quitting lazygit with `q` or Claude
+Code with `esc`), otherwise after you press `Enter`, so a short command's output
+such as `git status` can be read first.
 
 `ctrl+shift` combos and `cmd` need a terminal that reports them (kitty keyboard
 protocol — e.g. Ghostty, kitty, WezTerm, or iTerm2 with CSI u enabled).
@@ -350,7 +352,7 @@ Everything lives in a single JSON file at `~/lazymux/.lazymux.json` (override th
     { "name": "forgejo", "host": "fj.example.com" }
   ],
   "keybinds": [
-    { "name": "lazygit", "keys": "ctrl+g", "command": "lazygit" }
+    { "name": "lazygit", "keys": "ctrl+g", "command": "lazygit", "returnOnExit": true }
   ],
   "repos": {
     "bkenks/myrepo": {
@@ -393,7 +395,7 @@ lazymux is built using the [Charmbracelet](https://github.com/charmbracelet) sta
 - **[Bubbles](https://github.com/charmbracelet/bubbles)** — Pre-built TUI components (list, text input, key bindings)
 - **[Lipgloss](https://github.com/charmbracelet/lipgloss)** — Terminal styling and layout
 
-On startup, lazymux walks `~/lazymux/` to populate the repository list. Cloning runs `git clone` against the real URL, then rewrites the repo to a placeholder `origin` resolved to its origin forge (plus a push URL per upstream); a custom keybind runs its command in a pseudo-terminal drawn inside lazymux; deletion removes the local directory (and now-empty namespace parents). Errors surface in the status footer instead of crashing the TUI.
+On startup, lazymux walks `~/lazymux/` to populate the repository list. Cloning runs `git clone` against the real URL, then rewrites the repo to a placeholder `origin` resolved to its origin forge (plus a push URL per upstream); a custom keybind hands the terminal to its command until it exits; deletion removes the local directory (and now-empty namespace parents). Errors surface in the status footer instead of crashing the TUI.
 
 ---
 

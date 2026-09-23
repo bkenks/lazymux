@@ -12,8 +12,8 @@ func TestApplyRecolorsPaletteStyles(t *testing.T) {
 
 	Apply("mono", true, nil)
 	mono := themes["mono"]
-	if got := TerminalFrameStyle.GetBorderTopForeground(); got != mono.Purple.dark {
-		t.Errorf("TerminalFrameStyle border = %v, want mono's %v", got, mono.Purple.dark)
+	if got := FormBoxStyle.GetBorderTopForeground(); got != mono.Purple.dark {
+		t.Errorf("FormBoxStyle border = %v, want mono's %v", got, mono.Purple.dark)
 	}
 	if got := MenuTitle.GetBackground(); got != mono.DarkPurple.dark {
 		t.Errorf("MenuTitle background = %v, want %v", got, mono.DarkPurple.dark)
