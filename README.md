@@ -138,6 +138,7 @@ On first run, lazymux creates `~/lazymux/` and a `.lazymux.json` config (migrati
 | `F` | Manage the **forge registry** |
 | `d` | **Delete** the selected repository |
 | `,` | Open **settings** |
+| `Esc` | Clear the filter — `Esc` is back on every screen and never quits |
 | `q` / `Ctrl+C` | Quit |
 
 Repo-list keys are unmodified letters. `s` is already the shell, so settings sits on `,`.

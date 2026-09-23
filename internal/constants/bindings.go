@@ -48,9 +48,9 @@ var GlobalKeyMap = globalKeyMap{
 }
 
 // ListQuit replaces the list component's own quit binding, which bubbles v2
-// sets to "v", with the keys it used in v1.
+// sets to "v". Only q quits; esc is always back.
 var ListQuit = key.NewBinding(
-	key.WithKeys("q", "esc"),
+	key.WithKeys("q"),
 	key.WithHelp("q", "quit"),
 )
 

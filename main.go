@@ -65,15 +65,22 @@ Configuration:
   cloned into ~/lazymux/<namespace>/<repo>.
 
 Keybindings (repo list):
+  /             filter repos
+  o             open in editor
+  s             shell in repo dir
   ctrl+shift+k  manage custom keybinds
-  ctrl+o    open in editor
-  s         shell in repo dir
-  y         copy absolute path
-  r         refresh
-  ctrl+n    clone new repos
-  f         edit selected repo's forge links
-  F         manage the forge registry
-  ctrl+\    delete selected repo
-  ctrl+s    settings
-  q         quit`)
+  y             copy absolute path
+  r             refresh
+  n             clone new repos
+  p             pull every repo
+  f             edit selected repo's forge links
+  F             manage the forge registry
+  g             show/hide forge label
+  t             show/hide git stats
+  S             cycle sort order
+  d             delete selected repo
+  ,             settings
+  ?             full help
+  esc           back (never quits)
+  q             quit`)
 }
