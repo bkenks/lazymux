@@ -93,7 +93,8 @@ func listGiteaRepos(forge config.Forge, namespace, protocol string) ([]string, e
 			"--limit", strconv.Itoa(giteaPageSize),
 		).CombinedOutput()
 		if err != nil {
-			return nil, fmt.Errorf("tea repos list %s: %s", namespace, repomgr.FirstLine(string(out)))
+			return nil, fmt.Errorf("tea repos list %s: %s",
+				namespace, repomgr.FirstLine(string(out)))
 		}
 		var repos []struct {
 			SSH string `json:"ssh"`

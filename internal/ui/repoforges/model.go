@@ -73,7 +73,8 @@ func (m *Model) refresh() {
 	idx := m.list.Index()
 	m.list.SetItems(forgepick.Items(m.forges, m.link))
 	m.list.Select(idx)
-	m.list.Title = fmt.Sprintf("Repo Forges · %s · %s", m.repoKey, config.NormalizeScheme(m.link.Scheme))
+	scheme := config.NormalizeScheme(m.link.Scheme)
+	m.list.Title = fmt.Sprintf("Repo Forges · %s · %s", m.repoKey, scheme)
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

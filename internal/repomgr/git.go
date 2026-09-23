@@ -45,7 +45,8 @@ func RenderGitConfig(cfg config.Config, key string, link config.RepoLink) error 
 	originBase := hostBase(scheme, origin.Host)
 
 	// url.<originBase>.insteadOf = <placeholderBase>
-	if _, err := runGit(dir, "config", "--local", "url."+originBase+".insteadOf", phBase); err != nil {
+	insteadOfKey := "url." + originBase + ".insteadOf"
+	if _, err := runGit(dir, "config", "--local", insteadOfKey, phBase); err != nil {
 		return err
 	}
 	// origin stores the stable placeholder URL.
@@ -73,7 +74,8 @@ func renderPushURLs(cfg config.Config, dir, key, scheme string, link config.Repo
 			continue
 		}
 		pushURL := RemoteURL(scheme, forge.Host, key)
-		if _, err := runGit(dir, "config", "--local", "--add", "remote.origin.pushurl", pushURL); err != nil {
+		_, err := runGit(dir, "config", "--local", "--add", "remote.origin.pushurl", pushURL)
+		if err != nil {
 			return err
 		}
 	}
@@ -126,8 +128,8 @@ func unsetAll(dir, key string) error {
 func runGit(dir string, args ...string) (string, error) {
 	out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput()
 	if err != nil {
-		return string(out), fmt.Errorf("git %s: %s: %w", strings.Join(args[:min(len(args), 3)], " "),
-			FirstLine(string(out)), err)
+		subcommand := strings.Join(args[:min(len(args), 3)], " ")
+		return string(out), fmt.Errorf("git %s: %s: %w", subcommand, FirstLine(string(out)), err)
 	}
 	return string(out), nil
 }

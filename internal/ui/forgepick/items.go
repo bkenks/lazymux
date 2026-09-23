@@ -40,7 +40,12 @@ func (i item) FilterValue() string { return i.name }
 func Items(forges []config.Forge, link config.RepoLink) []list.Item {
 	items := make([]list.Item, len(forges))
 	for i, f := range forges {
-		items[i] = item{name: f.Name, host: f.Host, checked: link.HasUpstream(f.Name), origin: link.Origin == f.Name}
+		items[i] = item{
+			name:    f.Name,
+			host:    f.Host,
+			checked: link.HasUpstream(f.Name),
+			origin:  link.Origin == f.Name,
+		}
 	}
 	return items
 }

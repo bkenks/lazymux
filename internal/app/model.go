@@ -348,7 +348,8 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.main.UpdateRepoList(msg.RepoList))
 
 		case events.SortModeChanged:
-			if cmd := m.saveConfig("sort order", func(c *config.Config) { c.UI.SortMode = string(msg.Mode) }); cmd != nil {
+			setMode := func(c *config.Config) { c.UI.SortMode = string(msg.Mode) }
+			if cmd := m.saveConfig("sort order", setMode); cmd != nil {
 				cmds = append(cmds, cmd)
 			} else {
 				cmds = append(cmds, m.toastCmd(events.ToastInfo, "sorted by "+msg.Mode.Label()))
@@ -453,7 +454,8 @@ func (m *ModelManager) View() tea.View {
 
 func (m *ModelManager) saveKeybinds(keybinds []config.Keybind) tea.Cmd {
 	m.main.SetKeybinds(keybinds)
-	if cmd := m.saveConfig("keybinds", func(c *config.Config) { c.Keybinds = keybinds }); cmd != nil {
+	setKeybinds := func(c *config.Config) { c.Keybinds = keybinds }
+	if cmd := m.saveConfig("keybinds", setKeybinds); cmd != nil {
 		return cmd
 	}
 	return m.toastCmd(events.ToastInfo, "keybinds saved")
@@ -508,9 +510,11 @@ func (m *ModelManager) keybindClashes() []string {
 	claimed := map[string]string{}
 	for _, bind := range m.cfg.Keybinds {
 		if used, ok := keybind.FindClash(bind.Keys, reserved); ok {
-			clashes = append(clashes, fmt.Sprintf("keybind %q won't run: %s is a lazymux key", bind.Name, used))
+			clashes = append(clashes,
+				fmt.Sprintf("keybind %q won't run: %s is a lazymux key", bind.Name, used))
 		} else if first, ok := claimed[bind.Keys]; ok {
-			clashes = append(clashes, fmt.Sprintf("keybind %q won't run: %s is already bound to %q", bind.Name, bind.Keys, first))
+			clashes = append(clashes,
+				fmt.Sprintf("keybind %q won't run: %s is already bound to %q", bind.Name, bind.Keys, first))
 		} else {
 			claimed[bind.Keys] = bind.Name
 		}

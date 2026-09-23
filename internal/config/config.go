@@ -127,7 +127,8 @@ func (l *RepoLink) ToggleUpstream(name string) {
 // RemoveUpstream drops name from the upstreams. When it was the origin, the
 // first remaining upstream takes over, or the origin is cleared if none remain.
 func (l *RepoLink) RemoveUpstream(name string) {
-	l.Upstreams = slices.DeleteFunc(slices.Clone(l.Upstreams), func(u string) bool { return u == name })
+	isRemoved := func(upstream string) bool { return upstream == name }
+	l.Upstreams = slices.DeleteFunc(slices.Clone(l.Upstreams), isRemoved)
 	if l.Origin == name {
 		l.Origin = ""
 		if len(l.Upstreams) > 0 {
@@ -373,8 +374,9 @@ func normalize(cfg Config) Config {
 	case "":
 		cfg.Behavior.DefaultProtocol = d.Behavior.DefaultProtocol
 	default:
-		cfg.Warnings = append(cfg.Warnings, fmt.Sprintf("defaultProtocol %q isn't https or ssh, using %s",
-			cfg.Behavior.DefaultProtocol, d.Behavior.DefaultProtocol))
+		cfg.Warnings = append(cfg.Warnings,
+			fmt.Sprintf("defaultProtocol %q isn't https or ssh, using %s",
+				cfg.Behavior.DefaultProtocol, d.Behavior.DefaultProtocol))
 		cfg.Behavior.DefaultProtocol = d.Behavior.DefaultProtocol
 	}
 	if cfg.MCP.Host == "" {
@@ -406,7 +408,8 @@ func normalize(cfg Config) Config {
 	for i, bind := range cfg.Keybinds {
 		keys, err := keybind.Parse(bind.Keys)
 		if err != nil {
-			cfg.Warnings = append(cfg.Warnings, fmt.Sprintf("keybind %q won't run: %v", bind.Name, err))
+			cfg.Warnings = append(cfg.Warnings,
+				fmt.Sprintf("keybind %q won't run: %v", bind.Name, err))
 			continue
 		}
 		cfg.Keybinds[i].Keys = keys
@@ -508,7 +511,8 @@ func migrateLegacy(base Config) (Config, bool) {
 // leave a half-written config behind.
 func Save(cfg Config) error {
 	if cfg.LoadFailed {
-		return errors.New("config file couldn't be read at startup; fix it and restart before saving")
+		return errors.New("config file couldn't be read at startup; " +
+			"fix it and restart before saving")
 	}
 	path := Path()
 	dir := filepath.Dir(path)
