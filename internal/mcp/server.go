@@ -27,6 +27,10 @@ refers to before touching the filesystem, then use the returned absolute path.
 When you learn what a repo is for and it has no purpose recorded, call
 set_repository_purpose so future sessions can route without rediscovering it.`
 
+// shutdownTimeout bounds how long a signalled server waits for in-flight
+// requests before closing them.
+const shutdownTimeout = 5 * time.Second
+
 // listInput is deliberately empty: listing takes no arguments. Filtering is
 // search_repositories' job.
 type listInput struct{}
@@ -195,7 +199,7 @@ func Serve(ctx context.Context, cfg config.Config, version string, onListen func
 		}
 		return err
 	case <-ctx.Done():
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
 		fmt.Fprintln(os.Stderr, "lazymux mcp: shutting down")
 		return srv.Shutdown(shutdownCtx)

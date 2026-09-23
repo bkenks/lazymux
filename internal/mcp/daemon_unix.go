@@ -19,8 +19,9 @@ const (
 	// startTimeout bounds how long `mcp start` waits for the child to bind.
 	startTimeout = 5 * time.Second
 	// stopTimeout bounds how long `mcp stop` waits for a graceful exit before
-	// escalating to SIGKILL.
-	stopTimeout = 5 * time.Second
+	// escalating to SIGKILL. It outlasts shutdownTimeout so a server draining
+	// requests is never killed mid-shutdown.
+	stopTimeout = shutdownTimeout + 2*time.Second
 )
 
 // readPID returns the pid recorded in the pidfile, or 0 if there isn't a
