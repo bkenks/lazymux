@@ -3,6 +3,7 @@ package settings
 import (
 	"strings"
 
+	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/textinput"
@@ -284,6 +285,9 @@ func (m *Model) statusView() string {
 	}
 	return ""
 }
+
+// SetHelp replaces the help renderer the list draws its key hints with.
+func (m *Model) SetHelp(h help.Model) { m.list.Help = h }
 
 // Settings returns the current settings slice.
 func (m *Model) Settings() []Setting { return m.settings }

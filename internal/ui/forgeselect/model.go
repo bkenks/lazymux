@@ -65,6 +65,7 @@ func New(cfg config.Config, pending []repomgr.PendingClone) *Model {
 
 	w, h := styles.ContentSize(0)
 	l := list.New(nil, list.NewDefaultDelegate(), w, h)
+	l.Help = styles.Help
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(true)
 	l.KeyMap.Quit = constants.ListQuit

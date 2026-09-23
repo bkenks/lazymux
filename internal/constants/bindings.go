@@ -146,9 +146,10 @@ type RepoListCommand struct {
 // help bars, the --help text and the custom-keybind clash check derive from.
 func (k repoListKeyMap) Commands() []RepoListCommand {
 	return []RepoListCommand{
+		{k.Settings, "settings", "open settings", true},
+		{k.Keybinds, "keybinds", "manage custom keybinds", true},
 		{k.VSCode, "editor", "open in editor", true},
 		{k.Shell, "shell", "shell in repo dir", false},
-		{k.Keybinds, "keybinds", "manage custom keybinds", true},
 		{k.CopyPath, "copy", "copy path", false},
 		{k.Refresh, "refresh", "refresh list", false},
 		{k.Clone, "clone", "clone new repos", true},
@@ -159,7 +160,6 @@ func (k repoListKeyMap) Commands() []RepoListCommand {
 		{k.ToggleStats, "git stats", "show/hide branch & change counts", false},
 		{k.CycleSort, "sort", "cycle sort order", false},
 		{k.Delete, "delete", "delete repo", false},
-		{k.Settings, "settings", "open settings", true},
 		{k.Quit, "quit", "quit", false},
 	}
 }

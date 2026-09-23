@@ -130,8 +130,10 @@ func validateEditorCommand(command string) (string, error) {
 func newSettingsScreen(cfg config.Config) settings.Model {
 	x, y := styles.DocStyle.GetFrameSize()
 	size := constants.WindowSize
-	return settings.New("Settings", buildSettingsItems(cfg),
+	screen := settings.New("Settings", buildSettingsItems(cfg),
 		size.Width, size.Height, x, y+constants.FooterReservedLines)
+	screen.SetHelp(styles.Help)
+	return screen
 }
 
 func buildSettingsItems(cfg config.Config) []settings.Setting {

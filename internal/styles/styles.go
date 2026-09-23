@@ -115,14 +115,14 @@ var (
 // rebuildStyles so a theme swap re-colors it.
 func newHelpModel() help.Model {
 	h := help.New()
-	key := lipgloss.NewStyle().Foreground(SubduedColor)
-	desc := lipgloss.NewStyle().Foreground(VerySubduedColor)
+	key := lipgloss.NewStyle().Foreground(VerySubduedColor)
+	desc := lipgloss.NewStyle().Foreground(SubduedColor)
 	h.Styles.ShortKey = key
 	h.Styles.FullKey = key
 	h.Styles.ShortDesc = desc
 	h.Styles.FullDesc = desc
-	h.Styles.ShortSeparator = desc
-	h.Styles.FullSeparator = desc
+	h.Styles.ShortSeparator = key
+	h.Styles.FullSeparator = key
 	return h
 }
 

@@ -55,6 +55,7 @@ func New() *Model {
 	)
 	newList.Title = listTitle()
 	newList.KeyMap.Quit = constants.ListQuit
+	newList.Help = styles.Help
 	newList.AdditionalShortHelpKeys = constants.RepoListKeyMap.HelpBinds(constants.Short)
 	newList.AdditionalFullHelpKeys = constants.RepoListKeyMap.HelpBinds(constants.Full)
 

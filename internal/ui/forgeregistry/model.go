@@ -86,6 +86,7 @@ func New(cfg config.Config) *Model {
 
 	w, h := styles.ContentSize(0)
 	l := list.New(nil, list.NewDefaultDelegate(), w, h)
+	l.Help = styles.Help
 	l.Title = "Forge Registry"
 	l.KeyMap.Quit = constants.ListQuit
 	l.SetFilteringEnabled(false)
