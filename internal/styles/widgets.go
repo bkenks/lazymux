@@ -1,7 +1,6 @@
 package styles
 
 import (
-	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
@@ -25,7 +24,7 @@ func NewList(items []list.Item, delegate list.ItemDelegate, width, height int) l
 	l.FilterInput.SetStyles(s.Filter)
 	l.Paginator.ActiveDot = s.ActivePaginationDot.String()
 	l.Paginator.InactiveDot = s.InactivePaginationDot.String()
-	l.Help.Styles = help.DefaultStyles(IsDark)
+	l.Help = Help
 	return l
 }
 
