@@ -7,6 +7,7 @@
 """Build the lazymux binary.
 
     mise run build                      build/bin/lazymux for this machine
+    mise run build --dev                build/bin/lazymux-dev, sandboxed to ~/lazymux-dev
     mise run build --all                build/dist/* for every release platform
     mise run build --platform linux/amd64   build/dist/* for one platform
     mise run build --version v1.4.0     stamp an explicit version
@@ -26,8 +27,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from _lib import (
+    DEV_SUFFIX,
     PLATFORMS,
     build_lazymux,
+    build_lazymux_dev,
     build_matrix,
     build_version,
     die,
@@ -49,6 +52,11 @@ def parse_platform(value: str) -> tuple[str, str]:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="mise run build", description="Build the lazymux binary.")
+    parser.add_argument(
+        "--dev",
+        action="store_true",
+        help="build build/bin/lazymux-dev for this machine, sandboxed to ~/lazymux-dev",
+    )
     parser.add_argument(
         "--all",
         action="store_true",
@@ -79,8 +87,15 @@ def main() -> None:
 
     if args.all and args.platform:
         die("--all and --platform are mutually exclusive")
+    if args.dev and (args.all or args.platform):
+        die("--dev builds for this machine only; drop --all/--platform")
 
     version = args.version or build_version()
+
+    if args.dev:
+        output = build_lazymux_dev(version)
+        print(f"built {output} ({version}{DEV_SUFFIX})")
+        return
 
     if not args.all and not args.platform:
         output = build_lazymux(version)

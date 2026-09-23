@@ -17,14 +17,14 @@ provisions everything. Each script carries its own PEP 723 header and runs under
 | `mise run build --platform GOOS/GOARCH` | `build/dist/*` — one platform (repeatable) |
 | `mise run build --version vX.Y.Z` | stamps an explicit version instead of `git describe` |
 | `mise run build --list`       | prints the release matrix       |
-| `mise run dev`                | `build/bin/lazymux-dev`        |
+| `mise run build --dev`        | `build/bin/lazymux-dev` (this machine) |
 | `mise run install`            | installs `lazymux` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
 | `mise run install-dev`        | installs `lazymux-dev` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
 | `mise run clean`              | removes `build/bin` and `build/dist` |
 | `mise run check`              | `go vet`, `go test`, `golangci-lint`, `ruff` and `ty` |
 | `mise run release <bump>`     | tests, tags and pushes; CI builds and publishes (see below) |
 
-`install` and `install-dev` declare `# MISE depends=` on `build` / `dev`, so they
+`install` and `install-dev` declare `# MISE depends=` on `build` / `build --dev`, so they
 compile first.
 
 ## Cross-compilation
@@ -55,7 +55,6 @@ pairs from that list.
   _lib.py       shared helpers — not executable, so mise ignores it
   build.py      \
   check.py       |
-  dev.py         |
   install.py     |  executable PEP 723 scripts, one per task
   install-dev.py |
   clean.py       |
@@ -68,13 +67,13 @@ Tasks are file tasks, so mise passes arguments straight through to the script;
 
 ## Regular build vs. dev build
 
-Both tasks compile the same source. The only difference is a build-time flag
+Both builds compile the same source. The only difference is a build-time flag
 (`-ldflags -X`) that overrides `internal/config.dirName`, which controls the
 directory under `$HOME` used for the config file and the default repo `BaseDir`:
 
 - **`build`** — `dirName` stays `lazymux`, so the binary reads/writes
   `~/lazymux/.lazymux.json` and clones repos under `~/lazymux/` by default.
-- **`dev`** — `dirName` is overridden to `lazymux-dev`, so `lazymux-dev` reads/writes
+- **`build --dev`** — `dirName` is overridden to `lazymux-dev`, so `lazymux-dev` reads/writes
   `~/lazymux-dev/.lazymux.json` and clones repos under `~/lazymux-dev/` instead.
   Its recency history (`$XDG_DATA_HOME/lazymux-dev/interactions.json`, by default
   under `~/.local/share`) is keyed by the same name. This keeps local development

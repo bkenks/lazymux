@@ -3,7 +3,7 @@
 # requires-python = ">=3.13"
 # ///
 # MISE description="Install lazymux-dev to $GOBIN"
-# MISE depends=["dev"]
+# MISE depends=["build --dev"]
 
 import sys
 from pathlib import Path
