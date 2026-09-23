@@ -84,7 +84,8 @@ func find(infos []RepoInfo, key string) (RepoInfo, error) {
 		return RepoInfo{}, fmt.Errorf("no repo with key %q; did you mean %s?",
 			key, strings.Join(suggestions, ", "))
 	}
-	return RepoInfo{}, fmt.Errorf("no repo with key %q; call list_repositories for valid keys", key)
+	return RepoInfo{}, fmt.Errorf("no repo with key %q; call %s for valid keys",
+		key, toolListRepositories)
 }
 
 // search ranks repos against a free-text query. Terms are matched

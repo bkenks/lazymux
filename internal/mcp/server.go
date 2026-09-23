@@ -22,11 +22,19 @@ import (
 const instructions = `lazymux tracks every git repository on this machine: where it lives on disk,
 which git forge hosts it, and what it is for.
 
-Use list_repositories or search_repositories to work out which repo a request
+Use ` + toolListRepositories + ` or ` + toolSearchRepositories + ` to work out which repo a request
 refers to before touching the filesystem, then use the returned absolute path.
 
 When you learn what a repo is for and it has no purpose recorded, call
-set_repository_purpose so future sessions can route without rediscovering it.`
+` + toolSetRepositoryPurpose + ` so future sessions can route without rediscovering it.`
+
+// Tool names are the protocol surface clients call, so each is spelled once.
+const (
+	toolListRepositories     = "list_repositories"
+	toolSearchRepositories   = "search_repositories"
+	toolGetRepository        = "get_repository"
+	toolSetRepositoryPurpose = "set_repository_purpose"
+)
 
 // shutdownTimeout bounds how long a signalled server waits for in-flight
 // requests before closing them.
@@ -66,32 +74,32 @@ func NewServer(version string) *mcpsdk.Server {
 	}, &mcpsdk.ServerOptions{Instructions: instructions})
 
 	mcpsdk.AddTool(s, &mcpsdk.Tool{
-		Name:  "list_repositories",
+		Name:  toolListRepositories,
 		Title: "List repositories",
 		Description: "List every repository lazymux manages, with its absolute path and " +
 			"recorded purpose. Most-recently-opened repos come first. Use " +
-			"search_repositories instead when you already know what you're looking for.",
+			toolSearchRepositories + " instead when you already know what you're looking for.",
 	}, handleList)
 
 	mcpsdk.AddTool(s, &mcpsdk.Tool{
-		Name:  "search_repositories",
+		Name:  toolSearchRepositories,
 		Title: "Search repositories",
 		Description: "Find the repositories most relevant to a natural-language description " +
 			"of a task. Returns only repos matching at least one term, best match first.",
 	}, handleSearch)
 
 	mcpsdk.AddTool(s, &mcpsdk.Tool{
-		Name:  "get_repository",
+		Name:  toolGetRepository,
 		Title: "Get repository",
 		Description: "Look up one repository by its '<namespace>/<name>' key, returning its " +
 			"absolute path, forge links, and recorded purpose and context.",
 	}, handleGet)
 
 	mcpsdk.AddTool(s, &mcpsdk.Tool{
-		Name:  "set_repository_purpose",
+		Name:  toolSetRepositoryPurpose,
 		Title: "Set repository purpose",
 		Description: "Record what a repository is for. Writes `purpose` and/or `context` into " +
-			"lazymux.json so later sessions can route to this repo without rediscovering it. " +
+			".lazymux.json so later sessions can route to this repo without rediscovering it. " +
 			"Omitted fields keep their current value.",
 		Annotations: &mcpsdk.ToolAnnotations{IdempotentHint: true},
 	}, handleSet)
@@ -110,7 +118,8 @@ func handleList(_ context.Context, _ *mcpsdk.CallToolRequest, _ listInput) (*mcp
 
 func handleSearch(_ context.Context, _ *mcpsdk.CallToolRequest, in searchInput) (*mcpsdk.CallToolResult, listOutput, error) {
 	if strings.TrimSpace(in.Query) == "" {
-		return nil, listOutput{}, errors.New("query is required; use list_repositories to see everything")
+		return nil, listOutput{}, errors.New(
+			"query is required; use " + toolListRepositories + " to see everything")
 	}
 	cfg := config.Load()
 	infos, err := inventory(cfg)
