@@ -77,15 +77,15 @@ func New(cfg config.Config) *Model {
 	working := cfg.Clone()
 	forges, repos := working.Forges, working.Repos
 
-	name := textinput.New()
+	name := styles.NewTextInput()
 	name.Placeholder = "name (e.g. github)"
 	name.CharLimit = 40
-	host := textinput.New()
+	host := styles.NewTextInput()
 	host.Placeholder = "host (e.g. github.com)"
 	host.CharLimit = 100
 
 	w, h := styles.ContentSize(0)
-	l := list.New(nil, list.NewDefaultDelegate(), w, h)
+	l := styles.NewList(nil, styles.NewDelegate(), w, h)
 	l.Title = "Forge Registry"
 	l.KeyMap.Quit = constants.ListQuit
 	l.SetFilteringEnabled(false)

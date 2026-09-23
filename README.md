@@ -371,6 +371,9 @@ Everything lives in a single JSON file at `~/lazymux/.lazymux.json` (override th
   `purpose`/`context` the MCP server reads and writes.
 
 - `ui.sortMode` — repo list order: `recent`, `name-asc`, `name-desc`, or `namespace` (cycled in-app with `S`).
+- `ui.theme` — `default` or `mono`. Each has light and dark colors; lazymux asks the terminal
+  for its background at launch and uses the matching set, falling back to dark if the terminal
+  doesn't answer.
 
 The in-app settings screen covers `editor`, `defaultProtocol`, `confirmDelete`, `showFullPath`, `showForge`, `showStats`, and `sortMode`. `editor` opens a text field on `enter` — type any command name and the field resolves it on `PATH` as you type, refusing to save one it cannot find. `shell` (the shell keybind commands and `s` use) and `theme` are file-only for now — edit and relaunch.
 

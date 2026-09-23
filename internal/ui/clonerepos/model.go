@@ -42,7 +42,7 @@ type Model struct {
 func New(cfg config.Config) *Model {
 	wBuffer, hBuffer := sizeBuffer()
 
-	ti := textarea.New()
+	ti := styles.NewTextArea()
 	ti.Placeholder = "git@github.com:ispenttoo/muchtimeonthis.git..."
 	ti.Focus()
 	ti.MaxHeight = hBuffer
@@ -50,7 +50,7 @@ func New(cfg config.Config) *Model {
 	ti.SetHeight(hBuffer)
 	ti.SetWidth(wBuffer)
 
-	ns := textinput.New()
+	ns := styles.NewTextInput()
 	ns.Placeholder = "org-or-user"
 	ns.CharLimit = 100
 	ns.SetWidth(wBuffer)

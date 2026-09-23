@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/bkenks/lazymux/internal/app"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/constants"
@@ -32,7 +33,7 @@ func main() {
 	}
 
 	cfg := config.Load()
-	styles.Apply(cfg.UI.Theme)
+	styles.Apply(cfg.UI.Theme, lipgloss.HasDarkBackground(os.Stdin, os.Stdout))
 
 	tui := app.New(cfg, version())
 	p := tea.NewProgram(tui)

@@ -37,7 +37,7 @@ type Model struct {
 // line is currently shown: height 3 fits name + namespace + forge line, height
 // 2 when the forge label is hidden.
 func newDelegate() list.DefaultDelegate {
-	d := list.NewDefaultDelegate()
+	d := styles.NewDelegate()
 	if domain.ShowForge {
 		d.SetHeight(3)
 	} else {
@@ -48,7 +48,7 @@ func newDelegate() list.DefaultDelegate {
 
 func New() *Model {
 	w, h := styles.ContentSize(0)
-	newList := list.New(
+	newList := styles.NewList(
 		[]list.Item{},
 		newDelegate(),
 		w, h,

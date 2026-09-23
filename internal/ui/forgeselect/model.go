@@ -57,14 +57,14 @@ type Model struct {
 
 // New builds the screen for a batch of pending clones.
 func New(cfg config.Config, pending []repomgr.PendingClone) *Model {
-	ti := textinput.New()
+	ti := styles.NewTextInput()
 	ti.Placeholder = "forge name"
 	ti.CharLimit = 40
 
 	forges := slices.Clone(cfg.Forges)
 
 	w, h := styles.ContentSize(0)
-	l := list.New(nil, list.NewDefaultDelegate(), w, h)
+	l := styles.NewList(nil, styles.NewDelegate(), w, h)
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(true)
 	l.KeyMap.Quit = constants.ListQuit

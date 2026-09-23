@@ -6,7 +6,6 @@ import (
 
 	"charm.land/bubbles/v2/help"
 	"charm.land/lipgloss/v2"
-	"charm.land/lipgloss/v2/compat"
 	colorful "github.com/lucasb-eyer/go-colorful"
 )
 
@@ -115,7 +114,8 @@ var (
 // rebuildStyles so a theme swap re-colors it.
 func newHelpModel() help.Model {
 	h := help.New()
-	key := lipgloss.NewStyle().Foreground(SubduedColor)
+	h.Styles = help.DefaultStyles(IsDark)
+	key :=lipgloss.NewStyle().Foreground(SubduedColor)
 	desc := lipgloss.NewStyle().Foreground(VerySubduedColor)
 	h.Styles.ShortKey = key
 	h.Styles.FullKey = key
@@ -159,10 +159,9 @@ func RenderToast(msg string, isError bool, opacity float64, width int) string {
 		opacity = 1
 	}
 
-	dark := compat.HasDarkBackground
-	if hex, ok := resolveHex(target, dark); ok && opacity < 1 {
+	if hex, ok := resolveHex(target); ok && opacity < 1 {
 		bg := "#e4e4e4"
-		if dark {
+		if IsDark {
 			bg = "#1c1c1c"
 		}
 		to, err1 := colorful.Hex(hex)
@@ -174,16 +173,10 @@ func RenderToast(msg string, isError bool, opacity float64, width int) string {
 	return base.Width(width).Render(msg)
 }
 
-// resolveHex extracts a hex string from a palette color for RGB blending,
-// choosing the light or dark variant of an AdaptiveColor. ANSI-indexed colors
-// have no hex to blend, so they report false and skip the fade.
-func resolveHex(c color.Color, dark bool) (string, bool) {
-	if v, ok := c.(compat.AdaptiveColor); ok {
-		c = v.Light
-		if dark {
-			c = v.Dark
-		}
-	}
+// resolveHex extracts a hex string from a palette color for RGB blending.
+// ANSI-indexed colors have no hex to blend, so they report false and skip the
+// fade.
+func resolveHex(c color.Color) (string, bool) {
 	if rgb, ok := c.(color.RGBA); ok {
 		return fmt.Sprintf("#%02x%02x%02x", rgb.R, rgb.G, rgb.B), true
 	}

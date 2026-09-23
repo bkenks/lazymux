@@ -53,7 +53,7 @@ func New(cfg config.Config, repoKey string) *Model {
 	}
 
 	w, h := styles.ContentSize(0)
-	l := list.New(nil, list.NewDefaultDelegate(), w, h)
+	l := styles.NewList(nil, styles.NewDelegate(), w, h)
 	l.SetFilteringEnabled(false)
 	l.KeyMap.Quit = constants.ListQuit
 	l.AdditionalShortHelpKeys = helpKeys

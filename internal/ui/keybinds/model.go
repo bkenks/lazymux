@@ -66,7 +66,7 @@ type Model struct {
 // the repo list already uses, which custom keybinds may not take.
 func New(cfg config.Config, reserved []string) *Model {
 	w, h := styles.ContentSize(0)
-	l := list.New(nil, list.NewDefaultDelegate(), w, h)
+	l := styles.NewList(nil, styles.NewDelegate(), w, h)
 	l.Title = "Keybinds"
 	l.KeyMap.Quit = constants.ListQuit
 	l.SetFilteringEnabled(false)
@@ -166,7 +166,7 @@ func (m *Model) startDelete(index int) tea.Cmd {
 func newForm(group *huh.Group) *huh.Form {
 	formKeys := huh.NewDefaultKeyMap()
 	formKeys.Quit = key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel"))
-	return huh.NewForm(group).WithKeyMap(formKeys).WithShowHelp(true)
+	return huh.NewForm(group).WithKeyMap(formKeys).WithShowHelp(true).WithTheme(styles.FormTheme)
 }
 
 func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
