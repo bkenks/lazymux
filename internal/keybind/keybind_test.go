@@ -1,6 +1,9 @@
 package keybind
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestParseCanonicalizes(t *testing.T) {
 	cases := map[string]string{
@@ -68,5 +71,20 @@ func TestFindClash(t *testing.T) {
 	}
 	if match, ok := FindClash("ctrl+p", taken); ok {
 		t.Errorf("FindClash(ctrl+p) = %q, true; want no clash", match)
+	}
+}
+
+func TestKeyNamesHelpListsOnlyParseableNames(t *testing.T) {
+	names := strings.TrimPrefix(KeyNamesHelp, "Key Names: ")
+	for _, name := range strings.Split(names, ", ") {
+		if name == "f1-f12" {
+			name = "f12"
+		}
+		if _, isModifier := modifierAliases[name]; isModifier {
+			name += "+a"
+		}
+		if _, err := Parse(name); err != nil {
+			t.Errorf("KeyNamesHelp lists %q, which does not parse: %v", name, err)
+		}
 	}
 }

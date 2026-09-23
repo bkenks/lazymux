@@ -15,6 +15,7 @@ import (
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
+	"github.com/bkenks/lazymux/internal/keybind"
 	"github.com/bkenks/lazymux/internal/repomgr"
 	"github.com/bkenks/lazymux/internal/styles"
 	"github.com/bkenks/lazymux/internal/ui/clonerepos"
@@ -104,8 +105,9 @@ func New(cfg config.Config, version string) *ModelManager {
 
 func (m *ModelManager) Init() tea.Cmd {
 	cmds := []tea.Cmd{m.splash.Init(), commands.RefreshReposCmd()}
-	if len(m.cfg.Warnings) > 0 {
-		cmds = append(cmds, m.toastCmd(events.ToastError, strings.Join(m.cfg.Warnings, "; ")))
+	warnings := append(slices.Clone(m.cfg.Warnings), m.keybindClashes()...)
+	if len(warnings) > 0 {
+		cmds = append(cmds, m.toastCmd(events.ToastError, strings.Join(warnings, "; ")))
 	}
 	return tea.Batch(cmds...)
 }
@@ -495,6 +497,25 @@ func remoteHosts(cfg config.Config, link config.RepoLink) []string {
 		}
 	}
 	return hosts
+}
+
+// keybindClashes describes each custom keybind whose key the repo list already
+// uses, or that another keybind took first. Such a keybind never runs, which
+// the keybinds screen prevents but a hand-edited config doesn't.
+func (m *ModelManager) keybindClashes() []string {
+	var clashes []string
+	reserved := m.main.ReservedKeys()
+	claimed := map[string]string{}
+	for _, bind := range m.cfg.Keybinds {
+		if used, ok := keybind.FindClash(bind.Keys, reserved); ok {
+			clashes = append(clashes, fmt.Sprintf("keybind %q won't run: %s is a lazymux key", bind.Name, used))
+		} else if first, ok := claimed[bind.Keys]; ok {
+			clashes = append(clashes, fmt.Sprintf("keybind %q won't run: %s is already bound to %q", bind.Name, bind.Keys, first))
+		} else {
+			claimed[bind.Keys] = bind.Name
+		}
+	}
+	return clashes
 }
 
 // runKeybind starts the keybind's command in the embedded terminal screen.

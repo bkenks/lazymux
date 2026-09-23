@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/bkenks/lazymux/internal/app"
 	"github.com/bkenks/lazymux/internal/config"
+	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/mcp"
 	"github.com/bkenks/lazymux/internal/styles"
 )
@@ -64,23 +66,20 @@ Configuration:
   ~/lazymux/.lazymux.json (override the path with $LAZYMUX_CONFIG). Repos are
   cloned into ~/lazymux/<namespace>/<repo>.
 
-Keybindings (repo list):
-  /             filter repos
-  o             open in editor
-  s             shell in repo dir
-  y             copy absolute path
-  r             refresh
-  n             clone new repos
-  p             pull every repo
-  f             edit selected repo's forge links
-  F             manage the forge registry
-  g             show/hide forge label
-  t             show/hide git stats
-  S             cycle sort order
-  d             delete selected repo
-  1             settings
-  2             manage custom keybinds
-  ?             full help
-  esc           back (never quits)
-  q             quit`)
+Keybindings (repo list):`)
+	fmt.Print(repoListKeysHelp())
+}
+
+// repoListKeysHelp lists the repo-list keys for --help, from the same table
+// the in-app help uses.
+func repoListKeysHelp() string {
+	var b strings.Builder
+	row := func(keys, desc string) { fmt.Fprintf(&b, "  %-13s %s\n", keys, desc) }
+	row("/", "filter repos")
+	for _, c := range constants.RepoListKeyMap.Commands() {
+		row(c.Binding.Help().Key, c.Full)
+	}
+	row("?", "full help")
+	row("esc", "back (never quits)")
+	return b.String()
 }

@@ -14,10 +14,6 @@ const (
 	Full
 )
 
-type keyMap interface {
-	HelpBinds()
-}
-
 func SetOnHelpType(helpType HelpType, bind key.Binding, shortHelp string, fullHelp string) key.Binding {
 	bindWithHelp := bind
 
@@ -55,42 +51,6 @@ var ListQuit = key.NewBinding(
 )
 
 // End "Global Key Map"
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//// Default Key Map
-
-type defaultKeyMap struct {
-	Select key.Binding
-	Exit   key.Binding
-}
-
-var DefaultKeyMap = defaultKeyMap{
-	Select: key.NewBinding(
-		key.WithKeys(
-			"enter",
-			"space",
-		),
-		key.WithHelp(
-			"enter/space",
-			"select",
-		),
-	),
-	Exit: key.NewBinding(
-		key.WithKeys("esc"),
-		key.WithHelp("esc", "exit"),
-	),
-}
-
-func (k defaultKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
-	bindsWithHelp := []key.Binding{
-		SetOnHelpType(helpType, DefaultKeyMap.Select, "select", "select"),
-		SetOnHelpType(helpType, DefaultKeyMap.Exit, "exit", "exit"),
-	}
-	return func() []key.Binding { return bindsWithHelp }
-}
-
-// End "Default Key Map"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -147,10 +107,7 @@ var RepoListKeyMap = repoListKeyMap{
 		key.WithKeys("2"),
 		key.WithHelp("2", "keybinds"),
 	),
-	Quit: key.NewBinding(
-		key.WithKeys("q", "ctrl+c"),
-		key.WithHelp("q", "quit"),
-	),
+	Quit: GlobalKeyMap.Quit,
 	PullAll: key.NewBinding(
 		key.WithKeys("p"),
 		key.WithHelp("p", "pull all"),
@@ -177,44 +134,55 @@ var RepoListKeyMap = repoListKeyMap{
 	),
 }
 
-// All returns every repo-list binding, for checking custom keybinds against.
-func (k repoListKeyMap) All() []key.Binding {
-	return []key.Binding{
-		k.Clone, k.Delete, k.VSCode, k.Settings, k.Refresh, k.CopyPath, k.Shell, k.Keybinds,
-		k.Quit, k.PullAll, k.Forges, k.Registry, k.ToggleForge, k.ToggleStats, k.CycleSort,
+// RepoListCommand is one repo-list binding with its help text. InShortHelp puts
+// it in the always-visible help bar; every command shows in the full help.
+type RepoListCommand struct {
+	Binding     key.Binding
+	Short, Full string
+	InShortHelp bool
+}
+
+// Commands lists every repo-list binding in help order. It is the one list the
+// help bars, the --help text and the custom-keybind clash check derive from.
+func (k repoListKeyMap) Commands() []RepoListCommand {
+	return []RepoListCommand{
+		{k.VSCode, "editor", "open in editor", true},
+		{k.Shell, "shell", "shell in repo dir", false},
+		{k.Keybinds, "keybinds", "manage custom keybinds", true},
+		{k.CopyPath, "copy", "copy path", false},
+		{k.Refresh, "refresh", "refresh list", false},
+		{k.Clone, "clone", "clone new repos", true},
+		{k.PullAll, "pull all", "git pull every repo (skips conflicts)", false},
+		{k.Forges, "forges", "edit repo's forge links", true},
+		{k.Registry, "registry", "manage forge registry", false},
+		{k.ToggleForge, "forge label", "show/hide the forge label", false},
+		{k.ToggleStats, "git stats", "show/hide branch & change counts", false},
+		{k.CycleSort, "sort", "cycle sort order", false},
+		{k.Delete, "delete", "delete repo", false},
+		{k.Settings, "settings", "open settings", true},
+		{k.Quit, "quit", "quit", false},
 	}
 }
 
-func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
-	// Short help is the always-visible bar — keep it to the essentials.
-	// Everything shows in the full help (press ?).
-	if helpType == Short {
-		binds := []key.Binding{
-			SetOnHelpType(Short, RepoListKeyMap.VSCode, "editor", ""),
-			SetOnHelpType(Short, RepoListKeyMap.Keybinds, "keybinds", ""),
-			SetOnHelpType(Short, RepoListKeyMap.Clone, "clone", ""),
-			SetOnHelpType(Short, RepoListKeyMap.Forges, "forges", ""),
-			SetOnHelpType(Short, RepoListKeyMap.Settings, "settings", ""),
-		}
-		return func() []key.Binding { return binds }
+// All returns every repo-list binding, for checking custom keybinds against.
+func (k repoListKeyMap) All() []key.Binding {
+	commands := k.Commands()
+	binds := make([]key.Binding, len(commands))
+	for i, c := range commands {
+		binds[i] = c.Binding
 	}
+	return binds
+}
 
-	binds := []key.Binding{
-		SetOnHelpType(Full, RepoListKeyMap.VSCode, "editor", "open in editor"),
-		SetOnHelpType(Full, RepoListKeyMap.Shell, "shell", "shell in repo dir"),
-		SetOnHelpType(Full, RepoListKeyMap.Keybinds, "keybinds", "manage custom keybinds"),
-		SetOnHelpType(Full, RepoListKeyMap.CopyPath, "copy", "copy path"),
-		SetOnHelpType(Full, RepoListKeyMap.Refresh, "refresh", "refresh list"),
-		SetOnHelpType(Full, RepoListKeyMap.Clone, "clone", "clone new repos"),
-		SetOnHelpType(Full, RepoListKeyMap.PullAll, "pull all", "git pull every repo (skips conflicts)"),
-		SetOnHelpType(Full, RepoListKeyMap.Forges, "forges", "edit repo's forge links"),
-		SetOnHelpType(Full, RepoListKeyMap.Registry, "registry", "manage forge registry"),
-		SetOnHelpType(Full, RepoListKeyMap.ToggleForge, "forge label", "show/hide the forge label"),
-		SetOnHelpType(Full, RepoListKeyMap.ToggleStats, "git stats", "show/hide branch & change counts"),
-		SetOnHelpType(Full, RepoListKeyMap.CycleSort, "sort", "cycle sort order"),
-		SetOnHelpType(Full, RepoListKeyMap.Delete, "delete", "delete repo"),
-		SetOnHelpType(Full, RepoListKeyMap.Settings, "settings", "open settings"),
-		SetOnHelpType(Full, RepoListKeyMap.Quit, "quit", "quit"),
+// HelpBinds returns the bindings for the short help bar or the full help,
+// labelled for that view.
+func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
+	var binds []key.Binding
+	for _, c := range k.Commands() {
+		if helpType == Short && !c.InShortHelp {
+			continue
+		}
+		binds = append(binds, SetOnHelpType(helpType, c.Binding, c.Short, c.Full))
 	}
 	return func() []key.Binding { return binds }
 }

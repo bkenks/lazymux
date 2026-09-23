@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/bkenks/lazymux/internal/config"
@@ -113,5 +114,20 @@ func TestSettingsSaveDoesNotOverwriteUnparseableConfig(t *testing.T) {
 	}
 	if m.cfg.Behavior.ConfirmDelete {
 		t.Error("setting should still apply for the session")
+	}
+}
+
+func TestInitWarnsAboutClashingKeybinds(t *testing.T) {
+	cfg := describedRepoConfig()
+	cfg.Keybinds = []config.Keybind{
+		{Name: "shadow", Keys: "o", Command: "true"},
+		{Name: "first", Keys: "ctrl+g", Command: "true"},
+		{Name: "second", Keys: "ctrl+g", Command: "true"},
+	}
+	m := newPersistedApp(t, cfg)
+
+	clashes := m.keybindClashes()
+	if len(clashes) != 2 || !strings.Contains(clashes[0], "shadow") || !strings.Contains(clashes[1], "second") {
+		t.Errorf("clashes = %q", clashes)
 	}
 }
