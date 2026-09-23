@@ -1,8 +1,7 @@
 package constants
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
 )
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -43,7 +42,7 @@ type globalKeyMap struct {
 
 var GlobalKeyMap = globalKeyMap{
 	Quit: key.NewBinding(
-		key.WithKeys("q", tea.KeyCtrlC.String()),
+		key.WithKeys("q", "ctrl+c"),
 		key.WithHelp("q", "quit"),
 	),
 }
@@ -62,17 +61,17 @@ type defaultKeyMap struct {
 var DefaultKeyMap = defaultKeyMap{
 	Select: key.NewBinding(
 		key.WithKeys(
-			tea.KeyEnter.String(),
-			tea.KeySpace.String(),
+			"enter",
+			"space",
 		),
 		key.WithHelp(
-			tea.KeyEnter.String()+"/"+tea.KeySpace.String(),
+			"enter/space",
 			"select",
 		),
 	),
 	Exit: key.NewBinding(
-		key.WithKeys(tea.KeyEsc.String()),
-		key.WithHelp(tea.KeyEsc.String(), "exit"),
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "exit"),
 	),
 }
 
@@ -91,7 +90,6 @@ func (k defaultKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 // Repo List Key Map
 
 type repoListKeyMap struct {
-	Select      key.Binding
 	Clone       key.Binding
 	Delete      key.Binding
 	VSCode      key.Binding
@@ -99,8 +97,7 @@ type repoListKeyMap struct {
 	Refresh     key.Binding
 	CopyPath    key.Binding
 	Shell       key.Binding
-	NewClaude   key.Binding
-	ClaudeView  key.Binding
+	Keybinds    key.Binding
 	Quit        key.Binding
 	PullAll     key.Binding
 	Forges      key.Binding
@@ -111,10 +108,6 @@ type repoListKeyMap struct {
 }
 
 var RepoListKeyMap = repoListKeyMap{
-	Select: key.NewBinding(
-		key.WithKeys(tea.KeyTab.String()),
-		key.WithHelp(tea.KeyTab.String(), "lazygit"),
-	),
 	Clone: key.NewBinding(
 		key.WithKeys("n"),
 		key.WithHelp("n", "clone"),
@@ -143,16 +136,12 @@ var RepoListKeyMap = repoListKeyMap{
 		key.WithKeys("s"),
 		key.WithHelp("s", "shell"),
 	),
-	NewClaude: key.NewBinding(
-		key.WithKeys("c"),
-		key.WithHelp("c", "new claude"),
-	),
-	ClaudeView: key.NewBinding(
-		key.WithKeys("a"),
-		key.WithHelp("a", "claude agents"),
+	Keybinds: key.NewBinding(
+		key.WithKeys("ctrl+shift+k"),
+		key.WithHelp("ctrl+shift+k", "keybinds"),
 	),
 	Quit: key.NewBinding(
-		key.WithKeys("q", tea.KeyCtrlC.String()),
+		key.WithKeys("q", "ctrl+c"),
 		key.WithHelp("q", "quit"),
 	),
 	PullAll: key.NewBinding(
@@ -186,10 +175,8 @@ func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 	// Everything shows in the full help (press ?).
 	if helpType == Short {
 		binds := []key.Binding{
-			SetOnHelpType(Short, RepoListKeyMap.Select, "lazygit", ""),
 			SetOnHelpType(Short, RepoListKeyMap.VSCode, "editor", ""),
-			SetOnHelpType(Short, RepoListKeyMap.NewClaude, "new claude", ""),
-			SetOnHelpType(Short, RepoListKeyMap.ClaudeView, "agents", ""),
+			SetOnHelpType(Short, RepoListKeyMap.Keybinds, "keybinds", ""),
 			SetOnHelpType(Short, RepoListKeyMap.Clone, "clone", ""),
 			SetOnHelpType(Short, RepoListKeyMap.Forges, "forges", ""),
 			SetOnHelpType(Short, RepoListKeyMap.Settings, "settings", ""),
@@ -198,11 +185,9 @@ func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {
 	}
 
 	binds := []key.Binding{
-		SetOnHelpType(Full, RepoListKeyMap.Select, "lazygit", "open with lazygit"),
 		SetOnHelpType(Full, RepoListKeyMap.VSCode, "editor", "open in editor"),
 		SetOnHelpType(Full, RepoListKeyMap.Shell, "shell", "shell in repo dir"),
-		SetOnHelpType(Full, RepoListKeyMap.NewClaude, "new claude", "new claude session in repo"),
-		SetOnHelpType(Full, RepoListKeyMap.ClaudeView, "agents", "open claude agents view"),
+		SetOnHelpType(Full, RepoListKeyMap.Keybinds, "keybinds", "manage custom keybinds"),
 		SetOnHelpType(Full, RepoListKeyMap.CopyPath, "copy", "copy path"),
 		SetOnHelpType(Full, RepoListKeyMap.Refresh, "refresh", "refresh list"),
 		SetOnHelpType(Full, RepoListKeyMap.Clone, "clone", "clone new repos"),
@@ -236,25 +221,25 @@ type confirmKeyMap struct {
 
 var ConfirmKeyMap = confirmKeyMap{
 	Left: key.NewBinding(
-		key.WithKeys(tea.KeyLeft.String(), "h"),
+		key.WithKeys("left", "h"),
 	),
 	Right: key.NewBinding(
-		key.WithKeys(tea.KeyRight.String(), "l"),
+		key.WithKeys("right", "l"),
 	),
 	Move: key.NewBinding(
 		key.WithHelp("←/→", "select"),
 	),
 	Activate: key.NewBinding(
-		key.WithKeys(tea.KeyEnter.String()),
+		key.WithKeys("enter"),
 		key.WithHelp("enter", "confirm"),
 	),
 	Proceed: key.NewBinding(
-		key.WithKeys(tea.KeyCtrlP.String()),
+		key.WithKeys("ctrl+p"),
 		key.WithHelp("ctrl+p", "delete now"),
 	),
 	Exit: key.NewBinding(
-		key.WithKeys(tea.KeyEsc.String()),
-		key.WithHelp(tea.KeyEsc.String(), "back"),
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "back"),
 	),
 }
 
@@ -283,19 +268,19 @@ type cloneRepoKeyMap struct {
 
 var CloneRepoKeyMap = cloneRepoKeyMap{
 	Exit: key.NewBinding(
-		key.WithKeys(tea.KeyEsc.String()),
-		key.WithHelp(tea.KeyEsc.String(), "back"),
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "back"),
 	),
 	Proceed: key.NewBinding(
-		key.WithKeys(tea.KeyCtrlP.String()),
+		key.WithKeys("ctrl+p"),
 		key.WithHelp("ctrl+p", "proceed"),
 	),
 	ToggleMode: key.NewBinding(
-		key.WithKeys(tea.KeyCtrlT.String()),
+		key.WithKeys("ctrl+t"),
 		key.WithHelp("ctrl+t", "urls/namespace"),
 	),
 	CycleForge: key.NewBinding(
-		key.WithKeys(tea.KeyTab.String()),
+		key.WithKeys("tab"),
 		key.WithHelp("tab", "cycle forge"),
 	),
 }

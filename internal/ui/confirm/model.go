@@ -1,13 +1,13 @@
 package confirm
 
 import (
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/styles"
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type choice int
@@ -37,7 +37,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, constants.ConfirmKeyMap.Left):
 			m.cursor = choiceYes
@@ -66,7 +66,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *Model) View() string {
+func (m *Model) View() tea.View {
 
 	title := styles.DialogTitleStyle.Render(
 		"Delete Repository")
@@ -104,7 +104,7 @@ func (m *Model) View() string {
 		renderedDialog,
 	)
 
-	return placedContent
+	return tea.NewView(placedContent)
 }
 
 // buttonRow renders the Yes/No pair, highlighting the one under the cursor.

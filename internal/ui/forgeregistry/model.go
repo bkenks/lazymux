@@ -6,16 +6,16 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/styles"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type keyMap struct {
@@ -138,7 +138,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resize()
 	}
 
-	km, ok := msg.(tea.KeyMsg)
+	km, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		var cmd tea.Cmd
 		m.list, cmd = m.list.Update(msg)
@@ -201,7 +201,7 @@ func (m *Model) startEdit(idx int) (tea.Model, tea.Cmd) {
 	return m, m.nameInput.Focus()
 }
 
-func (m *Model) updateEditing(km tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) updateEditing(km tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(km, keys.Exit):
 		m.editing = false
@@ -330,10 +330,10 @@ func without(s []string, v string) []string {
 	return out
 }
 
-func (m *Model) View() string {
+func (m *Model) View() tea.View {
 	view := m.list.View()
 	if !m.editing && m.err == "" {
-		return view
+		return tea.NewView(view)
 	}
 
 	rows := []string{view}
@@ -353,7 +353,7 @@ func (m *Model) View() string {
 		)
 		rows = append(rows, styles.FormBoxStyle.Render(form))
 	}
-	return lipgloss.JoinVertical(lipgloss.Left, rows...)
+	return tea.NewView(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 // editFormLines is the vertical space the framed edit form occupies (4 content

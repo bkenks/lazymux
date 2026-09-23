@@ -1,37 +1,46 @@
 package styles
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"image/color"
+
+	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/compat"
+)
+
+func adaptive(light, dark string) compat.AdaptiveColor {
+	return compat.AdaptiveColor{Light: lipgloss.Color(light), Dark: lipgloss.Color(dark)}
+}
 
 type Palette struct {
-	DarkPink         lipgloss.TerminalColor
-	DullGrey         lipgloss.TerminalColor
-	Purple           lipgloss.TerminalColor
-	VerySubduedColor lipgloss.TerminalColor
-	SubduedColor     lipgloss.TerminalColor
-	MediumGrey       lipgloss.TerminalColor
-	DarkPurple       lipgloss.TerminalColor
-	White            lipgloss.TerminalColor
+	DarkPink         color.Color
+	DullGrey         color.Color
+	Purple           color.Color
+	VerySubduedColor color.Color
+	SubduedColor     color.Color
+	MediumGrey       color.Color
+	DarkPurple       color.Color
+	White            color.Color
 }
 
 var themes = map[string]Palette{
 	"default": {
-		DarkPink:         lipgloss.AdaptiveColor{Light: "#EE6FF8", Dark: "#EE6FF8"},
-		DullGrey:         lipgloss.AdaptiveColor{Light: "#C2B8C2", Dark: "#4D4D4D"},
-		Purple:           lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"},
-		VerySubduedColor: lipgloss.AdaptiveColor{Light: "#DDDADA", Dark: "#4b4b4b"},
-		SubduedColor:     lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"},
-		MediumGrey:       lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#777777"},
+		DarkPink:         adaptive("#EE6FF8", "#EE6FF8"),
+		DullGrey:         adaptive("#C2B8C2", "#4D4D4D"),
+		Purple:           adaptive("#F793FF", "#AD58B4"),
+		VerySubduedColor: adaptive("#DDDADA", "#4b4b4b"),
+		SubduedColor:     adaptive("#9B9B9B", "#5C5C5C"),
+		MediumGrey:       adaptive("#A49FA5", "#777777"),
 		DarkPurple:       lipgloss.Color("62"),
 		White:            lipgloss.Color("230"),
 	},
 	"mono": {
-		DarkPink:         lipgloss.AdaptiveColor{Light: "#000000", Dark: "#FFFFFF"},
-		DullGrey:         lipgloss.AdaptiveColor{Light: "#C2C2C2", Dark: "#4D4D4D"},
-		Purple:           lipgloss.AdaptiveColor{Light: "#666666", Dark: "#AAAAAA"},
-		VerySubduedColor: lipgloss.AdaptiveColor{Light: "#DDDDDD", Dark: "#4B4B4B"},
-		SubduedColor:     lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"},
-		MediumGrey:       lipgloss.AdaptiveColor{Light: "#A4A4A4", Dark: "#777777"},
-		DarkPurple:       lipgloss.AdaptiveColor{Light: "#000000", Dark: "#FFFFFF"},
+		DarkPink:         adaptive("#000000", "#FFFFFF"),
+		DullGrey:         adaptive("#C2C2C2", "#4D4D4D"),
+		Purple:           adaptive("#666666", "#AAAAAA"),
+		VerySubduedColor: adaptive("#DDDDDD", "#4B4B4B"),
+		SubduedColor:     adaptive("#9B9B9B", "#5C5C5C"),
+		MediumGrey:       adaptive("#A4A4A4", "#777777"),
+		DarkPurple:       adaptive("#000000", "#FFFFFF"),
 		White:            lipgloss.Color("255"),
 	},
 }

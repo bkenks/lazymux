@@ -5,9 +5,9 @@ import (
 	"strings"
 	"sync"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/repomgr"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 // PullAllReposCmd scans every managed repo and kicks off `git pull --ff-only`

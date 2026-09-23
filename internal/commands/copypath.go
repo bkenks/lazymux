@@ -3,9 +3,9 @@ package commands
 import (
 	"fmt"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
 	"github.com/bkenks/lazymux/internal/events"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 func CopyPathCmd(absPath string) tea.Cmd {

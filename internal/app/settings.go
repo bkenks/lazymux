@@ -3,7 +3,6 @@ package app
 import (
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 
@@ -15,15 +14,13 @@ import (
 
 // settings keys persisted in config.toml
 const (
-	skEditor         = "editor"
-	skClaudeStartDir = "claude_start_dir"
-	skLazygitEscQuit = "lazygit_esc_quit"
-	skProtocol       = "default_protocol"
-	skConfirmDelete  = "confirm_delete"
-	skShowFullPath   = "show_full_path"
-	skShowForge      = "show_forge"
-	skShowStats      = "show_stats"
-	skSortMode       = "sort_mode"
+	skEditor        = "editor"
+	skProtocol      = "default_protocol"
+	skConfirmDelete = "confirm_delete"
+	skShowFullPath  = "show_full_path"
+	skShowForge     = "show_forge"
+	skShowStats     = "show_stats"
+	skSortMode      = "sort_mode"
 )
 
 // sortOptions are the repo list orderings offered in the settings screen, in
@@ -91,20 +88,9 @@ func validateEditorCommand(command string) (string, error) {
 	return path, nil
 }
 
-func validateClaudeStartDir(dir string) (string, error) {
-	resolved := config.ResolveClaudeStartDir(dir)
-	info, err := os.Stat(resolved)
-	if err != nil || !info.IsDir() {
-		return "", fmt.Errorf("%q is not a directory", resolved)
-	}
-	return resolved, nil
-}
-
 func buildSettingsItems(cfg config.Config) []settings.Setting {
 	return []settings.Setting{
 		settings.NewText(skEditor, "Editor", cfg.Tools.Editor, validateEditorCommand),
-		settings.NewText(skClaudeStartDir, "Claude agents start dir", cfg.Tools.ClaudeStartDir, validateClaudeStartDir),
-		settings.NewToggle(skLazygitEscQuit, "Esc quits lazygit", cfg.Tools.LazygitEscQuit),
 		settings.NewSelect(skProtocol, "Default clone protocol", protocolOptions, indexOrZero(protocolOptions, cfg.Behavior.DefaultProtocol)),
 		settings.NewToggle(skConfirmDelete, "Confirm before deleting", cfg.Behavior.ConfirmDelete),
 		settings.NewToggle(skShowFullPath, "Show full path on rows", cfg.UI.ShowFullPath),
@@ -120,12 +106,6 @@ func (m *ModelManager) applySettingChange(msg settings.SettingChanged) {
 	switch msg.Key {
 	case skEditor:
 		m.cfg.Tools.Editor = msg.Setting.ValueString()
-	case skClaudeStartDir:
-		m.cfg.Tools.ClaudeStartDir = msg.Setting.ValueString()
-	case skLazygitEscQuit:
-		if v, ok := msg.Setting.Value().(bool); ok {
-			m.cfg.Tools.LazygitEscQuit = v
-		}
 	case skProtocol:
 		m.cfg.Behavior.DefaultProtocol = msg.Setting.ValueString()
 	case skConfirmDelete:

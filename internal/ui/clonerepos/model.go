@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/styles"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type mode int
@@ -53,7 +53,7 @@ func New(cfg config.Config) *Model {
 	ns := textinput.New()
 	ns.Placeholder = "org-or-user"
 	ns.CharLimit = 100
-	ns.Width = wBuffer
+	ns.SetWidth(wBuffer)
 
 	return &Model{
 		textarea:  ti,
@@ -74,7 +74,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		wBuffer, hBuffer := sizeBuffer()
 		m.textarea.SetWidth(wBuffer)
 		m.textarea.SetHeight(hBuffer)
-		m.nsInput.Width = wBuffer
+		m.nsInput.SetWidth(wBuffer)
 		return m, nil
 
 	case events.NamespaceCloneFailed:
@@ -82,7 +82,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg.Err
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, constants.CloneRepoKeyMap.Exit):
 			return m, commands.SetState(domain.StateMain)
@@ -113,7 +113,7 @@ func (m *Model) toggleMode() {
 	m.err = nil
 }
 
-func (m *Model) updateURLs(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) updateURLs(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if key.Matches(msg, constants.CloneRepoKeyMap.Proceed) {
 		return m, commands.StartCloneReposCmd(m.textarea.Value())
 	}
@@ -122,7 +122,7 @@ func (m *Model) updateURLs(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *Model) updateNamespace(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) updateNamespace(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, constants.CloneRepoKeyMap.CycleForge):
 		if len(m.forges) > 0 {
@@ -190,7 +190,7 @@ func sizeBuffer() (w, h int) {
 		constants.WindowSize.Height - headerHeight - footerHeight - constants.FooterReservedLines
 }
 
-func (m *Model) View() string {
+func (m *Model) View() tea.View {
 	var body string
 	if m.mode == modeNamespace {
 		body = m.namespaceView()
@@ -210,7 +210,7 @@ func (m *Model) View() string {
 		lipgloss.Center,
 		content,
 	)
-	return placedContent
+	return tea.NewView(placedContent)
 }
 
 // namespaceView renders the forge picker + namespace input, plus a fetching

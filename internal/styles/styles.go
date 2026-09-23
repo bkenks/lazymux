@@ -1,24 +1,26 @@
 package styles
 
 import (
-	"strings"
+	"fmt"
+	"image/color"
 
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/help"
+	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/compat"
 	colorful "github.com/lucasb-eyer/go-colorful"
 )
 
 var (
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Colors
-	DarkPink         lipgloss.TerminalColor = lipgloss.AdaptiveColor{Light: "#EE6FF8", Dark: "#EE6FF8"}
-	DullGrey         lipgloss.TerminalColor = lipgloss.AdaptiveColor{Light: "#C2B8C2", Dark: "#4D4D4D"}
-	Purple           lipgloss.TerminalColor = lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}
-	VerySubduedColor lipgloss.TerminalColor = lipgloss.AdaptiveColor{Light: "#DDDADA", Dark: "#4b4b4b"}
-	SubduedColor     lipgloss.TerminalColor = lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
-	MediumGrey       lipgloss.TerminalColor = lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#777777"}
-	DarkPurple       lipgloss.TerminalColor = lipgloss.Color("62")
-	White            lipgloss.TerminalColor = lipgloss.Color("230")
+	DarkPink         color.Color = adaptive("#EE6FF8", "#EE6FF8")
+	DullGrey         color.Color = adaptive("#C2B8C2", "#4D4D4D")
+	Purple           color.Color = adaptive("#F793FF", "#AD58B4")
+	VerySubduedColor color.Color = adaptive("#DDDADA", "#4b4b4b")
+	SubduedColor     color.Color = adaptive("#9B9B9B", "#5C5C5C")
+	MediumGrey       color.Color = adaptive("#A49FA5", "#777777")
+	DarkPurple       color.Color = lipgloss.Color("62")
+	White            color.Color = lipgloss.Color("230")
 
 	// End "Colors"
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -185,7 +187,7 @@ func RenderToast(msg string, isError bool, opacity float64, width int) string {
 		opacity = 1
 	}
 
-	dark := lipgloss.HasDarkBackground()
+	dark := compat.HasDarkBackground
 	if hex, ok := resolveHex(target, dark); ok && opacity < 1 {
 		bg := "#e4e4e4"
 		if dark {
@@ -203,17 +205,15 @@ func RenderToast(msg string, isError bool, opacity float64, width int) string {
 // resolveHex extracts a hex string from a palette color for RGB blending,
 // choosing the light or dark variant of an AdaptiveColor. ANSI-indexed colors
 // have no hex to blend, so they report false and skip the fade.
-func resolveHex(c lipgloss.TerminalColor, dark bool) (string, bool) {
-	switch v := c.(type) {
-	case lipgloss.AdaptiveColor:
+func resolveHex(c color.Color, dark bool) (string, bool) {
+	if v, ok := c.(compat.AdaptiveColor); ok {
+		c = v.Light
 		if dark {
-			return v.Dark, true
+			c = v.Dark
 		}
-		return v.Light, true
-	case lipgloss.Color:
-		if s := string(v); strings.HasPrefix(s, "#") {
-			return s, true
-		}
+	}
+	if rgb, ok := c.(color.RGBA); ok {
+		return fmt.Sprintf("#%02x%02x%02x", rgb.R, rgb.G, rgb.B), true
 	}
 	return "", false
 }

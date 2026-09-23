@@ -3,9 +3,9 @@ package commands
 import (
 	"os/exec"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/repomgr"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 // CloneReposExecCmd clones each pending repo against its real URL via

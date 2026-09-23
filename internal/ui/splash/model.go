@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/styles"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	colorful "github.com/lucasb-eyer/go-colorful"
 )
 
@@ -41,13 +41,13 @@ type dismissMsg struct{}
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
-	case tea.KeyMsg, dismissMsg:
+	case tea.KeyPressMsg, dismissMsg:
 		return m, commands.SetState(domain.StateMain)
 	}
 	return m, nil
 }
 
-func (m *Model) View() string {
+func (m *Model) View() tea.View {
 	wordmark := gradient("lazymux", gradientFrom, gradientTo)
 	inner := lipgloss.JoinVertical(
 		lipgloss.Center,
@@ -58,13 +58,13 @@ func (m *Model) View() string {
 	)
 	box := styles.DialogStyle.Render(inner)
 
-	return lipgloss.Place(
+	return tea.NewView(lipgloss.Place(
 		constants.WindowSize.Width,
 		constants.WindowSize.Height,
 		lipgloss.Center,
 		lipgloss.Center,
 		box,
-	)
+	))
 }
 
 // gradient renders s with a per-character color sweep from → to.

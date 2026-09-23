@@ -1,7 +1,7 @@
 package constants
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // WindowSize tracks the latest tea.WindowSizeMsg so views that compute their

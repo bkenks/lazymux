@@ -3,11 +3,11 @@ package settings
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // SettingChanged is emitted when a setting value changes.
@@ -35,7 +35,7 @@ type keyMap struct {
 
 var keys = keyMap{
 	Next: key.NewBinding(
-		key.WithKeys("right", "l", "enter", " "),
+		key.WithKeys("right", "l", "enter", "space"),
 		key.WithHelp("→/l/enter", "next"),
 	),
 	Prev: key.NewBinding(
@@ -129,7 +129,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 		m.applyListSize()
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.editing {
 			return m, m.updateEditor(msg)
 		}
@@ -168,7 +168,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // updateEditor owns every keystroke while the inline editor is open, so the
 // list underneath never sees the text the user is typing.
-func (m *Model) updateEditor(msg tea.KeyMsg) tea.Cmd {
+func (m *Model) updateEditor(msg tea.KeyPressMsg) tea.Cmd {
 	switch {
 	case key.Matches(msg, keys.Cancel):
 		m.endEdit()
@@ -262,16 +262,16 @@ func (m *Model) rebuildItems(selectedIdx int) {
 	m.list.Select(selectedIdx)
 }
 
-func (m *Model) View() string {
+func (m *Model) View() tea.View {
 	if !m.editing {
-		return m.list.View()
+		return tea.NewView(m.list.View())
 	}
-	return lipgloss.JoinVertical(lipgloss.Left,
+	return tea.NewView(lipgloss.JoinVertical(lipgloss.Left,
 		m.list.View(),
 		m.input.View(),
 		m.statusView(),
 		editHelpStyle.Render("enter save · esc cancel"),
-	)
+	))
 }
 
 func (m *Model) statusView() string {

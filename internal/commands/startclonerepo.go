@@ -3,8 +3,8 @@ package commands
 import (
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/bkenks/lazymux/internal/events"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 func StartCloneReposCmd(repoUrlsChunk string) tea.Cmd {

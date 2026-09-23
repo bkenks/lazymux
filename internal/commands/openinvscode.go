@@ -3,8 +3,8 @@ package commands
 import (
 	"os/exec"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/bkenks/lazymux/internal/events"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 func OpenInVSCode(repoFullPath string) tea.Cmd {

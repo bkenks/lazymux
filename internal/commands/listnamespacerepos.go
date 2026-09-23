@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/events"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 // giteaPageSize and giteaMaxPages bound the `tea repos list` pagination loop

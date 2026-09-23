@@ -1,8 +1,8 @@
 package commands
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"github.com/bkenks/lazymux/internal/events"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 // OpenRepoForgesCmd opens the per-repo forge editor for a repo key.

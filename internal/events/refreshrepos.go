@@ -1,6 +1,6 @@
 package events
 
-import "github.com/charmbracelet/bubbles/list"
+import "charm.land/bubbles/v2/list"
 
 type ReposRefreshed struct{ RepoList []list.Item }
 

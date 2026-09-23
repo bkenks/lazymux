@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	"charm.land/bubbles/v2/progress"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/constants"
@@ -19,9 +22,6 @@ import (
 	"github.com/bkenks/lazymux/internal/ui/repolist"
 	"github.com/bkenks/lazymux/internal/ui/splash"
 	"github.com/bkenks/lazymux/pkg/settings"
-	"github.com/charmbracelet/bubbles/progress"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 const (
@@ -87,7 +87,7 @@ func New(cfg config.Config, version string) *ModelManager {
 		confirmDelete: *confirm.New(),
 		clonerepos:    *clonerepos.New(cfg),
 		settingsModel: settings.New("Settings", settingsItems, constants.WindowSize.Width, constants.WindowSize.Height, x, y),
-		cloneProgress: progress.New(progress.WithDefaultGradient(), progress.WithoutPercentage()),
+		cloneProgress: progress.New(progress.WithDefaultBlend(), progress.WithoutPercentage()),
 	}
 
 	m.state = domain.StateSplash
@@ -404,8 +404,8 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m *ModelManager) View() string {
-	body := styles.DocStyle.Render(m.active.View())
+func (m *ModelManager) View() tea.View {
+	body := styles.DocStyle.Render(m.active.View().Content)
 	// The footer region is a single reserved line (FooterReservedLines). A clone
 	// batch in flight owns it — showing a live gradient bar between the per-repo
 	// terminal handovers — otherwise it's the toast line.
@@ -413,7 +413,9 @@ func (m *ModelManager) View() string {
 	if line := m.renderCloneProgress(); line != "" {
 		footer = line
 	}
-	return lipgloss.JoinVertical(lipgloss.Left, body, footer)
+	v := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, body, footer))
+	v.AltScreen = true
+	return v
 }
 
 // renderCloneProgress draws a gradient bar while a clone batch is in flight.
@@ -429,7 +431,7 @@ func (m *ModelManager) renderCloneProgress() string {
 	case bar < 10:
 		bar = 10
 	}
-	m.cloneProgress.Width = bar
+	m.cloneProgress.SetWidth(bar)
 	pct := float64(m.cloneDone) / float64(m.cloneTotal)
 	label := styles.Subtle(fmt.Sprintf(" cloning %d/%d", m.cloneDone+1, m.cloneTotal))
 	return "  " + m.cloneProgress.ViewAs(pct) + label

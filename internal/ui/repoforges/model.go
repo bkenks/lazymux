@@ -7,15 +7,15 @@ package repoforges
 import (
 	"fmt"
 
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/repomgr"
 	"github.com/bkenks/lazymux/internal/styles"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 type keyMap struct {
@@ -23,7 +23,7 @@ type keyMap struct {
 }
 
 var keys = keyMap{
-	Toggle: key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "upstream")),
+	Toggle: key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "upstream")),
 	Origin: key.NewBinding(key.WithKeys("o"), key.WithHelp("o", "origin")),
 	Scheme: key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "scheme")),
 	Exit:   key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "save & back")),
@@ -119,7 +119,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list.SetSize(w, h)
 	}
 
-	km, ok := msg.(tea.KeyMsg)
+	km, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		var cmd tea.Cmd
 		m.list, cmd = m.list.Update(msg)
@@ -206,7 +206,7 @@ func (m *Model) setOrigin() {
 	m.link.Origin = f.Name
 }
 
-func (m *Model) View() string { return m.list.View() }
+func (m *Model) View() tea.View { return tea.NewView(m.list.View()) }
 
 func sizeBuffer() (w, h int) {
 	x, y := styles.DocStyle.GetFrameSize()

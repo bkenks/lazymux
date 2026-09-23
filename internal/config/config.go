@@ -31,27 +31,8 @@ const (
 )
 
 type Tools struct {
-	Lazygit string `json:"lazygit"`
-	// LazygitEscQuit layers a lazymux-owned lazygit config (quitOnTopLevelReturn)
-	// over the user's own so esc at lazygit's top level returns to the repo list.
-	LazygitEscQuit bool   `json:"lazygitEscQuit"`
-	Editor         string `json:"editor"`
-	Shell          string `json:"shell"`
-	ClaudeStartDir string `json:"claudeStartDir"`
-}
-
-func ResolveClaudeStartDir(dir string) string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return dir
-	}
-	if dir == "" || dir == "~" {
-		return home
-	}
-	if rest, ok := strings.CutPrefix(dir, "~/"); ok {
-		return filepath.Join(home, rest)
-	}
-	return dir
+	Editor string `json:"editor"`
+	Shell  string `json:"shell"`
 }
 
 type UI struct {
@@ -155,10 +136,8 @@ func Default() Config {
 		BaseDir:         defaultBaseDir(),
 		PlaceholderHost: DefaultPlaceholderHost,
 		Tools: Tools{
-			Lazygit:        "lazygit",
-			LazygitEscQuit: true,
-			Editor:         "codium",
-			Shell:          "",
+			Editor: "codium",
+			Shell:  "",
 		},
 		UI: UI{
 			Theme:        "default",
@@ -294,9 +273,8 @@ func migrateRepoLink(link RepoLink) RepoLink {
 // legacyConfig mirrors the old TOML schema for one-time migration.
 type legacyConfig struct {
 	Tools struct {
-		Lazygit string `toml:"lazygit"`
-		Editor  string `toml:"editor"`
-		Shell   string `toml:"shell"`
+		Editor string `toml:"editor"`
+		Shell  string `toml:"shell"`
 	} `toml:"tools"`
 	UI struct {
 		Theme        string `toml:"theme"`
@@ -333,9 +311,6 @@ func migrateLegacy(base Config) (Config, bool) {
 	var old legacyConfig
 	if _, err := toml.Decode(string(data), &old); err != nil {
 		return base, false
-	}
-	if old.Tools.Lazygit != "" {
-		base.Tools.Lazygit = old.Tools.Lazygit
 	}
 	if old.Tools.Editor != "" {
 		base.Tools.Editor = old.Tools.Editor

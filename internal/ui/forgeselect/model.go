@@ -9,17 +9,17 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/repomgr"
 	"github.com/bkenks/lazymux/internal/styles"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type keyMap struct {
@@ -27,7 +27,7 @@ type keyMap struct {
 }
 
 var keys = keyMap{
-	Toggle:  key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "upstream")),
+	Toggle:  key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "upstream")),
 	Origin:  key.NewBinding(key.WithKeys("o"), key.WithHelp("o", "origin")),
 	Scheme:  key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "scheme")),
 	Add:     key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "add forge")),
@@ -139,7 +139,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resize()
 	}
 
-	km, ok := msg.(tea.KeyMsg)
+	km, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		var cmd tea.Cmd
 		m.list, cmd = m.list.Update(msg)
@@ -266,7 +266,7 @@ func (m *Model) startAdd() (tea.Model, tea.Cmd) {
 	return m, m.nameInput.Focus()
 }
 
-func (m *Model) updateAdding(km tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) updateAdding(km tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(km, keys.Exit):
 		m.adding = false
@@ -301,13 +301,13 @@ func (m *Model) updateAdding(km tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *Model) View() string {
+func (m *Model) View() tea.View {
 	if len(m.pending) == 0 {
-		return ""
+		return tea.NewView("")
 	}
 	view := m.list.View()
 	if !m.adding && m.err == "" {
-		return view
+		return tea.NewView(view)
 	}
 
 	rows := []string{view}
@@ -322,7 +322,7 @@ func (m *Model) View() string {
 		)
 		rows = append(rows, styles.FormBoxStyle.Render(form))
 	}
-	return lipgloss.JoinVertical(lipgloss.Left, rows...)
+	return tea.NewView(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 // helpers

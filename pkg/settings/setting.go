@@ -1,6 +1,6 @@
 package settings
 
-import "github.com/charmbracelet/bubbles/list"
+import "charm.land/bubbles/v2/list"
 
 // Setting is the interface all settings must implement. It satisfies
 // list.DefaultItem so the standard two-line list delegate can render it the

@@ -3,17 +3,17 @@ package repolist
 import (
 	"fmt"
 
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
+	"charm.land/bubbles/v2/progress"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/styles"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/progress"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type Model struct {
@@ -61,7 +61,7 @@ func New() *Model {
 
 	m := &Model{
 		List:     newList,
-		progress: progress.New(progress.WithDefaultGradient(), progress.WithoutPercentage()),
+		progress: progress.New(progress.WithDefaultBlend(), progress.WithoutPercentage()),
 		spinner:  sp,
 	}
 	m.applySize()
@@ -98,7 +98,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.applySize()
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Suppress repo-action keybinds while the list's filter input has focus —
 		// otherwise typing "r" in a search filter triggers a refresh.
 		if m.List.FilterState() == list.Filtering {
@@ -148,18 +148,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKey runs the repo-list keybinds, reporting whether msg matched one of
 // them along with the commands it produced.
-func (m *Model) handleKey(msg tea.KeyMsg) (bool, []tea.Cmd) {
+func (m *Model) handleKey(msg tea.KeyPressMsg) (bool, []tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch {
-	case key.Matches(msg, constants.RepoListKeyMap.Select):
-		repo := ConvertToRepoType(m.List.SelectedItem())
-		if repo.AbsPath == "" {
-			break
-		}
-		domain.SaveInteraction(repo.Path)
-		cmds = append(cmds, commands.LazygitCmd(repo.AbsPath))
-
 	case key.Matches(msg, constants.RepoListKeyMap.Clone):
 		cmds = append(cmds, commands.SetState(domain.StateCloneRepo))
 
@@ -186,16 +178,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) (bool, []tea.Cmd) {
 	case key.Matches(msg, constants.RepoListKeyMap.CopyPath):
 		cmds = append(cmds, commands.CopyPathCmd(AbsRepoPath(m.List.SelectedItem())))
 
-	case key.Matches(msg, constants.RepoListKeyMap.NewClaude):
-		repo := ConvertToRepoType(m.List.SelectedItem())
-		if repo.AbsPath == "" {
-			break
-		}
-		domain.SaveInteraction(repo.Path)
-		cmds = append(cmds, commands.NewClaudeSessionCmd(repo.AbsPath))
-
-	case key.Matches(msg, constants.RepoListKeyMap.ClaudeView):
-		cmds = append(cmds, commands.OpenClaudeAgentsCmd())
+	case key.Matches(msg, constants.RepoListKeyMap.Keybinds):
+		cmds = append(cmds, commands.SetState(domain.StateKeybinds))
 
 	case key.Matches(msg, constants.RepoListKeyMap.Shell):
 		repo := ConvertToRepoType(m.List.SelectedItem())
@@ -242,11 +226,11 @@ func (m *Model) handleKey(msg tea.KeyMsg) (bool, []tea.Cmd) {
 	return true, cmds
 }
 
-func (m *Model) View() string {
+func (m *Model) View() tea.View {
 	if m.pulling {
-		return lipgloss.JoinVertical(lipgloss.Left, m.List.View(), m.pullView())
+		return tea.NewView(lipgloss.JoinVertical(lipgloss.Left, m.List.View(), m.pullView()))
 	}
-	return m.List.View()
+	return tea.NewView(m.List.View())
 }
 
 // pullView renders the live pull-all progress line: spinner, gradient bar, and
@@ -278,7 +262,7 @@ func (m *Model) applySize() {
 	case bar < 10:
 		bar = 10
 	}
-	m.progress.Width = bar
+	m.progress.SetWidth(bar)
 }
 
 // SyncForgeVisibility re-applies the row delegate so a change in
@@ -289,7 +273,7 @@ func (m *Model) SyncForgeVisibility() { m.List.SetDelegate(newDelegate()) }
 // UpdateRepoList replaces the list's items. It returns the command from
 // list.SetItems, which must be run so the filtered view is recomputed when a
 // filter is applied — dropping it leaves the filter phrase set but the results
-// empty ("0 results found") after a refresh (e.g. returning from lazygit).
+// empty ("0 results found") after a refresh (e.g. returning from a keybind command).
 func (m *Model) UpdateRepoList(repoList []list.Item) tea.Cmd {
 	return m.List.SetItems(repoList)
 }

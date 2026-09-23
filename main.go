@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/bkenks/lazymux/internal/app"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/mcp"
 	"github.com/bkenks/lazymux/internal/styles"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func main() {
 	styles.Apply(cfg.UI.Theme)
 
 	tui := app.New(cfg, version())
-	p := tea.NewProgram(tui, tea.WithAltScreen())
+	p := tea.NewProgram(tui)
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "lazymux: fatal:", err)
 		os.Exit(1)

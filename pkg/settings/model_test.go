@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func onlyAccepts(want string) Validator {
@@ -23,7 +23,7 @@ func newTextModel(t *testing.T, value string) *Model {
 	return &m
 }
 
-func press(t *testing.T, m *Model, msg tea.KeyMsg) tea.Cmd {
+func press(t *testing.T, m *Model, msg tea.KeyPressMsg) tea.Cmd {
 	t.Helper()
 	_, cmd := m.Update(msg)
 	return cmd
@@ -32,7 +32,7 @@ func press(t *testing.T, m *Model, msg tea.KeyMsg) tea.Cmd {
 func typeRunes(t *testing.T, m *Model, s string) {
 	t.Helper()
 	for _, r := range s {
-		press(t, m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		press(t, m, tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 }
 
@@ -58,7 +58,7 @@ func changedMsg(cmd tea.Cmd) (SettingChanged, bool) {
 func TestEnterOpensEditorOnTextSetting(t *testing.T) {
 	m := newTextModel(t, "codium")
 
-	cmd := press(t, m, tea.KeyMsg{Type: tea.KeyEnter})
+	cmd := press(t, m, tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	if !m.editing {
 		t.Fatal("enter on a Text setting did not open the editor")
@@ -73,10 +73,10 @@ func TestEnterOpensEditorOnTextSetting(t *testing.T) {
 
 func TestEditorCommitsValidValue(t *testing.T) {
 	m := newTextModel(t, "")
-	press(t, m, tea.KeyMsg{Type: tea.KeyEnter})
+	press(t, m, tea.KeyPressMsg{Code: tea.KeyEnter})
 	typeRunes(t, m, "ok")
 
-	cmd := press(t, m, tea.KeyMsg{Type: tea.KeyEnter})
+	cmd := press(t, m, tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	if m.editing {
 		t.Fatal("editor stayed open after a valid commit")
@@ -95,28 +95,28 @@ func TestEditorCommitsValidValue(t *testing.T) {
 
 func TestEditorViewShowsValidationStatus(t *testing.T) {
 	m := newTextModel(t, "")
-	press(t, m, tea.KeyMsg{Type: tea.KeyEnter})
+	press(t, m, tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	typeRunes(t, m, "nah")
-	if view := m.View(); !strings.Contains(view, "\u2717 nope") {
+	if view := m.View().Content; !strings.Contains(view, "\u2717 nope") {
 		t.Errorf("view missing the rejection status, got:\n%s", view)
 	}
 
-	press(t, m, tea.KeyMsg{Type: tea.KeyBackspace})
-	press(t, m, tea.KeyMsg{Type: tea.KeyBackspace})
-	press(t, m, tea.KeyMsg{Type: tea.KeyBackspace})
+	press(t, m, tea.KeyPressMsg{Code: tea.KeyBackspace})
+	press(t, m, tea.KeyPressMsg{Code: tea.KeyBackspace})
+	press(t, m, tea.KeyPressMsg{Code: tea.KeyBackspace})
 	typeRunes(t, m, "ok")
-	if view := m.View(); !strings.Contains(view, "\u2713 resolved ok") {
+	if view := m.View().Content; !strings.Contains(view, "\u2713 resolved ok") {
 		t.Errorf("view missing the acceptance hint, got:\n%s", view)
 	}
 }
 
 func TestEditorRejectsInvalidValue(t *testing.T) {
 	m := newTextModel(t, "")
-	press(t, m, tea.KeyMsg{Type: tea.KeyEnter})
+	press(t, m, tea.KeyPressMsg{Code: tea.KeyEnter})
 	typeRunes(t, m, "nah")
 
-	cmd := press(t, m, tea.KeyMsg{Type: tea.KeyEnter})
+	cmd := press(t, m, tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	if !m.editing {
 		t.Fatal("editor closed on an invalid commit")
@@ -131,10 +131,10 @@ func TestEditorRejectsInvalidValue(t *testing.T) {
 
 func TestEscCancelsEditorWithoutSaving(t *testing.T) {
 	m := newTextModel(t, "codium")
-	press(t, m, tea.KeyMsg{Type: tea.KeyEnter})
+	press(t, m, tea.KeyPressMsg{Code: tea.KeyEnter})
 	typeRunes(t, m, "ok")
 
-	cmd := press(t, m, tea.KeyMsg{Type: tea.KeyEsc})
+	cmd := press(t, m, tea.KeyPressMsg{Code: tea.KeyEsc})
 
 	if m.editing {
 		t.Fatal("esc did not close the editor")
@@ -149,7 +149,7 @@ func TestEscCancelsEditorWithoutSaving(t *testing.T) {
 
 func TestEditorSwallowsKeysBoundOnTheList(t *testing.T) {
 	m := newTextModel(t, "")
-	press(t, m, tea.KeyMsg{Type: tea.KeyEnter})
+	press(t, m, tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	typeRunes(t, m, "hl")
 
@@ -161,7 +161,7 @@ func TestEditorSwallowsKeysBoundOnTheList(t *testing.T) {
 func TestSelectSettingStillCycles(t *testing.T) {
 	m := New("Settings", []Setting{NewSelect("protocol", "Protocol", []string{"https", "ssh"}, 0)}, 80, 24, 0, 0)
 
-	cmd := press(t, &m, tea.KeyMsg{Type: tea.KeyEnter})
+	cmd := press(t, &m, tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	if m.editing {
 		t.Fatal("enter on a Select opened the text editor")

@@ -1,10 +1,10 @@
 package repolist
 
 import (
+	"charm.land/bubbles/v2/list"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/styles"
-	"github.com/charmbracelet/bubbles/list"
 )
 
 func ConvertToRepoType(i list.Item) domain.Repo {

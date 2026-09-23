@@ -1,8 +1,8 @@
 package domain
 
 import (
+	"charm.land/bubbles/v2/key"
 	"github.com/bkenks/lazymux/internal/styles"
-	"github.com/charmbracelet/bubbles/key"
 )
 
 type BindingProvider func() []key.Binding
