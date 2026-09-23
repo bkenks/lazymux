@@ -78,6 +78,7 @@ func New(cfg config.Config, repoKey string) *Model {
 	w, h := sizeBuffer()
 	l := list.New(nil, list.NewDefaultDelegate(), w, h)
 	l.SetFilteringEnabled(false)
+	l.KeyMap.Quit = constants.ListQuit
 	l.AdditionalShortHelpKeys = helpKeys
 	l.AdditionalFullHelpKeys = helpKeys
 

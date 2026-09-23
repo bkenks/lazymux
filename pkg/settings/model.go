@@ -90,6 +90,7 @@ func New(title string, settings []Setting, width, height, widthPad, heightPad in
 
 	l := list.New(items, list.NewDefaultDelegate(), width-widthPad, height-heightPad)
 	l.Title = title
+	l.KeyMap.Quit = keys.Quit
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	// Disable pagination keys that conflict with value cycling

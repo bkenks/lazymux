@@ -18,9 +18,11 @@ import (
 	"github.com/bkenks/lazymux/internal/ui/confirm"
 	"github.com/bkenks/lazymux/internal/ui/forgeregistry"
 	"github.com/bkenks/lazymux/internal/ui/forgeselect"
+	"github.com/bkenks/lazymux/internal/ui/keybinds"
 	"github.com/bkenks/lazymux/internal/ui/repoforges"
 	"github.com/bkenks/lazymux/internal/ui/repolist"
 	"github.com/bkenks/lazymux/internal/ui/splash"
+	"github.com/bkenks/lazymux/internal/ui/terminal"
 	"github.com/bkenks/lazymux/pkg/settings"
 )
 
@@ -50,6 +52,8 @@ type ModelManager struct {
 	forgeSelect   *forgeselect.Model
 	forgeRegistry *forgeregistry.Model
 	repoForges    *repoforges.Model
+	keybinds      *keybinds.Model
+	terminal      *terminal.Model
 
 	active tea.Model
 
@@ -90,6 +94,7 @@ func New(cfg config.Config, version string) *ModelManager {
 		cloneProgress: progress.New(progress.WithDefaultBlend(), progress.WithoutPercentage()),
 	}
 
+	m.main.SetKeybinds(cfg.Keybinds)
 	m.state = domain.StateSplash
 	m.active = &m.splash
 	return m
@@ -159,6 +164,16 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// m.repoForges is built in the OpenRepoForges handler.
 				if m.repoForges != nil {
 					m.active = m.repoForges
+				}
+
+			case domain.StateKeybinds:
+				m.keybinds = keybinds.New(m.cfg, m.main.ReservedKeys())
+				m.active = m.keybinds
+
+			case domain.StateTerminal:
+				// m.terminal is built in the RunKeybind handler.
+				if m.terminal != nil {
+					m.active = m.terminal
 				}
 			}
 
@@ -285,6 +300,12 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			cmds = append(cmds, commands.RefreshReposCmd())
 
+		case events.KeybindsChanged:
+			cmds = append(cmds, m.saveKeybinds(msg.Keybinds))
+
+		case events.RunKeybind:
+			cmds = append(cmds, m.runKeybind(msg))
+
 		case events.OpenRepoForges:
 			m.repoForges = repoforges.New(m.cfg, msg.Key)
 			cmds = append(cmds, commands.SetState(domain.StateRepoForges))
@@ -405,7 +426,8 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *ModelManager) View() tea.View {
-	body := styles.DocStyle.Render(m.active.View().Content)
+	active := m.active.View()
+	body := styles.DocStyle.Render(active.Content)
 	// The footer region is a single reserved line (FooterReservedLines). A clone
 	// batch in flight owns it — showing a live gradient bar between the per-repo
 	// terminal handovers — otherwise it's the toast line.
@@ -415,7 +437,33 @@ func (m *ModelManager) View() tea.View {
 	}
 	v := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, body, footer))
 	v.AltScreen = true
+	if active.Cursor != nil {
+		v.Cursor = active.Cursor
+		v.Cursor.X += styles.DocStyle.GetMarginLeft()
+		v.Cursor.Y += styles.DocStyle.GetMarginTop()
+	}
 	return v
+}
+
+func (m *ModelManager) saveKeybinds(keybinds []config.Keybind) tea.Cmd {
+	m.cfg.Keybinds = keybinds
+	m.main.SetKeybinds(keybinds)
+	commands.SetDeps(m.cfg)
+	if err := config.Save(m.cfg); err != nil {
+		return m.toastCmd(events.ToastError, fmt.Sprintf("couldn't save keybinds: %v", err))
+	}
+	return m.toastCmd(events.ToastInfo, "keybinds saved")
+}
+
+// runKeybind starts the keybind's command in the embedded terminal screen.
+func (m *ModelManager) runKeybind(msg events.RunKeybind) tea.Cmd {
+	shellCmd := commands.ShellCommand(msg.Keybind.Command, msg.Dir)
+	session, err := terminal.New(msg.Keybind.Name, shellCmd)
+	if err != nil {
+		return m.toastCmd(events.ToastError, err.Error())
+	}
+	m.terminal = session
+	return tea.Batch(session.Init(), commands.SetState(domain.StateTerminal))
 }
 
 // renderCloneProgress draws a gradient bar while a clone batch is in flight.

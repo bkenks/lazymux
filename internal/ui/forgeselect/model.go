@@ -90,6 +90,7 @@ func New(cfg config.Config, pending []repomgr.PendingClone) *Model {
 	l := list.New(nil, list.NewDefaultDelegate(), w, h)
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(true)
+	l.KeyMap.Quit = constants.ListQuit
 	l.AdditionalShortHelpKeys = helpKeys
 	l.AdditionalFullHelpKeys = helpKeys
 

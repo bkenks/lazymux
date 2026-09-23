@@ -111,6 +111,15 @@ func (m MCP) Addr() string {
 	return net.JoinHostPort(m.Host, strconv.Itoa(m.Port))
 }
 
+// Keybind binds a key combo on the repo list to a shell command that runs in
+// the selected repo's directory. Keys holds the canonical keystroke produced by
+// keybind.Parse (e.g. "ctrl+shift+k").
+type Keybind struct {
+	Name    string `json:"name"`
+	Keys    string `json:"keys"`
+	Command string `json:"command"`
+}
+
 type Config struct {
 	// BaseDir is the root under which repos live as <namespace>/<repo>.
 	BaseDir         string `json:"baseDir"`
@@ -121,7 +130,8 @@ type Config struct {
 	Behavior Behavior `json:"behavior"`
 	MCP      MCP      `json:"mcp"`
 
-	Forges []Forge `json:"forges"`
+	Forges   []Forge   `json:"forges"`
+	Keybinds []Keybind `json:"keybinds"`
 	// Repos maps a repo key ("<namespace>/<repo>") to its forge links.
 	Repos map[string]RepoLink `json:"repos"`
 
@@ -155,8 +165,9 @@ func Default() Config {
 			Port: DefaultMCPPort,
 			Path: DefaultMCPPath,
 		},
-		Forges: []Forge{},
-		Repos:  map[string]RepoLink{},
+		Forges:   []Forge{},
+		Keybinds: []Keybind{},
+		Repos:    map[string]RepoLink{},
 	}
 }
 
@@ -252,6 +263,9 @@ func normalize(cfg Config) Config {
 	}
 	if cfg.Forges == nil {
 		cfg.Forges = []Forge{}
+	}
+	if cfg.Keybinds == nil {
+		cfg.Keybinds = []Keybind{}
 	}
 	return cfg
 }

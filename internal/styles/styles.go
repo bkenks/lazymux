@@ -95,6 +95,12 @@ var (
 			Padding(0, 1).
 			MarginTop(1)
 
+	// TerminalFrameStyle borders a keybind command's output so it reads as a
+	// process running inside lazymux.
+	TerminalFrameStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(Purple)
+
 	DialogHelpStyle = lipgloss.NewStyle()
 
 	DialogSubtitleStyle = lipgloss.NewStyle().

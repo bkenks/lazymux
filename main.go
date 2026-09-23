@@ -46,7 +46,7 @@ var buildVersion = "dev"
 func version() string { return buildVersion }
 
 func printHelp() {
-	fmt.Println(`lazymux — a TUI git repo manager (clone + lazygit + your editor)
+	fmt.Println(`lazymux — a TUI git repo manager (clone + your editor + custom keybinds)
 
 Usage: lazymux [flags]
        lazymux mcp <command>
@@ -65,7 +65,7 @@ Configuration:
   cloned into ~/lazymux/<namespace>/<repo>.
 
 Keybindings (repo list):
-  tab       open with lazygit
+  ctrl+shift+k  manage custom keybinds
   ctrl+o    open in editor
   s         shell in repo dir
   y         copy absolute path

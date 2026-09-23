@@ -47,6 +47,13 @@ var GlobalKeyMap = globalKeyMap{
 	),
 }
 
+// ListQuit replaces the list component's own quit binding, which bubbles v2
+// sets to "v", with the keys it used in v1.
+var ListQuit = key.NewBinding(
+	key.WithKeys("q", "esc"),
+	key.WithHelp("q", "quit"),
+)
+
 // End "Global Key Map"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -168,6 +175,14 @@ var RepoListKeyMap = repoListKeyMap{
 		key.WithKeys("S"),
 		key.WithHelp("S", "sort"),
 	),
+}
+
+// All returns every repo-list binding, for checking custom keybinds against.
+func (k repoListKeyMap) All() []key.Binding {
+	return []key.Binding{
+		k.Clone, k.Delete, k.VSCode, k.Settings, k.Refresh, k.CopyPath, k.Shell, k.Keybinds,
+		k.Quit, k.PullAll, k.Forges, k.Registry, k.ToggleForge, k.ToggleStats, k.CycleSort,
+	}
 }
 
 func (k repoListKeyMap) HelpBinds(helpType HelpType) func() []key.Binding {

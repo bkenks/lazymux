@@ -73,7 +73,8 @@ func Parse(input string) (string, error) {
 			continue
 		}
 		if keyName != "" {
-			return "", fmt.Errorf("only one non-modifier key allowed, got %q and %q", keyName, token)
+			return "", fmt.Errorf(
+				"only one non-modifier key allowed, got %q and %q", keyName, token)
 		}
 		name, shifted, err := parseKeyName(token)
 		if err != nil {

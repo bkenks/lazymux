@@ -95,6 +95,7 @@ func New(cfg config.Config) *Model {
 	w, h := sizeBuffer()
 	l := list.New(nil, list.NewDefaultDelegate(), w, h)
 	l.Title = "Forge Registry"
+	l.KeyMap.Quit = constants.ListQuit
 	l.SetFilteringEnabled(false)
 	l.AdditionalShortHelpKeys = helpKeys
 	l.AdditionalFullHelpKeys = helpKeys

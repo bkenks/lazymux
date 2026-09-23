@@ -18,6 +18,13 @@ func resolveShell() string {
 	return "/bin/sh"
 }
 
+// ShellCommand builds the user's shell running command in dir.
+func ShellCommand(command, dir string) *exec.Cmd {
+	cmd := exec.Command(resolveShell(), "-c", command)
+	cmd.Dir = dir
+	return cmd
+}
+
 func OpenShellCmd(absPath string) tea.Cmd {
 	if absPath == "" {
 		return func() tea.Msg {

@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/bkenks/lazymux/internal/commands"
+	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
@@ -19,6 +20,7 @@ import (
 type Model struct {
 	List     list.Model
 	RepoList []list.Item
+	keybinds []config.Keybind
 
 	// pull-all progress: streamed one PullResult at a time off pullCh while a
 	// progress bar + spinner render below the list.
@@ -53,6 +55,7 @@ func New() *Model {
 		w, h,
 	)
 	newList.Title = listTitle()
+	newList.KeyMap.Quit = constants.ListQuit
 	newList.AdditionalShortHelpKeys = constants.RepoListKeyMap.HelpBinds(constants.Short)
 	newList.AdditionalFullHelpKeys = constants.RepoListKeyMap.HelpBinds(constants.Full)
 
@@ -221,9 +224,47 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) (bool, []tea.Cmd) {
 		cmds = append(cmds, m.Resort(), commands.SortModeChangedCmd(domain.Sort))
 
 	default:
-		return false, nil
+		return m.runKeybind(msg)
 	}
 	return true, cmds
+}
+
+// runKeybind runs the custom keybind bound to msg in the selected repo.
+func (m *Model) runKeybind(msg tea.KeyPressMsg) (bool, []tea.Cmd) {
+	for _, bind := range m.keybinds {
+		if bind.Keys != msg.Keystroke() && bind.Keys != msg.String() {
+			continue
+		}
+		repo := ConvertToRepoType(m.List.SelectedItem())
+		if repo.AbsPath == "" {
+			return true, nil
+		}
+		domain.SaveInteraction(repo.Path)
+		return true, []tea.Cmd{func() tea.Msg {
+			return events.RunKeybind{Keybind: bind, Dir: repo.AbsPath}
+		}}
+	}
+	return false, nil
+}
+
+// SetKeybinds replaces the custom keybinds the list answers to.
+func (m *Model) SetKeybinds(keybinds []config.Keybind) { m.keybinds = keybinds }
+
+// ReservedKeys lists every key the repo list already answers to, so a custom
+// keybind can't shadow one. Keys the list only reads while filtering are left
+// out, since custom keybinds don't run then.
+func (m *Model) ReservedKeys() []string {
+	listKeys := m.List.KeyMap
+	bindings := append(constants.RepoListKeyMap.All(),
+		listKeys.CursorUp, listKeys.CursorDown, listKeys.NextPage, listKeys.PrevPage,
+		listKeys.GoToStart, listKeys.GoToEnd, listKeys.Filter, listKeys.ClearFilter,
+		listKeys.ShowFullHelp, listKeys.CloseFullHelp, listKeys.Quit, listKeys.ForceQuit,
+	)
+	var reserved []string
+	for _, binding := range bindings {
+		reserved = append(reserved, binding.Keys()...)
+	}
+	return reserved
 }
 
 func (m *Model) View() tea.View {
