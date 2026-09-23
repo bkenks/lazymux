@@ -33,7 +33,11 @@ func main() {
 	}
 
 	cfg := config.Load()
-	styles.Apply(cfg.UI.Theme, lipgloss.HasDarkBackground(os.Stdin, os.Stdout))
+	accent, err := styles.ParseAccent(cfg.UI.AccentColor)
+	if err != nil {
+		cfg.Warnings = append(cfg.Warnings, err.Error())
+	}
+	styles.Apply(cfg.UI.Theme, lipgloss.HasDarkBackground(os.Stdin, os.Stdout), accent)
 
 	tui := app.New(cfg, version())
 	p := tea.NewProgram(tui)

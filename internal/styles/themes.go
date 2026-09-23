@@ -1,9 +1,11 @@
 package styles
 
 import (
+	"fmt"
 	"image/color"
 
 	"charm.land/lipgloss/v2"
+	colorful "github.com/lucasb-eyer/go-colorful"
 )
 
 // shade is a palette color's value on a light and on a dark terminal background.
@@ -57,12 +59,31 @@ var themes = map[string]Palette{
 // screens pass it to the bubbles and huh defaults they build.
 var IsDark = true
 
-func init() { Apply("default", true) }
+// Accent is the user's accent color, standing in for the theme's accent colors
+// and for the pink, purple and indigo accents of the bubbles and huh defaults.
+// Nil keeps the theme's own colors.
+var Accent color.Color
 
-// Apply picks the named theme's colors for a light or dark terminal background
-// and rebuilds every style that depends on them. Call it before the program
-// runs; frames already drawn are not re-styled.
-func Apply(name string, isDark bool) {
+func init() { Apply("default", true, nil) }
+
+// ParseAccent reads an accent color written as a hex value, "#RRGGBB" or
+// "#RGB". An empty value means no accent and returns nil.
+func ParseAccent(hex string) (color.Color, error) {
+	if hex == "" {
+		return nil, nil
+	}
+	c, err := colorful.Hex(hex)
+	if err != nil {
+		return nil, fmt.Errorf("accent color %q is not a hex value like #7D56F4", hex)
+	}
+	return lipgloss.Color(c.Hex()), nil
+}
+
+// Apply picks the named theme's colors for a light or dark terminal background,
+// swaps accent in for the theme's accent colors when it is set, and rebuilds
+// every style that depends on them. Screens built earlier keep their styles
+// until they are rebuilt or restyled.
+func Apply(name string, isDark bool, accent color.Color) {
 	p, ok := themes[name]
 	if !ok {
 		p = themes["default"]
@@ -77,6 +98,11 @@ func Apply(name string, isDark bool) {
 	MediumGrey = p.MediumGrey.resolve(isDark)
 	DarkPurple = p.DarkPurple.resolve(isDark)
 	White = p.White.resolve(isDark)
+
+	Accent = accent
+	if accent != nil {
+		DarkPink, Purple, DarkPurple = accent, accent, accent
+	}
 
 	rebuildStyles()
 }

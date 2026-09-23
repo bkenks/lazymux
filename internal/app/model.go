@@ -25,9 +25,9 @@ import (
 	"github.com/bkenks/lazymux/internal/ui/keybinds"
 	"github.com/bkenks/lazymux/internal/ui/repoforges"
 	"github.com/bkenks/lazymux/internal/ui/repolist"
+	"github.com/bkenks/lazymux/internal/ui/settings"
 	"github.com/bkenks/lazymux/internal/ui/splash"
 	"github.com/bkenks/lazymux/internal/ui/terminal"
-	"github.com/bkenks/lazymux/pkg/settings"
 )
 
 const (
@@ -52,7 +52,7 @@ type ModelManager struct {
 	main          repolist.Model
 	confirmDelete confirm.Model
 	clonerepos    clonerepos.Model
-	settingsModel settings.Model
+	settingsModel *settings.Model
 	forgeSelect   *forgeselect.Model
 	forgeRegistry *forgeregistry.Model
 	repoForges    *repoforges.Model
@@ -90,7 +90,6 @@ func New(cfg config.Config, version string) *ModelManager {
 		main:          *repolist.New(),
 		confirmDelete: *confirm.New(),
 		clonerepos:    *clonerepos.New(cfg),
-		settingsModel: newSettingsScreen(cfg),
 		cloneProgress: progress.New(progress.WithDefaultBlend(), progress.WithoutPercentage()),
 	}
 
@@ -152,10 +151,9 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.active = &m.clonerepos
 
 			case domain.StateSettings:
-				// Rebuild with the live window size (and current cfg) — like the
-				// other screens — since the startup build ran at size 0×0.
-				m.settingsModel = newSettingsScreen(m.cfg)
-				m.active = &m.settingsModel
+				m.settingsModel = settings.New(m.cfg)
+				m.active = m.settingsModel
+				cmds = append(cmds, m.settingsModel.Init())
 
 			case domain.StateForgeSelect:
 				// m.forgeSelect is built in the StartRepoClone handler.
@@ -397,13 +395,9 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmds = append(cmds, toastTick(msg.Seq))
 				}
 			}
+		case events.SettingsChanged:
+			cmds = append(cmds, m.applySettings(msg.Config))
 		}
-
-	case settings.SettingChanged:
-		cmds = append(cmds, m.applySettingChange(msg))
-
-	case settings.Exited:
-		cmds = append(cmds, commands.SetState(domain.StateMain))
 	}
 
 	var cmd tea.Cmd

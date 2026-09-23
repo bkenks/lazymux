@@ -8,7 +8,32 @@ import (
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
+	"github.com/bkenks/lazymux/internal/styles"
 )
+
+func TestSavedAccentRestylesTheRepoList(t *testing.T) {
+	t.Setenv("LAZYMUX_CONFIG", t.TempDir()+"/.lazymux.json")
+	t.Cleanup(func() { styles.Apply("default", true, nil) })
+	m := New(config.Default(), "test")
+
+	edited := m.cfg.Clone()
+	edited.UI.AccentColor = "#123456"
+	_, cmd := m.Update(events.SettingsChanged{Config: edited})
+
+	if got := config.Load().UI.AccentColor; got != "#123456" {
+		t.Errorf("saved accent = %q, want #123456", got)
+	}
+	want, _ := styles.ParseAccent("#123456")
+	if got := m.main.List.Styles.Title.GetBackground(); got != want {
+		t.Errorf("repo list title = %v, want the new accent %v", got, want)
+	}
+	for _, msg := range collectMsgs(cmd) {
+		if state, ok := msg.(events.SetState); ok && state.State == domain.StateMain {
+			return
+		}
+	}
+	t.Error("saving settings did not return to the repo list")
+}
 
 // collectMsgs runs cmd and any batch inside it, skipping commands that don't
 // return quickly (timers), and returns the messages produced.

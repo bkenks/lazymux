@@ -8,7 +8,6 @@ import (
 
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/events"
-	"github.com/bkenks/lazymux/pkg/settings"
 )
 
 // newPersistedApp writes cfg to a temp config file and starts the app on it.
@@ -105,8 +104,9 @@ func TestSettingsSaveDoesNotOverwriteUnparseableConfig(t *testing.T) {
 	}
 	m := New(config.Load(), "test")
 
-	toggledOff := settings.NewToggle("confirm_delete", "", false)
-	m.Update(settings.SettingChanged{Key: "confirm_delete", Setting: toggledOff})
+	edited := m.cfg.Clone()
+	edited.Behavior.ConfirmDelete = false
+	m.Update(events.SettingsChanged{Config: edited})
 
 	data, err := os.ReadFile(path)
 	if err != nil {

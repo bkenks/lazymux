@@ -45,7 +45,10 @@ type Tools struct {
 }
 
 type UI struct {
-	Theme        string `json:"theme"`
+	Theme string `json:"theme"`
+	// AccentColor is a hex value ("#7D56F4") that replaces the theme's accent
+	// color everywhere. Empty keeps the theme's own.
+	AccentColor  string `json:"accentColor"`
 	ShowFullPath bool   `json:"showFullPath"`
 	// ShowForge is the default visibility of the "forge:" line in the repo
 	// list. The list's `g` key toggles it for the session; this is the value

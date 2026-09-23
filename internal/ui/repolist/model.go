@@ -311,6 +311,14 @@ func (m *Model) applySize() {
 // the row height next render.
 func (m *Model) SyncForgeVisibility() { m.List.SetDelegate(newDelegate()) }
 
+// Restyle re-applies the current styles after styles.Apply changed them, such
+// as a new accent color saved from settings.
+func (m *Model) Restyle() {
+	styles.StyleList(&m.List)
+	m.List.SetDelegate(newDelegate())
+	m.spinner.Style = lipgloss.NewStyle().Foreground(styles.Purple)
+}
+
 // UpdateRepoList replaces the list's items. It returns the command from
 // list.SetItems, which must be run so the filtered view is recomputed when a
 // filter is applied — dropping it leaves the filter phrase set but the results

@@ -330,6 +330,7 @@ Everything lives in a single JSON file at `~/lazymux/.lazymux.json` (override th
   },
   "ui": {
     "theme": "default",
+    "accentColor": "",
     "showFullPath": false,
     "showForge": true,
     "showStats": true,
@@ -374,8 +375,11 @@ Everything lives in a single JSON file at `~/lazymux/.lazymux.json` (override th
 - `ui.theme` — `default` or `mono`. Each has light and dark colors; lazymux asks the terminal
   for its background at launch and uses the matching set, falling back to dark if the terminal
   doesn't answer.
+- `ui.accentColor` — a hex value (`#7D56F4` or `#75F`) that replaces the theme's pink and
+  purple accent everywhere: titles, the selected row, form fields and buttons. Empty keeps
+  the theme's own.
 
-The in-app settings screen covers `editor`, `defaultProtocol`, `confirmDelete`, `showFullPath`, `showForge`, `showStats`, and `sortMode`. `editor` opens a text field on `enter` — type any command name and the field resolves it on `PATH` as you type, refusing to save one it cannot find. `shell` (the shell keybind commands and `s` use) and `theme` are file-only for now — edit and relaunch.
+The in-app settings screen is one form covering `editor`, `defaultProtocol`, `confirmDelete`, `showFullPath`, `showForge`, `showStats`, `sortMode`, and `accentColor`. `enter` moves to the next field and saves on the last one; `esc` leaves without saving. The editor field resolves the command on `PATH` and won't let the form save one it cannot find; the accent field only takes a hex value. `shell` (the shell keybind commands and `s` use) and `theme` are file-only for now — edit and relaunch.
 
 Repo interaction history (used for recency sorting) lives at `$XDG_DATA_HOME/lazymux/interactions.json` (fallback `~/.local/share/lazymux/interactions.json`).
 
