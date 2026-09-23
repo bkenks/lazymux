@@ -1,6 +1,7 @@
 // Package terminal is the screen that runs a custom keybind's command in a
 // pseudo-terminal and draws it inside a border, forwarding keys to it until
-// the process exits or esc returns to the repo list.
+// ctrl+] returns to the repo list. Every other key, esc included, goes to the
+// process.
 package terminal
 
 import (
@@ -23,7 +24,7 @@ import (
 )
 
 const (
-	returnKey    = "esc"
+	returnKey    = "ctrl+]"
 	borderSize   = 2
 	headerHeight = 1
 )
@@ -148,7 +149,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.KeyPressMsg:
-		if msg.String() == returnKey {
+		if msg.Keystroke() == returnKey {
 			m.close()
 			return m, returnToRepoList()
 		}

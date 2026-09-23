@@ -63,9 +63,21 @@ func TestForwardsKeysToProcess(t *testing.T) {
 	waitForScreen(t, m, "got:hi")
 }
 
-func TestOutputWaitEndsAfterEsc(t *testing.T) {
+var returnPress = tea.KeyPressMsg{Code: ']', Mod: tea.ModCtrl}
+
+func TestEscGoesToProcess(t *testing.T) {
+	m := startSession(t, `read -r line; printf '%s' "$line" | od -c`, t.TempDir())
+	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if cmd != nil {
+		t.Fatal("esc produced a command; want it forwarded to the process only")
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	waitForScreen(t, m, "033")
+}
+
+func TestOutputWaitEndsAfterReturn(t *testing.T) {
 	m := startSession(t, "sleep 30", t.TempDir())
-	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	m.Update(returnPress)
 
 	result := make(chan tea.Msg, 1)
 	go func() {
@@ -79,11 +91,11 @@ func TestOutputWaitEndsAfterEsc(t *testing.T) {
 	select {
 	case <-result:
 	case <-time.After(5 * time.Second):
-		t.Fatal("waiting for output never ended after esc; the goroutine leaks")
+		t.Fatal("waiting for output never ended after returning; the goroutine leaks")
 	}
 }
 
-func TestStaysOpenAfterExitUntilEsc(t *testing.T) {
+func TestStaysOpenAfterExitUntilReturn(t *testing.T) {
 	m := startSession(t, "echo done; exit 3", t.TempDir())
 	waitForScreen(t, m, "done")
 
@@ -92,11 +104,11 @@ func TestStaysOpenAfterExitUntilEsc(t *testing.T) {
 		t.Fatalf("hasExited=%v exitErr=%v; want exited with an error", m.hasExited, m.exitErr)
 	}
 	if view := m.View().Content; !strings.Contains(view, "exit status 3") ||
-		!strings.Contains(view, "esc to return") {
+		!strings.Contains(view, "ctrl+] to return") {
 		t.Errorf("view missing exit status or return hint:\n%s", view)
 	}
 
-	if _, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape}); cmd == nil {
-		t.Error("esc returned no command; want a switch back to the repo list")
+	if _, cmd := m.Update(returnPress); cmd == nil {
+		t.Error("ctrl+] returned no command; want a switch back to the repo list")
 	}
 }

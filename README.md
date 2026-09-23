@@ -138,7 +138,7 @@ On first run, lazymux creates `~/lazymux/` and a `.lazymux.json` config (migrati
 | `d` | **Delete** the selected repository |
 | `1` | Open **settings** |
 | `2` | Manage **custom keybinds** |
-| `Esc` | Clear the filter — `Esc` is back on every screen and never quits |
+| `Esc` | Clear the filter — `Esc` is back on every screen (`Ctrl+]` inside a keybind's pane) and never quits |
 | `q` / `Ctrl+C` | Quit |
 
 Repo-list keys are unmodified letters, with the settings-style screens on numbers.
@@ -203,9 +203,9 @@ A keybind lazymux already uses, or another custom keybind already has, is refuse
 
 Pressing a keybind on the repo list runs its command with your shell (`sh -c`
 style) in the selected repo's directory, inside a bordered pane. The pane is
-interactive, so TUIs like lazygit work in it. `Esc` returns to the repo list and
-ends the command if it is still running; a command that finishes stays on screen
-until you press `Esc`.
+interactive, so TUIs like lazygit work in it, `Esc` included. `Ctrl+]` returns
+to the repo list and ends the command if it is still running; a command that
+finishes stays on screen until you press `Ctrl+]`.
 
 `ctrl+shift` combos and `cmd` need a terminal that reports them (kitty keyboard
 protocol — e.g. Ghostty, kitty, WezTerm, or iTerm2 with CSI u enabled).
