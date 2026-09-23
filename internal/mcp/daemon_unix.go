@@ -131,6 +131,10 @@ func Start(cfg config.Config) error {
 		return fmt.Errorf("opening %s: %w", LogPath(), err)
 	}
 	defer logFile.Close()
+	logInfo, err := logFile.Stat()
+	if err != nil {
+		return fmt.Errorf("reading %s: %w", LogPath(), err)
+	}
 
 	cmd := exec.Command(self, "mcp", "serve")
 	cmd.Stdout = logFile
@@ -146,7 +150,7 @@ func Start(cfg config.Config) error {
 	exited := make(chan error, 1)
 	go func() { exited <- cmd.Wait() }()
 
-	if err := waitForReady(cmd.Process.Pid, exited); err != nil {
+	if err := waitForReady(cmd.Process.Pid, exited, logInfo.Size()); err != nil {
 		return err
 	}
 	fmt.Printf("lazymux mcp listening on %s (pid %d)\n", cfg.MCP.Endpoint(), cmd.Process.Pid)
@@ -158,9 +162,9 @@ func Start(cfg config.Config) error {
 // only after binding the port — or dies, or startTimeout elapses. Waiting on
 // the child's own signal rather than on the port being connectable is what
 // makes "port already taken by something else" a failure instead of a
-// spurious success. On failure it surfaces the tail of the log, the only
-// place a detached child's error message lands.
-func waitForReady(pid int, exited <-chan error) error {
+// spurious success. On failure it surfaces the tail of what the child wrote
+// to the log past logStart, the only place a detached child's error lands.
+func waitForReady(pid int, exited <-chan error, logStart int64) error {
 	deadline := time.After(startTimeout)
 	tick := time.NewTicker(50 * time.Millisecond)
 	defer tick.Stop()
@@ -170,18 +174,28 @@ func waitForReady(pid int, exited <-chan error) error {
 		}
 		select {
 		case <-exited:
-			return fmt.Errorf("server exited during startup:\n%s", tailLog())
+			return fmt.Errorf("server exited during startup:\n%s", tailLog(logStart))
 		case <-deadline:
-			return fmt.Errorf("server did not come up within %s:\n%s", startTimeout, tailLog())
+			return fmt.Errorf("server did not come up within %s:\n%s",
+				startTimeout, tailLog(logStart))
 		case <-tick.C:
 		}
 	}
 }
 
-func tailLog() string {
+// tailLog returns the last lines written to the log past offset, so output
+// from an earlier run never passes for this one's.
+func tailLog(offset int64) string {
 	data, err := os.ReadFile(LogPath())
 	if err != nil {
 		return "(no log available at " + LogPath() + ")"
+	}
+	if offset > int64(len(data)) {
+		offset = 0
+	}
+	data = data[offset:]
+	if strings.TrimSpace(string(data)) == "" {
+		return "(the server wrote nothing to " + LogPath() + ")"
 	}
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
 	if len(lines) > 10 {

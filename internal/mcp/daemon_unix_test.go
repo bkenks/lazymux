@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -63,6 +64,26 @@ func TestClaimPIDMarksServerRunningUntilReleased(t *testing.T) {
 		t.Errorf("Running() = %d after release, want 0", pid)
 	}
 	assertPIDFileRemoved(t)
+}
+
+func TestTailLogShowsOnlyThisRunsOutput(t *testing.T) {
+	newTestWorkspace(t)
+	previous := "old run: binding failed\n"
+	current := "new run: binding failed\n"
+	if err := os.WriteFile(LogPath(), []byte(previous+current), 0o644); err != nil {
+		t.Fatalf("writing log: %v", err)
+	}
+
+	got := tailLog(int64(len(previous)))
+	if strings.Contains(got, "old run") {
+		t.Errorf("tailLog = %q, must not include output from before the offset", got)
+	}
+	if !strings.Contains(got, "new run") {
+		t.Errorf("tailLog = %q, want this run's output", got)
+	}
+	if got := tailLog(int64(len(previous + current))); strings.Contains(got, "run:") {
+		t.Errorf("tailLog with nothing new = %q, want no stale lines", got)
+	}
 }
 
 func TestStopWhenNotRunning(t *testing.T) {
