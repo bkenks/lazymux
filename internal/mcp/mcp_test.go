@@ -314,7 +314,7 @@ func TestEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("connecting: %v", err)
 	}
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 
 	tools, err := session.ListTools(ctx, nil)
 	if err != nil {

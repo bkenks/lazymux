@@ -186,7 +186,7 @@ func Serve(ctx context.Context, cfg config.Config, version string, onListen func
 	}
 	if onListen != nil {
 		if err := onListen(); err != nil {
-			ln.Close()
+			_ = ln.Close()
 			return err
 		}
 	}

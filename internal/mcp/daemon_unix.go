@@ -60,13 +60,13 @@ func Running() int {
 	if err != nil {
 		return 0
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	locked, err := tryLock(f)
 	if err != nil {
 		return 0
 	}
 	if locked {
-		os.Remove(PIDPath())
+		_ = os.Remove(PIDPath())
 		return 0
 	}
 	return readPID()
@@ -82,22 +82,22 @@ func claimPID() (func(), error) {
 	}
 	locked, err := tryLock(f)
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("locking %s: %w", PIDPath(), err)
 	}
 	if !locked {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("another server holds %s", PIDPath())
 	}
 	if err := writePID(f); err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("writing %s: %w", PIDPath(), err)
 	}
 	return func() {
 		if readPID() == os.Getpid() {
-			os.Remove(PIDPath())
+			_ = os.Remove(PIDPath())
 		}
-		f.Close()
+		_ = f.Close()
 	}, nil
 }
 
@@ -130,7 +130,7 @@ func Start(cfg config.Config) error {
 	if err != nil {
 		return fmt.Errorf("opening %s: %w", LogPath(), err)
 	}
-	defer logFile.Close()
+	defer func() { _ = logFile.Close() }()
 	logInfo, err := logFile.Stat()
 	if err != nil {
 		return fmt.Errorf("reading %s: %w", LogPath(), err)

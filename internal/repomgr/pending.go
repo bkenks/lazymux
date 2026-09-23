@@ -32,5 +32,6 @@ func NewPendingClone(cfg config.Config, raw string) (PendingClone, error) {
 
 // Link converts the selection into the config record persisted for the repo.
 func (p PendingClone) Link() config.RepoLink {
-	return p.RepoLink.Clone()
+	link := p.RepoLink
+	return link.Clone()
 }

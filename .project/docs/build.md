@@ -3,7 +3,8 @@
 Build, install and release tasks are uv/Python scripts in `.mise/tasks/`. Run them
 with `mise run <task>` from anywhere in the repo; `mise tasks` lists them.
 
-`mise.toml` at the repo root pins the toolchain (Go and uv), so `mise install`
+`mise.toml` at the repo root pins the toolchain (Go, uv, lefthook, golangci-lint, ruff
+and ty) to exact versions, so `mise install`
 provisions everything. Each script carries its own PEP 723 header and runs under
 `uv run --script` — there is no virtualenv to create and no dependencies to install.
 
@@ -20,9 +21,10 @@ provisions everything. Each script carries its own PEP 723 header and runs under
 | `mise run install`            | installs `lazymux` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
 | `mise run install-dev`        | installs `lazymux-dev` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
 | `mise run clean`              | removes `build/bin` and `build/dist` |
+| `mise run check`              | `go vet`, `go test`, `golangci-lint`, `ruff` and `ty` |
 | `mise run release <bump>`     | tests, tags and pushes; CI builds and publishes (see below) |
 
-`install` and `install-dev` declare `#MISE depends=` on `build` / `dev`, so they
+`install` and `install-dev` declare `# MISE depends=` on `build` / `dev`, so they
 compile first.
 
 ## Cross-compilation
@@ -52,6 +54,7 @@ pairs from that list.
 .mise/tasks/
   _lib.py       shared helpers — not executable, so mise ignores it
   build.py      \
+  check.py       |
   dev.py         |
   install.py     |  executable PEP 723 scripts, one per task
   install-dev.py |
@@ -61,7 +64,7 @@ pairs from that list.
 
 Tasks are file tasks, so mise passes arguments straight through to the script;
 `argparse` handles them. `mise run release --help` prints the script's own help.
-Lint with `uvx ruff check .mise/tasks/` and `uvx ty check .mise/tasks/`.
+`mise run check` lints, format-checks and type-checks them with ruff and ty.
 
 ## Regular build vs. dev build
 
@@ -73,8 +76,10 @@ directory under `$HOME` used for the config file and the default repo `BaseDir`:
   `~/lazymux/.lazymux.json` and clones repos under `~/lazymux/` by default.
 - **`dev`** — `dirName` is overridden to `lazymux-dev`, so `lazymux-dev` reads/writes
   `~/lazymux-dev/.lazymux.json` and clones repos under `~/lazymux-dev/` instead.
-  This keeps local development fully sandboxed from your real repo tree — you can
-  run `lazymux-dev` against throwaway clones without touching `~/lazymux`.
+  Its recency history (`$XDG_DATA_HOME/lazymux-dev/interactions.json`, by default
+  under `~/.local/share`) is keyed by the same name. This keeps local development
+  fully sandboxed from your real repo tree — you can run `lazymux-dev` against
+  throwaway clones without touching `~/lazymux`.
 
 Both binaries also embed a version string via `-X main.buildVersion=...` (derived
 from `git describe`); the dev build appends a `-dev` suffix to that version.
@@ -99,8 +104,9 @@ a TTY).
 dirty, the current branch is not `main`, `main` has diverged from `origin/main`,
 the target tag already exists, or the new version is not greater than the latest tag.
 
-**Order of operations** — `go vet` and `go test` run, then the tag is created and
-pushed. A tree that fails its tests never gets tagged. If `git push` of the tag
+**Order of operations** — tags are fetched from `origin` first, so the bump starts
+from the remote's latest tag. `mise run check` runs, then the tag is created and
+pushed. A tree that fails its checks never gets tagged. If `git push` of the tag
 fails, the local tag is deleted so a retry starts clean.
 
 **Publishing** — pushing the tag is the whole job. Woodpecker builds the binaries
@@ -109,12 +115,13 @@ the task finishes in seconds.
 
 ## CI
 
-`.woodpecker.yml` runs on a pushed `v*` tag and nothing else — no branch or PR
-builds. Three steps, in order:
+`.woodpecker.yml` runs on every push and pull request, and on a pushed `v*` tag.
+Pushes and pull requests run only the first step; a tag runs all three, in order:
 
-1. **test** — `mise install`, then `go vet ./...` and `go test ./...`.
+1. **check** — `mise install`, then `mise run check`.
 2. **build** — `mise run build --all --version $CI_COMMIT_TAG`, producing the six
-   binaries plus `SHA256SUMS` in `build/dist/`.
+   binaries plus `SHA256SUMS` in `build/dist/`, then verifies them with
+   `sha256sum -c SHA256SUMS`.
 3. **release** — [`woodpeckerci/plugin-release`](https://woodpecker-ci.org/plugins/release)
    creates the Forgejo release for the tag and attaches everything in `build/dist/`.
 

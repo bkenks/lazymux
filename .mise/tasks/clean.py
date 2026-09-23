@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.13"
 # ///
-#MISE description="Remove build/bin and build/dist"
+# MISE description="Remove build/bin and build/dist"
 
 import shutil
 import sys

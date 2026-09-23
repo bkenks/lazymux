@@ -2,6 +2,9 @@
 # run `mise tasks` to list them, `mise run <task> --help` for a script's options.
 
 [tools]
-go = "1.26"
-lefthook = "2.1"
-uv = "0.12"
+go = "1.26.8"
+lefthook = "2.1.14"
+uv = "0.12.17"
+golangci-lint = "2.13.2"
+ruff = "0.16.8"
+ty = "0.0.83"

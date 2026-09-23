@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/bkenks/lazymux/internal/atomicfile"
 	"github.com/bkenks/lazymux/internal/keybind"
 )
 
@@ -518,32 +519,11 @@ func Save(cfg Config) error {
 		return errors.New("config file couldn't be read at startup; " +
 			"fix it and restart before saving")
 	}
-	path := Path()
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(dir, ".lazymux-*.json.tmp")
-	if err != nil {
-		return err
-	}
-	tmpName := tmp.Name()
-	defer os.Remove(tmpName) // no-op once the rename succeeds
-	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	if err := os.Chmod(tmpName, 0o644); err != nil {
-		return err
-	}
-	return os.Rename(tmpName, path)
+	return atomicfile.Write(Path(), data)
 }
 
 // Clone returns a copy of the config that shares no maps or slices with c, so

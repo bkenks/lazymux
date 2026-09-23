@@ -2,7 +2,7 @@
 
 > A terminal UI that brings your entire repo workflow into one place — clone, organize, browse, and hack on repos across multiple git forges without ever leaving your terminal.
 
-![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go&logoColor=white)
+![Go](https://img.shields.io/badge/Go-1.25.8+-00ADD8?style=flat&logo=go&logoColor=white)
 ![License](https://img.shields.io/github/license/bkenks/lazymux)
 ![Version](https://img.shields.io/github/v/tag/bkenks/lazymux?label=version)
 
@@ -233,11 +233,13 @@ directory.
 ```bash
 lazymux mcp start            # start it in the background
 lazymux mcp stop             # stop it
-lazymux mcp list             # config, endpoint, and whether it's running
+lazymux mcp list             # config, endpoint, and whether it's running (alias: status)
 lazymux mcp set-port 8080    # change the port
 lazymux mcp set-url 0.0.0.0  # change the bind host (accepts host, host:port, or a full URL)
 lazymux mcp serve            # run in the foreground, for a supervisor or for debugging
 ```
+
+`start` and `stop` are unix-only; on Windows, run `lazymux mcp serve` instead.
 
 Then point a client at the endpoint (`http://127.0.0.1:7777/mcp` by default):
 
@@ -309,6 +311,8 @@ start it to apply.
 
 State lives next to the config: `.lazymux-mcp.pid` and `.lazymux-mcp.log` in the same
 directory as `.lazymux.json`, so `$LAZYMUX_CONFIG` keeps a dev instance fully separate.
+While running, the server holds a lock on the pidfile; a pidfile nobody holds is stale
+and is cleared, so a crashed server never blocks the next start.
 
 ---
 
@@ -368,7 +372,7 @@ Everything lives in a single JSON file at `~/lazymux/.lazymux.json` (override th
 
 - `ui.sortMode` — repo list order: `recent`, `name-asc`, `name-desc`, or `namespace` (cycled in-app with `S`).
 
-The in-app settings screen covers `editor`, `defaultProtocol`, `confirm_delete`, `showFullPath`, `showForge`, `showStats`, and `sortMode`. `editor` opens a text field on `enter` — type any command name and the field resolves it on `PATH` as you type, refusing to save one it cannot find. `shell` (the shell keybind commands and `s` use) and `theme` are file-only for now — edit and relaunch.
+The in-app settings screen covers `editor`, `defaultProtocol`, `confirmDelete`, `showFullPath`, `showForge`, `showStats`, and `sortMode`. `editor` opens a text field on `enter` — type any command name and the field resolves it on `PATH` as you type, refusing to save one it cannot find. `shell` (the shell keybind commands and `s` use) and `theme` are file-only for now — edit and relaunch.
 
 Repo interaction history (used for recency sorting) lives at `$XDG_DATA_HOME/lazymux/interactions.json` (fallback `~/.local/share/lazymux/interactions.json`).
 

@@ -168,8 +168,7 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) (bool, []tea.Cmd) {
 		if repo.AbsPath == "" {
 			break
 		}
-		domain.SaveInteraction(repo.Path)
-		cmds = append(cmds, commands.OpenInVSCode(repo.AbsPath))
+		cmds = append(cmds, recordInteraction(repo.Path), commands.OpenInVSCode(repo.AbsPath))
 
 	case key.Matches(msg, constants.RepoListKeyMap.Settings):
 		cmds = append(cmds, commands.SetState(domain.StateSettings))
@@ -188,8 +187,7 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) (bool, []tea.Cmd) {
 		if repo.AbsPath == "" {
 			break
 		}
-		domain.SaveInteraction(repo.Path)
-		cmds = append(cmds, commands.OpenShellCmd(repo.AbsPath))
+		cmds = append(cmds, recordInteraction(repo.Path), commands.OpenShellCmd(repo.AbsPath))
 
 	case key.Matches(msg, constants.RepoListKeyMap.PullAll):
 		if m.pulling {
@@ -228,6 +226,16 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) (bool, []tea.Cmd) {
 	return true, cmds
 }
 
+// recordInteraction marks the repo as just used, for the recency sort. It
+// returns an error toast if that can't be saved, or nil.
+func recordInteraction(key string) tea.Cmd {
+	if err := domain.SaveInteraction(key); err != nil {
+		msg := events.Toast{Level: events.ToastError, Msg: fmt.Sprintf("couldn't record recent use: %v", err)}
+		return func() tea.Msg { return msg }
+	}
+	return nil
+}
+
 // runKeybind runs the custom keybind bound to msg in the selected repo.
 func (m *Model) runKeybind(msg tea.KeyPressMsg) (bool, []tea.Cmd) {
 	for _, bind := range m.keybinds {
@@ -238,8 +246,7 @@ func (m *Model) runKeybind(msg tea.KeyPressMsg) (bool, []tea.Cmd) {
 		if repo.AbsPath == "" {
 			return true, nil
 		}
-		domain.SaveInteraction(repo.Path)
-		return true, []tea.Cmd{func() tea.Msg {
+		return true, []tea.Cmd{recordInteraction(repo.Path), func() tea.Msg {
 			return events.RunKeybind{Keybind: bind, Dir: repo.AbsPath}
 		}}
 	}

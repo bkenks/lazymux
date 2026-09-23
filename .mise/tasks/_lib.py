@@ -12,9 +12,12 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import NoReturn
 
-MODULE = "github.com/bkenks/lazymux"
-DEV_DIR_NAME = "lazymux-dev"
+BINARY_NAME = "lazymux"
+DEV_SUFFIX = "-dev"
+DEV_BINARY_NAME = BINARY_NAME + DEV_SUFFIX
+DEV_DIR_NAME = BINARY_NAME + DEV_SUFFIX
 
 # Release matrix. lazymux is pure Go (no cgo in the dependency graph), so these
 # cross-compile with nothing but GOOS/GOARCH — no C toolchain required.
@@ -30,7 +33,7 @@ PLATFORMS: tuple[tuple[str, str], ...] = (
 CHECKSUM_FILE = "SHA256SUMS"
 
 
-def die(message: str) -> None:
+def die(message: str) -> NoReturn:
     """Print an error to stderr and exit non-zero."""
     print(f"error: {message}", file=sys.stderr)
     raise SystemExit(1)
@@ -53,7 +56,6 @@ def repo_root() -> Path:
         return Path(capture("git", "rev-parse", "--show-toplevel"))
     except (subprocess.CalledProcessError, FileNotFoundError):
         die("not inside a git repo and $MISE_PROJECT_ROOT is unset")
-        raise  # unreachable; keeps type checkers happy
 
 
 def bin_dir() -> Path:
@@ -74,26 +76,33 @@ def run(*cmd: str | Path, cwd: Path | None = None, env: dict[str, str] | None = 
         [str(c) for c in cmd],
         cwd=cwd or repo_root(),
         env={**os.environ, **env} if env else None,
+        check=False,
     )
     if result.returncode != 0:
         die(f"command failed with exit {result.returncode}: {printable}")
 
 
 def build_version() -> str:
-    """Describe the working tree as a version string, matching the old Makefile."""
+    """Describe the working tree as a version string, falling back to "dev"."""
     try:
         return capture("git", "describe", "--tags", "--always", "--dirty", cwd=repo_root())
     except (subprocess.CalledProcessError, FileNotFoundError):
         return "dev"
 
 
-def host_platform() -> tuple[str, str]:
-    """The GOOS/GOARCH this machine builds for by default."""
+def go_capture(*args: str) -> str:
+    """Run a `go` subcommand from the repo root and return its stripped stdout."""
     try:
-        return capture("go", "env", "GOOS"), capture("go", "env", "GOARCH")
+        return capture("go", *args, cwd=repo_root())
     except (subprocess.CalledProcessError, FileNotFoundError):
-        die("could not run `go env` — is the Go toolchain installed? (try `mise install`)")
-        raise  # unreachable
+        die(
+            f"could not run `go {' '.join(args)}` — is the Go toolchain installed? (try `mise install`)"
+        )
+
+
+def module_path() -> str:
+    """The Go module path, as `go list -m` reports it."""
+    return go_capture("list", "-m")
 
 
 def go_build(
@@ -113,28 +122,39 @@ def go_build(
 
 
 def release_ldflags(version: str) -> str:
+    """Linker flags that stamp `version` into the binary."""
     return f"-X main.buildVersion={version}"
 
 
 def build_lazymux(version: str | None = None) -> Path:
     """Build the host release binary into build/bin. Defaults to the describe version."""
     version = version or build_version()
-    return go_build(bin_dir() / "lazymux", release_ldflags(version))
+    return go_build(bin_dir() / BINARY_NAME, release_ldflags(version))
 
 
 def build_lazymux_dev(version: str | None = None) -> Path:
-    """Build the dev binary, whose config/repo dir is redirected to ~/lazymux-dev."""
-    version = version or build_version()
+    """Build the dev binary, whose config/repo dir is redirected to ~/lazymux-dev.
+
+    The build is checked by running it with --version, since the linker ignores
+    an -X flag that names no symbol.
+    """
+    dev_version = (version or build_version()) + DEV_SUFFIX
     ldflags = (
-        f"-X main.buildVersion={version}-dev -X {MODULE}/internal/config.dirName={DEV_DIR_NAME}"
+        f"{release_ldflags(dev_version)} -X {module_path()}/internal/config.dirName={DEV_DIR_NAME}"
     )
-    return go_build(bin_dir() / "lazymux-dev", ldflags)
+    output = go_build(bin_dir() / DEV_BINARY_NAME, ldflags)
+    reported = capture(output, "--version")
+    if not reported.endswith(DEV_SUFFIX):
+        die(
+            f"{output} reports {reported!r}, not a {DEV_SUFFIX} version — the -X flags did not apply"
+        )
+    return output
 
 
 def asset_name(version: str, goos: str, goarch: str) -> str:
     """Release artifact filename, e.g. lazymux-v1.2.3-windows-amd64.exe."""
     suffix = ".exe" if goos == "windows" else ""
-    return f"lazymux-{version}-{goos}-{goarch}{suffix}"
+    return f"{BINARY_NAME}-{version}-{goos}-{goarch}{suffix}"
 
 
 def build_matrix(version: str, platforms: tuple[tuple[str, str], ...] = PLATFORMS) -> list[Path]:
@@ -163,12 +183,7 @@ def write_checksums(artifacts: list[Path]) -> Path:
 
 def gobin() -> Path:
     """Resolve $GOBIN, falling back to $(go env GOPATH)/bin."""
-    try:
-        path = capture("go", "env", "GOBIN") or f"{capture('go', 'env', 'GOPATH')}/bin"
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        die("could not run `go env` — is the Go toolchain installed? (try `mise install`)")
-        raise  # unreachable
-    return Path(path)
+    return Path(go_capture("env", "GOBIN") or f"{go_capture('env', 'GOPATH')}/bin")
 
 
 def install_binary(src: Path) -> Path:

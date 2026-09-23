@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.13"
 # ///
-#MISE description="Build lazymux (host by default; --all cross-compiles the release matrix)"
+# MISE description="Build lazymux (host by default; --all cross-compiles the release matrix)"
 
 """Build the lazymux binary.
 
@@ -48,9 +48,7 @@ def parse_platform(value: str) -> tuple[str, str]:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        prog="mise run build", description="Build the lazymux binary."
-    )
+    parser = argparse.ArgumentParser(prog="mise run build", description="Build the lazymux binary.")
     parser.add_argument(
         "--all",
         action="store_true",
@@ -67,9 +65,7 @@ def parse_args() -> argparse.Namespace:
         metavar="VERSION",
         help="version to stamp into the binary (default: git describe)",
     )
-    parser.add_argument(
-        "--list", action="store_true", help="print the release matrix and exit"
-    )
+    parser.add_argument("--list", action="store_true", help="print the release matrix and exit")
     return parser.parse_args()
 
 

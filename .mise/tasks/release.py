@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.13"
 # ///
-#MISE description="Cut a release: check the tree, tag the new version and push it"
+# MISE description="Cut a release: check the tree, tag the new version and push it"
 
 """Cut a lazymux release.
 
@@ -78,6 +78,15 @@ def latest_tag() -> str:
     return "v" + ".".join(str(part) for part in max(versions))
 
 
+def parse_semver(version: str) -> tuple[int, int, int]:
+    """Split a vX.Y.Z (or bare X.Y.Z) version into its numeric parts."""
+    match = SEMVER.match(version)
+    if not match:
+        die(f"{version!r} is not a vX.Y.Z version")
+    major, minor, patch = (int(p) for p in match.groups())
+    return major, minor, patch
+
+
 def next_version(current: str, spec: str) -> str:
     """Apply a bump keyword to `current`, or validate `spec` as an explicit version."""
     if spec not in BUMPS:
@@ -87,7 +96,7 @@ def next_version(current: str, spec: str) -> str:
         # Accept a bare version on the command line, tag it prefixed anyway.
         return "v" + ".".join(match.groups())
 
-    major, minor, patch = (int(p) for p in SEMVER.match(current).groups())
+    major, minor, patch = parse_semver(current)
     if spec == "major":
         return f"v{major + 1}.0.0"
     if spec == "minor":
@@ -99,14 +108,12 @@ def check_newer(current: str, new: str) -> None:
     """Refuse to go backwards, which would produce a confusing tag history."""
     if current == "v0.0.0":
         return
-    current_parts = tuple(int(p) for p in SEMVER.match(current).groups())
-    new_parts = tuple(int(p) for p in SEMVER.match(new).groups())
-    if new_parts <= current_parts:
+    if parse_semver(new) <= parse_semver(current):
         die(f"{new} is not newer than the latest tag {current}")
 
 
-def preflight(new: str) -> None:
-    """Refuse to release from a tree that is dirty, off-branch, or out of sync."""
+def check_tree() -> None:
+    """Refuse to release from a tree that is dirty or off the release branch."""
     root = repo_root()
 
     if capture("git", "status", "--porcelain", cwd=root):
@@ -116,13 +123,16 @@ def preflight(new: str) -> None:
     if branch != RELEASE_BRANCH:
         die(f"on branch {branch!r}, but releases are cut from {RELEASE_BRANCH!r}")
 
-    run("git", "fetch", "--tags", REMOTE)
+
+def check_synced(new: str) -> None:
+    """Refuse to release a branch out of sync with its remote, or a tag that exists."""
+    root = repo_root()
 
     local = capture("git", "rev-parse", "HEAD", cwd=root)
     remote = capture("git", "rev-parse", f"{REMOTE}/{RELEASE_BRANCH}", cwd=root)
     if local != remote:
         die(
-            f"{branch} has diverged from {REMOTE}/{RELEASE_BRANCH} — "
+            f"{RELEASE_BRANCH} has diverged from {REMOTE}/{RELEASE_BRANCH} — "
             "push or pull before releasing"
         )
 
@@ -142,17 +152,19 @@ def confirm(prompt: str, assume_yes: bool) -> None:
 def main() -> None:
     args = parse_args()
 
+    check_tree()
+    run("git", "fetch", "--tags", REMOTE)
+
     current = latest_tag()
     new = next_version(current, args.version)
     check_newer(current, new)
 
     print(f"releasing {current} -> {new}")
-    preflight(new)
+    check_synced(new)
 
     # Test before tagging, so a broken tree never gets a tag. The release
     # binaries are built by CI from the tag, not here.
-    run("go", "vet", "./...")
-    run("go", "test", "./...")
+    run("mise", "run", "check")
 
     if args.dry_run:
         print(

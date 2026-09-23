@@ -43,8 +43,9 @@ build/dist/
 .testing/
 testing/
 
-# Python bytecode from the mise task scripts
+# Python bytecode and lint cache from the mise task scripts
 __pycache__/
+.ruff_cache/
 
 # macOS
 .DS_Store

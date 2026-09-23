@@ -21,7 +21,7 @@ func TestServeBindConflictKeepsExistingPIDFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("occupying a port: %v", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	cfg.MCP.Host = "127.0.0.1"
 	cfg.MCP.Port = ln.Addr().(*net.TCPAddr).Port
 	if err := config.Save(cfg); err != nil {
