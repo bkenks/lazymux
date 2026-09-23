@@ -59,3 +59,21 @@ func TestTerminalFillsTheWindowWithinAMargin(t *testing.T) {
 		}
 	}
 }
+
+func TestListScreensShowQuitOnce(t *testing.T) {
+	t.Setenv("LAZYMUX_CONFIG", filepath.Join(t.TempDir(), ".lazymux.json"))
+	window := tea.WindowSizeMsg{Width: 200, Height: 30}
+
+	for _, state := range []domain.SessionState{
+		domain.StateMain, domain.StateForgeRegistry, domain.StateKeybinds,
+	} {
+		m := New(config.Default(), "test")
+		m.Update(window)
+		m.Update(events.SetState{State: state})
+		m.Update(window)
+
+		if got := strings.Count(ansi.Strip(m.View().Content), "quit"); got != 1 {
+			t.Errorf("state %v shows quit %d times, want 1", state, got)
+		}
+	}
+}

@@ -34,7 +34,7 @@ var keys = keyMap{
 }
 
 func helpKeys() []key.Binding {
-	return []key.Binding{keys.New, keys.Edit, keys.Delete, keys.Exit, constants.GlobalKeyMap.Quit}
+	return []key.Binding{keys.New, keys.Edit, keys.Delete, keys.Exit}
 }
 
 type keybindItem struct{ config.Keybind }

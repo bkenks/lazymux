@@ -32,7 +32,7 @@ var keys = keyMap{
 }
 
 func helpKeys() []key.Binding {
-	return []key.Binding{keys.Toggle, keys.Origin, keys.Scheme, keys.Exit, constants.GlobalKeyMap.Quit}
+	return []key.Binding{keys.Toggle, keys.Origin, keys.Scheme, keys.Exit}
 }
 
 type Model struct {

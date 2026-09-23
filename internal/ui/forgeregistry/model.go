@@ -33,7 +33,7 @@ var keys = keyMap{
 }
 
 func helpKeys() []key.Binding {
-	return []key.Binding{keys.Add, keys.Edit, keys.Delete, keys.Exit, constants.GlobalKeyMap.Quit}
+	return []key.Binding{keys.Add, keys.Edit, keys.Delete, keys.Exit}
 }
 
 // forgeItem is a registry entry shown in the list.
