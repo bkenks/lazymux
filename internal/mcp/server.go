@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -108,7 +109,7 @@ func handleList(_ context.Context, _ *mcpsdk.CallToolRequest, _ listInput) (*mcp
 }
 
 func handleSearch(_ context.Context, _ *mcpsdk.CallToolRequest, in searchInput) (*mcpsdk.CallToolResult, listOutput, error) {
-	if in.Query == "" {
+	if strings.TrimSpace(in.Query) == "" {
 		return nil, listOutput{}, errors.New("query is required; use list_repositories to see everything")
 	}
 	cfg := config.Load()
