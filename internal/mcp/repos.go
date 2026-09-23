@@ -8,8 +8,10 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/bkenks/lazymux/internal/config"
+	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/repomgr"
 )
 
@@ -40,6 +42,9 @@ func inventory(cfg config.Config) ([]RepoInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("scanning %s: %w", cfg.BaseDir, err)
 	}
+	sort.SliceStable(repos, func(i, j int) bool {
+		return domain.LessRepo(repos[i], repos[j], domain.SortRecent)
+	})
 	infos := make([]RepoInfo, 0, len(repos))
 	for _, r := range repos {
 		link := cfg.Repos[r.Path]
@@ -54,20 +59,12 @@ func inventory(cfg config.Config) ([]RepoInfo, error) {
 			Origin:    r.Origin,
 		}
 		if !r.LastInteracted.IsZero() {
-			info.LastInteracted = r.LastInteracted.UTC().Format(timeLayout)
+			info.LastInteracted = r.LastInteracted.UTC().Format(time.RFC3339)
 		}
 		infos = append(infos, info)
 	}
-	sort.SliceStable(infos, func(i, j int) bool {
-		if infos[i].LastInteracted != infos[j].LastInteracted {
-			return infos[i].LastInteracted > infos[j].LastInteracted
-		}
-		return infos[i].Key < infos[j].Key
-	})
 	return infos, nil
 }
-
-const timeLayout = "2006-01-02T15:04:05Z"
 
 // find returns the repo with the given key, or an error naming near misses so
 // a model that guessed the key wrong can correct itself in one turn.

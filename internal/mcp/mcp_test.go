@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/bkenks/lazymux/internal/config"
+	"github.com/bkenks/lazymux/internal/domain"
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -185,6 +186,33 @@ func TestInventoryFindsReposAndPurposes(t *testing.T) {
 	}
 	if got.Path != filepath.Join(cfg.BaseDir, "bkenks", "lazymux") {
 		t.Errorf("Path = %q, want the absolute on-disk path", got.Path)
+	}
+}
+
+func TestInventoryOrdersLikeTheRecentRepoList(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	cfg := newTestWorkspace(t, "acme/beta", "bkenks/alpha", "acme/gamma")
+
+	keys := func() string {
+		infos, err := inventory(cfg)
+		if err != nil {
+			t.Fatalf("inventory: %v", err)
+		}
+		out := make([]string, len(infos))
+		for i, r := range infos {
+			out[i] = r.Key
+		}
+		return strings.Join(out, " ")
+	}
+
+	if got, want := keys(), "bkenks/alpha acme/beta acme/gamma"; got != want {
+		t.Errorf("never-opened order = %q, want %q (by name, as the repo list sorts)", got, want)
+	}
+	if err := domain.SaveInteraction("acme/gamma"); err != nil {
+		t.Fatalf("recording interaction: %v", err)
+	}
+	if got, want := keys(), "acme/gamma bkenks/alpha acme/beta"; got != want {
+		t.Errorf("order after opening gamma = %q, want %q", got, want)
 	}
 }
 
