@@ -17,7 +17,8 @@ Combos include `ctrl+shift+<key>` and `cmd`.
 ## Decision
 
 **Keybinds are data.** `.lazymux.json` holds `keybinds: [{name, keys, command}]`,
-edited on a screen opened with `ctrl+shift+k`. `keys` is typed as text
+edited on a screen opened with `2` (settings moved to `1`; the settings-style
+screens sit on number keys). `keys` is typed as text
 (`ctrl + g`) and stored in the canonical form bubbletea reports for the key
 press (`ctrl+g`). A combo is refused when it doesn't parse, when the repo list
 already uses it (derived from the live key maps, not a hand-kept list), or when
@@ -53,5 +54,5 @@ keyboard disambiguation, so both are reported in terminals that support it.
 **`tea.ExecProcess`, as before.** It gives the child the real terminal, so
 lazymux can draw no border or hint and can't catch `esc`.
 
-**Staying on bubbletea v1.** It can't tell `ctrl+shift+k` from `ctrl+k`, which
-is the key that opens the screen.
+**Staying on bubbletea v1.** It can't tell `ctrl+shift+k` from `ctrl+k`, so
+custom keybinds couldn't use `ctrl+shift` or `cmd` combos.

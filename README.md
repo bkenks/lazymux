@@ -124,7 +124,6 @@ On first run, lazymux creates `~/lazymux/` and a `.lazymux.json` config (migrati
 |---|---|
 | `↑` / `↓` | Navigate the repository list |
 | `/` | Filter / search repositories |
-| `Ctrl+Shift+K` | Manage **custom keybinds** |
 | `o` | Open selected repo in your **editor** |
 | `s` | Open a **shell** in the repo's directory |
 | `y` | **Copy** the absolute repo path to clipboard |
@@ -137,11 +136,12 @@ On first run, lazymux creates `~/lazymux/` and a `.lazymux.json` config (migrati
 | `f` | Edit the selected repo's **forge links** — upstreams, origin, scheme |
 | `F` | Manage the **forge registry** |
 | `d` | **Delete** the selected repository |
-| `,` | Open **settings** |
+| `1` | Open **settings** |
+| `2` | Manage **custom keybinds** |
 | `Esc` | Clear the filter — `Esc` is back on every screen and never quits |
 | `q` / `Ctrl+C` | Quit |
 
-Repo-list keys are unmodified letters. `s` is already the shell, so settings sits on `,`.
+Repo-list keys are unmodified letters, with the settings-style screens on numbers.
 Screens with a text field (clone, add-forge) keep their `Ctrl` shortcuts, since plain
 letters go into the input there.
 
@@ -185,7 +185,7 @@ Each row shows how many repos link it. Deleting or renaming a forge cascades int
 | `s` | Toggle the URL **scheme** (https ↔ ssh) |
 | `Esc` | Save & back (re-renders the repo's remote) |
 
-### Custom Keybinds (`Ctrl+Shift+K`)
+### Custom Keybinds (`2`)
 
 | Key | Action |
 |---|---|
@@ -362,7 +362,7 @@ Everything lives in a single JSON file at `~/lazymux/.lazymux.json` (override th
 - `placeholderHost` — the fake host stored in every managed repo's `origin`.
 - `mcp` — where the MCP server binds (managed with `lazymux mcp set-url` / `set-port`).
 - `forges` — the registry (managed in-app with `F`).
-- `keybinds` — custom keybinds (managed in-app with `Ctrl+Shift+K`).
+- `keybinds` — custom keybinds (managed in-app with `2`).
 - `repos` — per-repo upstreams, origin, and scheme (managed in-app with `f`), plus the
   `purpose`/`context` the MCP server reads and writes.
 

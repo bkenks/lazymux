@@ -128,8 +128,8 @@ var RepoListKeyMap = repoListKeyMap{
 		key.WithHelp("o", "editor"),
 	),
 	Settings: key.NewBinding(
-		key.WithKeys(","),
-		key.WithHelp(",", "settings"),
+		key.WithKeys("1"),
+		key.WithHelp("1", "settings"),
 	),
 	Refresh: key.NewBinding(
 		key.WithKeys("r"),
@@ -144,8 +144,8 @@ var RepoListKeyMap = repoListKeyMap{
 		key.WithHelp("s", "shell"),
 	),
 	Keybinds: key.NewBinding(
-		key.WithKeys("ctrl+shift+k"),
-		key.WithHelp("ctrl+shift+k", "keybinds"),
+		key.WithKeys("2"),
+		key.WithHelp("2", "keybinds"),
 	),
 	Quit: key.NewBinding(
 		key.WithKeys("q", "ctrl+c"),

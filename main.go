@@ -68,7 +68,6 @@ Keybindings (repo list):
   /             filter repos
   o             open in editor
   s             shell in repo dir
-  ctrl+shift+k  manage custom keybinds
   y             copy absolute path
   r             refresh
   n             clone new repos
@@ -79,7 +78,8 @@ Keybindings (repo list):
   t             show/hide git stats
   S             cycle sort order
   d             delete selected repo
-  ,             settings
+  1             settings
+  2             manage custom keybinds
   ?             full help
   esc           back (never quits)
   q             quit`)
