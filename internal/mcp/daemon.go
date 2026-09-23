@@ -80,8 +80,13 @@ func WritePID() error {
 	return os.WriteFile(PIDPath(), []byte(strconv.Itoa(os.Getpid())), 0o644)
 }
 
-// RemovePID clears the pidfile.
-func RemovePID() { os.Remove(PIDPath()) }
+// RemovePID clears the pidfile if it still names this process, so a server
+// never deletes the record of another one.
+func RemovePID() {
+	if readPID() == os.Getpid() {
+		os.Remove(PIDPath())
+	}
+}
 
 // Start launches a detached server process and waits for it to report that it
 // bound the port, so a bind failure surfaces here rather than only in the log.
@@ -179,7 +184,7 @@ func Stop() error {
 	deadline := time.Now().Add(stopTimeout)
 	for time.Now().Before(deadline) {
 		if !alive(pid) {
-			RemovePID()
+			os.Remove(PIDPath())
 			fmt.Printf("lazymux mcp stopped (pid %d)\n", pid)
 			return nil
 		}
@@ -189,7 +194,7 @@ func Stop() error {
 	if err := proc.Signal(syscall.SIGKILL); err != nil {
 		return fmt.Errorf("pid %d ignored SIGTERM and could not be killed: %w", pid, err)
 	}
-	RemovePID()
+	os.Remove(PIDPath())
 	fmt.Printf("lazymux mcp killed (pid %d did not exit within %s)\n", pid, stopTimeout)
 	return nil
 }

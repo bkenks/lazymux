@@ -42,14 +42,21 @@ func Run(args []string, version string) error {
 // runServe runs the server in the foreground. `mcp start` re-execs the binary
 // this way; run it directly to keep the server attached to a supervisor. The
 // pidfile is written only once the port is bound, so its presence means the
-// server is genuinely up.
+// server is genuinely up. A server that never bound leaves any existing
+// pidfile alone, since it belongs to whichever server holds the port.
 func runServe(version string) error {
 	cfg := config.Load()
-	defer RemovePID()
+	wrotePID := false
+	defer func() {
+		if wrotePID {
+			RemovePID()
+		}
+	}()
 	return Serve(context.Background(), cfg, version, func() error {
 		if err := WritePID(); err != nil {
 			return fmt.Errorf("writing %s: %w", PIDPath(), err)
 		}
+		wrotePID = true
 		return nil
 	})
 }
