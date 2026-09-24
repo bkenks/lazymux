@@ -45,8 +45,6 @@ func New(cfg config.Config) *Model {
 	ti := styles.NewTextArea()
 	ti.Placeholder = "git@github.com:ispenttoo/muchtimeonthis.git..."
 	ti.Focus()
-	ti.MaxHeight = hBuffer
-	ti.MaxWidth = wBuffer
 	ti.SetHeight(hBuffer)
 	ti.SetWidth(wBuffer)
 
@@ -81,6 +79,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.fetching = false
 		m.err = msg.Err
 		return m, nil
+
+	case tea.PasteMsg:
+		return m, m.updateFocusedInput(msg)
 
 	case tea.KeyPressMsg:
 		switch {
@@ -117,9 +118,7 @@ func (m *Model) updateURLs(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if key.Matches(msg, constants.CloneRepoKeyMap.Proceed) {
 		return m, commands.StartCloneReposCmd(m.textarea.Value())
 	}
-	var cmd tea.Cmd
-	m.textarea, cmd = m.textarea.Update(msg)
-	return m, cmd
+	return m, m.updateFocusedInput(msg)
 }
 
 func (m *Model) updateNamespace(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
@@ -133,9 +132,17 @@ func (m *Model) updateNamespace(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, constants.CloneRepoKeyMap.Proceed):
 		return m.startFetch()
 	}
+	return m, m.updateFocusedInput(msg)
+}
+
+func (m *Model) updateFocusedInput(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
-	m.nsInput, cmd = m.nsInput.Update(msg)
-	return m, cmd
+	if m.mode == modeNamespace {
+		m.nsInput, cmd = m.nsInput.Update(msg)
+	} else {
+		m.textarea, cmd = m.textarea.Update(msg)
+	}
+	return cmd
 }
 
 func (m *Model) startFetch() (tea.Model, tea.Cmd) {
@@ -164,7 +171,6 @@ func headerView(mode mode) string {
 	}
 	title := lipgloss.JoinVertical(
 		lipgloss.Left,
-		"\n\n\n\n",
 		styles.MenuTitle.Render("Repository Clone"),
 		styles.MenuSubStyle.Render(sub),
 	)
