@@ -183,6 +183,28 @@ func TestRepoLinkWithForgeLinksKeepsDescription(t *testing.T) {
 	}
 }
 
+func TestRepoLinkWithForgeLinksKeepsTagFormat(t *testing.T) {
+	stored := RepoLink{Origin: "a", TagPrefix: "v", TagSuffix: "-pkg"}
+
+	got := stored.WithForgeLinks(RepoLink{Origin: "b"})
+	if got.TagPrefix != "v" || got.TagSuffix != "-pkg" {
+		t.Errorf("got %+v, want the tag format kept", got)
+	}
+}
+
+func TestRepoLinkWithRepoSettingsKeepsDescription(t *testing.T) {
+	stored := RepoLink{Origin: "a", TagPrefix: "v", Purpose: "p", Context: "c"}
+	edited := RepoLink{Upstreams: []string{"b"}, Origin: "b", TagSuffix: "-pkg"}
+
+	got := stored.WithRepoSettings(edited)
+	if got.Purpose != "p" || got.Context != "c" || got.Origin != "b" {
+		t.Errorf("got %+v", got)
+	}
+	if got.TagPrefix != "" || got.TagSuffix != "-pkg" {
+		t.Errorf("tag format = %q/%q, want the edited one", got.TagPrefix, got.TagSuffix)
+	}
+}
+
 func TestLoadReplacesOutOfRangeMCPPort(t *testing.T) {
 	writeConfigFile(t, `{"mcp": {"port": 99999}}`)
 	cfg := Load()

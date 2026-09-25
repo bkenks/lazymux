@@ -199,12 +199,20 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) (bool, []tea.Cmd) {
 		m.applySize()
 		cmds = append(cmds, commands.PullAllReposCmd(), m.spinner.Tick)
 
-	case key.Matches(msg, constants.RepoListKeyMap.Forges):
+	case key.Matches(msg, constants.RepoListKeyMap.RepoConfig):
 		repo := ConvertToRepoType(m.List.SelectedItem())
-		if repo.Path == "" {
+		if repo.AbsPath == "" {
 			break
 		}
-		cmds = append(cmds, commands.OpenRepoForgesCmd(repo.Path))
+		cmds = append(cmds, commands.OpenRepoSettingsCmd(repo.Path, repo.AbsPath))
+
+	case key.Matches(msg, constants.RepoListKeyMap.TagRelease):
+		repo := ConvertToRepoType(m.List.SelectedItem())
+		if repo.AbsPath == "" {
+			break
+		}
+		cmds = append(cmds, recordInteraction(repo.Path),
+			commands.OpenTagReleaseCmd(repo.Path, repo.AbsPath))
 
 	case key.Matches(msg, constants.RepoListKeyMap.Registry):
 		cmds = append(cmds, commands.SetState(domain.StateForgeRegistry))

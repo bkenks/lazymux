@@ -93,13 +93,17 @@ type Forge struct {
 // RepoLink records which forges host a managed repo. Upstreams are every forge
 // the repo is pushed to; Origin is the single one the placeholder insteadOf
 // rewrite resolves to, making it the fetch/pull URL. Origin is always one of
-// Upstreams. Scheme is the URL scheme used for that repo. It also carries the
+// Upstreams. Scheme is the URL scheme used for that repo. TagPrefix and
+// TagSuffix wrap the version in the repo's release tags. It also carries the
 // human/LLM-facing description of the repo written by the MCP server (see
 // internal/mcp).
 type RepoLink struct {
 	Upstreams []string `json:"upstreams"`
 	Origin    string   `json:"origin"`
 	Scheme    string   `json:"scheme"`
+
+	TagPrefix string `json:"tagPrefix,omitempty"`
+	TagSuffix string `json:"tagSuffix,omitempty"`
 
 	// LegacyForges and LegacyPrimary hold the pre-upstream schema. normalize
 	// folds them into Upstreams/Origin and clears them, so they disappear from
@@ -198,9 +202,20 @@ func (l RepoLink) WithForgeLinks(src RepoLink) RepoLink {
 	return l
 }
 
-// IsEmpty reports whether the link records neither forges nor a description.
+// WithRepoSettings returns l with the forge links and tag format taken from
+// src, keeping l's Purpose and Context.
+func (l RepoLink) WithRepoSettings(src RepoLink) RepoLink {
+	l = l.WithForgeLinks(src)
+	l.TagPrefix = src.TagPrefix
+	l.TagSuffix = src.TagSuffix
+	return l
+}
+
+// IsEmpty reports whether the link records no forges, tag format or
+// description.
 func (l RepoLink) IsEmpty() bool {
-	return len(l.Upstreams) == 0 && l.Origin == "" && l.Purpose == "" && l.Context == ""
+	return len(l.Upstreams) == 0 && l.Origin == "" && l.TagPrefix == "" &&
+		l.TagSuffix == "" && l.Purpose == "" && l.Context == ""
 }
 
 // NormalizeScheme maps any scheme string to SchemeSSH or SchemeHTTPS.

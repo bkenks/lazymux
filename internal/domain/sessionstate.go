@@ -10,7 +10,8 @@ const (
 	StateSettings
 	StateForgeSelect   // choose forge links for repos being cloned
 	StateForgeRegistry // manage the forge registry
-	StateRepoForges    // change a repo's upstreams/origin/scheme
+	StateRepoSettings  // change a repo's forge links and tag format
 	StateKeybinds      // manage custom keybinds
 	StateReposDir      // choose the repo directory before the repo list opens
+	StateTagRelease    // tag and push the next version of a repo
 )

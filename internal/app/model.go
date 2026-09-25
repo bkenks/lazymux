@@ -17,17 +17,19 @@ import (
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/keybind"
 	"github.com/bkenks/lazymux/internal/repomgr"
+	"github.com/bkenks/lazymux/internal/semver"
 	"github.com/bkenks/lazymux/internal/styles"
 	"github.com/bkenks/lazymux/internal/ui/clonerepos"
 	"github.com/bkenks/lazymux/internal/ui/confirm"
 	"github.com/bkenks/lazymux/internal/ui/forgeregistry"
 	"github.com/bkenks/lazymux/internal/ui/forgeselect"
 	"github.com/bkenks/lazymux/internal/ui/keybinds"
-	"github.com/bkenks/lazymux/internal/ui/repoforges"
 	"github.com/bkenks/lazymux/internal/ui/repolist"
 	"github.com/bkenks/lazymux/internal/ui/reposdir"
+	"github.com/bkenks/lazymux/internal/ui/reposettings"
 	"github.com/bkenks/lazymux/internal/ui/settings"
 	"github.com/bkenks/lazymux/internal/ui/splash"
+	"github.com/bkenks/lazymux/internal/ui/tagrelease"
 )
 
 const (
@@ -55,7 +57,8 @@ type ModelManager struct {
 	settingsModel *settings.Model
 	forgeSelect   *forgeselect.Model
 	forgeRegistry *forgeregistry.Model
-	repoForges    *repoforges.Model
+	repoSettings  *reposettings.Model
+	tagRelease    *tagrelease.Model
 	keybinds      *keybinds.Model
 	reposDir      *reposdir.Model
 
@@ -168,10 +171,18 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.forgeRegistry = forgeregistry.New(m.cfg)
 				m.active = m.forgeRegistry
 
-			case domain.StateRepoForges:
-				// m.repoForges is built in the OpenRepoForges handler.
-				if m.repoForges != nil {
-					m.active = m.repoForges
+			case domain.StateRepoSettings:
+				// m.repoSettings is built in the OpenRepoSettings handler.
+				if m.repoSettings != nil {
+					m.active = m.repoSettings
+					cmds = append(cmds, m.repoSettings.Init())
+				}
+
+			case domain.StateTagRelease:
+				// m.tagRelease is built in the OpenTagRelease handler.
+				if m.tagRelease != nil {
+					m.active = m.tagRelease
+					cmds = append(cmds, m.tagRelease.Init())
 				}
 
 			case domain.StateKeybinds:
@@ -299,13 +310,13 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case events.RunKeybind:
 			cmds = append(cmds, commands.RunKeybindCmd(msg.Keybind, msg.Dir))
 
-		case events.OpenRepoForges:
-			m.repoForges = repoforges.New(m.cfg, msg.Key)
-			cmds = append(cmds, commands.SetState(domain.StateRepoForges))
+		case events.OpenRepoSettings:
+			m.repoSettings = reposettings.New(m.cfg, msg.Key, msg.Tags, msg.TagsErr)
+			cmds = append(cmds, commands.SetState(domain.StateRepoSettings))
 
-		case events.RepoLinkChanged:
-			cmds = append(cmds, m.saveConfig("repo link", func(c *config.Config) {
-				link := c.Repos[msg.Key].WithForgeLinks(msg.Link)
+		case events.RepoSettingsChanged:
+			cmds = append(cmds, m.saveConfig("repo settings", func(c *config.Config) {
+				link := c.Repos[msg.Key].WithRepoSettings(msg.Link)
 				if link.IsEmpty() {
 					delete(c.Repos, msg.Key)
 				} else {
@@ -316,6 +327,19 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, m.renderGitConfig(msg.Key, msg.Link))
 			}
 			cmds = append(cmds, commands.RefreshReposCmd())
+
+		case events.OpenTagRelease:
+			link := m.cfg.Repos[msg.Key]
+			format := semver.Format{Prefix: link.TagPrefix, Suffix: link.TagSuffix}
+			m.tagRelease = tagrelease.New(msg.Key, msg.Dir, format, msg.Tags)
+			cmds = append(cmds, commands.SetState(domain.StateTagRelease))
+
+		case events.TagReleased:
+			if msg.Err != nil {
+				cmds = append(cmds, m.toastCmd(events.ToastError, msg.Err.Error()))
+			} else {
+				cmds = append(cmds, m.toastCmd(events.ToastInfo, "pushed "+msg.Tag))
+			}
 
 		case events.RepoDeleted:
 			if msg.Err != nil {

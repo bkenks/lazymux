@@ -67,7 +67,8 @@ type repoListKeyMap struct {
 	Keybinds    key.Binding
 	Quit        key.Binding
 	PullAll     key.Binding
-	Forges      key.Binding
+	RepoConfig  key.Binding
+	TagRelease  key.Binding
 	Registry    key.Binding
 	ToggleForge key.Binding
 	ToggleStats key.Binding
@@ -112,9 +113,13 @@ var RepoListKeyMap = repoListKeyMap{
 		key.WithKeys("p"),
 		key.WithHelp("p", "pull all"),
 	),
-	Forges: key.NewBinding(
-		key.WithKeys("f"),
-		key.WithHelp("f", "forges"),
+	RepoConfig: key.NewBinding(
+		key.WithKeys("3"),
+		key.WithHelp("3", "repo settings"),
+	),
+	TagRelease: key.NewBinding(
+		key.WithKeys("v"),
+		key.WithHelp("v", "tag version"),
 	),
 	Registry: key.NewBinding(
 		key.WithKeys("F"),
@@ -148,13 +153,14 @@ func (k repoListKeyMap) Commands() []RepoListCommand {
 	return []RepoListCommand{
 		{k.Settings, "settings", "open settings", true},
 		{k.Keybinds, "keybinds", "manage custom keybinds", true},
+		{k.RepoConfig, "repo settings", "edit repo's forge links & tag format", true},
 		{k.VSCode, "editor", "open in editor", true},
 		{k.Shell, "shell", "shell in repo dir", false},
 		{k.CopyPath, "copy", "copy path", false},
 		{k.Refresh, "refresh", "refresh list", false},
 		{k.Clone, "clone", "clone new repos", true},
 		{k.PullAll, "pull all", "git pull every repo (skips conflicts)", false},
-		{k.Forges, "forges", "edit repo's forge links", true},
+		{k.TagRelease, "tag version", "tag & push the next major/minor/patch version", false},
 		{k.Registry, "registry", "manage forge registry", false},
 		{k.ToggleForge, "forge label", "show/hide the forge label", false},
 		{k.ToggleStats, "git stats", "show/hide branch & change counts", false},

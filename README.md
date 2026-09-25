@@ -35,7 +35,7 @@ lazymux is built for repos that live on more than one host — for example a sel
       insteadOf = https://lazymux-placeholder/               # origin = github
   ```
 
-- If a forge goes down or you just want to fetch from somewhere else, **switch the origin** (`f` on the repo) and lazymux re-renders that one rule. The stored `origin` URL never changes — only the host it resolves to. There's no automatic failover; you're always in control of which forge is live.
+- If a forge goes down or you just want to fetch from somewhere else, **switch the origin** (`3` on the repo) and lazymux re-renders that one rule. The stored `origin` URL never changes — only the host it resolves to. There's no automatic failover; you're always in control of which forge is live.
 - A repo with a single upstream gets no `pushurl` at all: push follows the placeholder origin, exactly as before.
 
 ---
@@ -46,6 +46,7 @@ lazymux is built for repos that live on more than one host — for example a sel
 - **Forge registry** — register git hosts and link repos to one or more of them as upstreams, with a per-repo origin
 - **Stable placeholder remotes** — switch a repo's forge without ever touching its `origin`
 - **Browse all repos** in a clean, filterable list, sorted by most-recently used
+- **Release tags** — tag & push a repo's next major, minor or patch version, in a per-repo format like `v1.2.3`, `mypkg/v1.2.3` or `1.2.3-mypkg`
 - **Custom keybinds** — bind a key to any shell command (e.g. `lazygit`); it runs in the selected repo with the whole terminal
 - **Open in your editor** — any command on your `PATH`; the settings screen checks it resolves before saving
 - **Drop into a shell** in the selected repo's directory
@@ -133,11 +134,12 @@ On first run, lazymux creates `~/.config/lazymux/config.json` (moving an existin
 | `S` | Cycle the **sort order** (recent → name a-z → name z-a → namespace) |
 | `g` | Show/hide the **forge label** on rows |
 | `t` | Show/hide the **git stats** on rows |
-| `f` | Edit the selected repo's **forge links** — upstreams, origin, scheme |
+| `v` | **Tag & push** the selected repo's next major, minor or patch version |
 | `F` | Manage the **forge registry** |
 | `d` | **Delete** the selected repository |
 | `1` | Open **settings** |
 | `2` | Manage **custom keybinds** |
+| `3` | Open the selected repo's **settings** — tag format, upstreams, origin, scheme |
 | `Esc` | Clear the filter — `Esc` is back on every screen and never quits |
 | `q` / `Ctrl+C` | Quit |
 
@@ -175,15 +177,29 @@ After entering one or more clone URLs, lazymux steps through each repo so you ca
 
 Each row shows how many repos link it. Deleting or renaming a forge cascades into the repos that use it: a rename updates their links, and a delete drops it — promoting another upstream to origin, or leaving the repo unlinked if it was its only one. Repos whose links changed have their remotes re-rendered automatically.
 
-### Repo Forges (`f`)
+### Repo Settings (`3`)
 
-| Key | Action |
-|---|---|
-| `↑` / `↓` | Move the cursor |
-| `Space` | Toggle the forge under the cursor as an **upstream** |
-| `o` | Set the forge under the cursor as the **origin** (fetch/pull) |
-| `s` | Toggle the URL **scheme** (https ↔ ssh) |
-| `Esc` | Save & back (re-renders the repo's remote) |
+One form for the selected repo:
+
+- **Tag prefix** / **Tag suffix** — the text its version tags wrap around `MAJOR.MINOR.PATCH`,
+  so `v` gives `v1.2.3`, `mypkg/v` gives `mypkg/v1.2.3`, and a `-mypkg` suffix gives
+  `1.2.3-mypkg`. Both start empty (`1.2.3`). The suffix field previews the repo's latest tag in
+  that format and the next patch / minor / major tags.
+- **Upstreams** — every forge a push goes to (`space` / `x` toggles one).
+- **Origin** — the upstream fetch and pull read from.
+- **Scheme** — https or ssh.
+
+`enter` moves to the next field and saves on the last one, re-rendering the repo's remote;
+`esc` leaves without saving.
+
+### Tag Version (`v`)
+
+Pick **patch**, **minor** or **major**. Each option shows the tag it creates: the repo's highest
+local tag in its [tag format](#repo-settings-3), bumped, or a bump from `0.0.0` when there is none
+yet. Then confirm to create an annotated tag at `HEAD` and push just that tag to `origin`, which
+reaches every upstream. If the push fails, the tag stays in the local repo and the error says
+so; push it yourself with `git push origin <tag>`. Tags are read locally, so run `git fetch
+--tags` first if someone else may have released.
 
 ### Custom Keybinds (`2`)
 
@@ -361,6 +377,7 @@ Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`
       "upstreams": ["forgejo", "github"],
       "origin": "forgejo",
       "scheme": "https",
+      "tagPrefix": "v",
       "purpose": "compose stacks for the homelab"
     }
   }
@@ -372,8 +389,8 @@ Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`
 - `mcp` — where the MCP server binds (managed with `lazymux mcp set-url` / `set-port`).
 - `forges` — the registry (managed in-app with `F`).
 - `keybinds` — custom keybinds (managed in-app with `2`).
-- `repos` — per-repo upstreams, origin, and scheme (managed in-app with `f`), plus the
-  `purpose`/`context` the MCP server reads and writes.
+- `repos` — per-repo upstreams, origin, scheme, and `tagPrefix`/`tagSuffix` (managed in-app
+  with `3`), plus the `purpose`/`context` the MCP server reads and writes.
 
 - `ui.sortMode` — repo list order: `recent`, `name-asc`, `name-desc`, or `namespace` (cycled in-app with `S`).
 - `ui.colors` — three hex base colors (`#7D56F4` or `#75F`) that every color in the UI comes

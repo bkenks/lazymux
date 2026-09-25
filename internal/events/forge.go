@@ -27,16 +27,22 @@ type ForgesChanged struct {
 
 func (ForgesChanged) isEvent() {}
 
-// RepoLinkChanged updates one repo's forge link (upstreams/origin/scheme) and
-// re-renders its git config.
-type RepoLinkChanged struct {
+// RepoSettingsChanged saves one repo's settings — its forge links
+// (upstreams/origin/scheme) and tag format — and re-renders its git config.
+type RepoSettingsChanged struct {
 	Key  string
 	Link config.RepoLink
 }
 
-func (RepoLinkChanged) isEvent() {}
+func (RepoSettingsChanged) isEvent() {}
 
-// OpenRepoForges opens the per-repo forge editor for the given repo key.
-type OpenRepoForges struct{ Key string }
+// OpenRepoSettings opens the per-repo settings screen for the given repo key.
+// Tags are the repo's existing tags, for previewing its tag format; TagsErr is
+// why they couldn't be read.
+type OpenRepoSettings struct {
+	Key     string
+	Tags    []string
+	TagsErr error
+}
 
-func (OpenRepoForges) isEvent() {}
+func (OpenRepoSettings) isEvent() {}

@@ -71,11 +71,27 @@ func TestAppSaveKeepsDescriptionWrittenByAnotherProcess(t *testing.T) {
 func TestUnlinkingEveryForgeKeepsRepoDescription(t *testing.T) {
 	m := newPersistedApp(t, describedRepoConfig())
 
-	m.Update(events.RepoLinkChanged{Key: "me/demo", Link: config.RepoLink{}})
+	m.Update(events.RepoSettingsChanged{Key: "me/demo", Link: config.RepoLink{}})
 
 	link, ok := config.Load().Repos["me/demo"]
 	if !ok || link.Purpose != "demo purpose" {
 		t.Errorf("link = %+v ok=%v, want the description kept", link, ok)
+	}
+}
+
+func TestRepoSettingsSaveTagFormatAndKeepDescription(t *testing.T) {
+	m := newPersistedApp(t, describedRepoConfig())
+
+	m.Update(events.RepoSettingsChanged{Key: "me/demo", Link: config.RepoLink{
+		Upstreams: []string{"github"}, Origin: "github", TagPrefix: "mypkg/v", TagSuffix: "-x",
+	}})
+
+	link := config.Load().Repos["me/demo"]
+	if link.TagPrefix != "mypkg/v" || link.TagSuffix != "-x" {
+		t.Errorf("tag format = %q/%q, want it saved", link.TagPrefix, link.TagSuffix)
+	}
+	if link.Purpose != "demo purpose" {
+		t.Errorf("link = %+v, want the description kept", link)
 	}
 }
 
