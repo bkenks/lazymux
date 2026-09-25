@@ -99,7 +99,7 @@ func NewServer(version string) *mcpsdk.Server {
 		Name:  toolSetRepositoryPurpose,
 		Title: "Set repository purpose",
 		Description: "Record what a repository is for. Writes `purpose` and/or `context` into " +
-			".lazymux.json so later sessions can route to this repo without rediscovering it. " +
+			"the lazymux config so later sessions can route to this repo without rediscovering it. " +
 			"Omitted fields keep their current value.",
 		Annotations: &mcpsdk.ToolAnnotations{IdempotentHint: true},
 	}, handleSet)
@@ -154,7 +154,7 @@ func handleSet(_ context.Context, _ *mcpsdk.CallToolRequest, in setInput) (*mcps
 }
 
 func newListOutput(cfg config.Config, infos []RepoInfo) listOutput {
-	out := listOutput{BaseDir: cfg.BaseDir, Count: len(infos), Repos: infos}
+	out := listOutput{BaseDir: cfg.RepoRoot(), Count: len(infos), Repos: infos}
 	for _, r := range infos {
 		if !r.Described() {
 			out.Undescribed = append(out.Undescribed, r.Key)

@@ -7,7 +7,7 @@
 """Build lazymux for this machine and install it to $GOBIN.
 
 mise run install          build and install lazymux
-mise run install --dev    build and install lazymux-dev, sandboxed to ~/lazymux-dev
+mise run install --dev    build and install lazymux-dev, sandboxed to lazymux-dev dirs
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dev",
         action="store_true",
-        help="install lazymux-dev, sandboxed to ~/lazymux-dev, instead of lazymux",
+        help="install lazymux-dev, sandboxed to lazymux-dev dirs, instead of lazymux",
     )
     return parser.parse_args()
 

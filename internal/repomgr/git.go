@@ -29,7 +29,7 @@ func RepoDir(baseDir, key string) string {
 // The origin forge is looked up before anything is changed, so a missing forge
 // leaves the repo's existing config working.
 func RenderGitConfig(cfg config.Config, key string, link config.RepoLink) error {
-	dir := RepoDir(cfg.BaseDir, key)
+	dir := RepoDir(cfg.RepoRoot(), key)
 	scheme := config.NormalizeScheme(link.Scheme)
 
 	origin, ok := cfg.ForgeByName(link.Origin)
@@ -160,7 +160,7 @@ func ListMeta(cfg config.Config) ([]domain.Repo, error) {
 }
 
 func list(cfg config.Config, withStats bool) ([]domain.Repo, error) {
-	base := cfg.BaseDir
+	base := cfg.RepoRoot()
 	// WalkDir doesn't follow a symlinked root, so walk its target and report
 	// paths under base as configured.
 	root, err := filepath.EvalSymlinks(base)

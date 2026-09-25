@@ -14,7 +14,7 @@ import (
 // once the clone succeeds, in the CloneRepoExec handler.
 func CloneReposExecCmd(clones []repomgr.PendingClone) tea.Cmd {
 	var cmds []tea.Cmd
-	baseDir := cfg().BaseDir
+	baseDir := cfg().RepoRoot()
 
 	for _, c := range clones {
 		clone := c

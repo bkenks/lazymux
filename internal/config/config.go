@@ -239,8 +239,10 @@ type Keybind struct {
 }
 
 type Config struct {
-	// BaseDir is the root under which repos live as <namespace>/<repo>.
-	BaseDir         string `json:"baseDir"`
+	// BaseDir is the configured root under which repos live as
+	// <namespace>/<repo>. Empty means the default; RepoRoot resolves the
+	// directory actually used.
+	BaseDir         string `json:"baseDir,omitempty"`
 	PlaceholderHost string `json:"placeholderHost"`
 
 	Tools    Tools    `json:"tools"`
@@ -265,7 +267,6 @@ type Config struct {
 
 func Default() Config {
 	return Config{
-		BaseDir:         defaultBaseDir(),
 		PlaceholderHost: DefaultPlaceholderHost,
 		Tools: Tools{
 			Editor: "codium",
@@ -293,40 +294,76 @@ func Default() Config {
 	}
 }
 
-// dirName is the name of the directory under $HOME that holds the config
-// file and, by default, cloned repos. Overridden at build time via
+// dirName is the name of the directory under each XDG base directory that
+// holds lazymux's config and data. Overridden at build time via
 // -ldflags "-X .../config.dirName=lazymux-dev" to build a dev binary that
-// is fully sandboxed from the normal ~/lazymux tree.
+// is fully sandboxed from the normal lazymux directories.
 var dirName = "lazymux"
 
 // DirName is the per-build directory name ("lazymux", or "lazymux-dev" for
 // the dev binary) that every piece of on-disk state should be keyed by.
 func DirName() string { return dirName }
 
-func defaultBaseDir() string {
+// xdgDir returns the directory named by the XDG base directory variable
+// envVar, or $HOME joined with fallback when it is unset or not absolute, as
+// the XDG spec requires.
+func xdgDir(envVar string, fallback ...string) string {
+	if dir := os.Getenv(envVar); filepath.IsAbs(dir) {
+		return dir
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return filepath.Join(".", dirName)
+		return "."
 	}
-	return filepath.Join(home, dirName)
+	return filepath.Join(append([]string{home}, fallback...)...)
 }
 
-// Path returns the resolved config file path. Everything lives in a single
-// .lazymux.json at the base dir root, honoring $LAZYMUX_CONFIG for overrides.
+// DataDir is lazymux's directory under $XDG_DATA_HOME (~/.local/share).
+func DataDir() string {
+	return filepath.Join(xdgDir("XDG_DATA_HOME", ".local", "share"), dirName)
+}
+
+// RepoRoot is the directory repos live under: $LAZYMUX_ROOT, then the
+// configured baseDir, then a repos directory in DataDir.
+func (c Config) RepoRoot() string {
+	if root := os.Getenv("LAZYMUX_ROOT"); root != "" {
+		return normalizeBaseDir(root)
+	}
+	if c.BaseDir != "" {
+		return c.BaseDir
+	}
+	return filepath.Join(DataDir(), "repos")
+}
+
+// Path returns the resolved config file path: config.json under
+// $XDG_CONFIG_HOME (~/.config), honoring $LAZYMUX_CONFIG for overrides.
 func Path() string {
 	if p := os.Getenv("LAZYMUX_CONFIG"); p != "" {
 		return p
 	}
-	return filepath.Join(defaultBaseDir(), ".lazymux.json")
+	return filepath.Join(xdgDir("XDG_CONFIG_HOME", ".config"), dirName, "config.json")
 }
 
-// Load reads .lazymux.json, migrating a legacy TOML config on first run and
-// writing a default file if none exists. If the file exists but can't be read
-// or parsed, it returns defaults with LoadFailed set.
+// legacyJSONPath is where configs lived before moving under XDG_CONFIG_HOME.
+func legacyJSONPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, dirName, ".lazymux.json")
+}
+
+// Load reads the config file, moving a legacy ~/lazymux/.lazymux.json into
+// place or migrating a legacy TOML config on first run, and writing a default
+// file if none exists. If the file exists but can't be read or parsed, it
+// returns defaults with LoadFailed set.
 func Load() Config {
 	path := Path()
 	cfg, err := readFile(path)
 	if errors.Is(err, os.ErrNotExist) {
+		if moved, ok := moveLegacyJSON(path); ok {
+			return moved
+		}
 		cfg = Default()
 		if migrated, ok := migrateLegacy(cfg); ok {
 			cfg = migrated
@@ -352,9 +389,15 @@ func Update(change func(*Config)) (Config, error) {
 	cfg, err := readFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		cfg, err = Default(), nil
+		if moved, ok := moveLegacyJSON(path); ok {
+			cfg = moved
+		}
 	}
 	if err != nil {
 		return Config{}, fmt.Errorf("refusing to overwrite unreadable config: %w", err)
+	}
+	if cfg.LoadFailed {
+		return Config{}, fmt.Errorf("refusing to overwrite unreadable config: %s", cfg.Warnings[0])
 	}
 	change(&cfg)
 	if err := Save(cfg); err != nil {
@@ -379,7 +422,9 @@ func readFile(path string) (Config, error) {
 // rest of the app can assume sane values.
 func normalize(cfg Config) Config {
 	d := Default()
-	cfg.BaseDir = normalizeBaseDir(cfg.BaseDir, d.BaseDir)
+	if cfg.BaseDir != "" {
+		cfg.BaseDir = normalizeBaseDir(cfg.BaseDir)
+	}
 	if cfg.PlaceholderHost == "" {
 		cfg.PlaceholderHost = d.PlaceholderHost
 	}
@@ -440,11 +485,8 @@ func normalize(cfg Config) Config {
 }
 
 // normalizeBaseDir expands a leading ~ and makes dir absolute and clean, so
-// path comparisons against it hold. An empty dir falls back to fallback.
-func normalizeBaseDir(dir, fallback string) string {
-	if dir == "" {
-		return fallback
-	}
+// path comparisons against it hold.
+func normalizeBaseDir(dir string) string {
 	if dir == "~" || strings.HasPrefix(dir, "~/") {
 		if home, err := os.UserHomeDir(); err == nil {
 			dir = filepath.Join(home, strings.TrimPrefix(dir, "~"))
@@ -495,6 +537,41 @@ func legacyPath() string {
 		return ""
 	}
 	return filepath.Join(home, ".config", "lazymux", "config.toml")
+}
+
+// moveLegacyJSON moves a config from legacyJSONPath to path, keeping its repos
+// where they are. It reports false when there is nothing to move or
+// $LAZYMUX_CONFIG picks the path. A legacy file that can't be read yields
+// defaults with LoadFailed set, so a fresh config never buries it.
+func moveLegacyJSON(path string) (Config, bool) {
+	legacy := legacyJSONPath()
+	if legacy == "" || os.Getenv("LAZYMUX_CONFIG") != "" {
+		return Config{}, false
+	}
+	cfg, err := readFile(legacy)
+	if errors.Is(err, os.ErrNotExist) {
+		return Config{}, false
+	}
+	if err != nil {
+		cfg = Default()
+		cfg.LoadFailed = true
+		cfg.Warnings = []string{fmt.Sprintf(
+			"using defaults, changes won't be saved: %v (fix it to move it to %s)", err, path)}
+		return cfg, true
+	}
+	if cfg.BaseDir == "" {
+		cfg.BaseDir = filepath.Dir(legacy)
+	}
+	if err := Save(cfg); err != nil {
+		cfg.Warnings = append(cfg.Warnings,
+			fmt.Sprintf("couldn't move config from %s to %s: %v", legacy, path, err))
+		return cfg, true
+	}
+	if err := os.Remove(legacy); err != nil {
+		cfg.Warnings = append(cfg.Warnings,
+			fmt.Sprintf("config moved to %s, but couldn't remove %s: %v", path, legacy, err))
+	}
+	return cfg, true
 }
 
 // migrateLegacy folds a legacy config.toml into the new Config, preserving the

@@ -7,7 +7,7 @@
 """Build the lazymux binary.
 
     mise run build                      build/bin/lazymux for this machine
-    mise run build --dev                build/bin/lazymux-dev, sandboxed to ~/lazymux-dev
+    mise run build --dev                build/bin/lazymux-dev, sandboxed to lazymux-dev dirs
     mise run build --all                build/dist/* for every release platform
     mise run build --platform linux/amd64   build/dist/* for one platform
     mise run build --version v1.4.0     stamp an explicit version
@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dev",
         action="store_true",
-        help="build build/bin/lazymux-dev for this machine, sandboxed to ~/lazymux-dev",
+        help="build build/bin/lazymux-dev for this machine, sandboxed to lazymux-dev dirs",
     )
     parser.add_argument(
         "--all",

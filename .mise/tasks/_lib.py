@@ -134,7 +134,7 @@ def build_lazymux(version: str | None = None) -> Path:
 
 
 def build_lazymux_dev(version: str | None = None) -> Path:
-    """Build the dev binary, whose config/repo dir is redirected to ~/lazymux-dev.
+    """Build the dev binary, whose config and data dirs are named lazymux-dev.
 
     The build is checked by running it with --version, since the linker ignores
     an -X flag that names no symbol.

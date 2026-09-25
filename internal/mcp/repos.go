@@ -1,6 +1,6 @@
 // Package mcp exposes the lazymux repo inventory over the Model Context
 // Protocol, so an LLM can answer "which repo does this request belong to?"
-// and record what it learns back into .lazymux.json.
+// and record what it learns back into the lazymux config.
 package mcp
 
 import (
@@ -40,7 +40,7 @@ func (r RepoInfo) Described() bool { return r.Purpose != "" || r.Context != "" }
 func inventory(cfg config.Config) ([]RepoInfo, error) {
 	repos, err := repomgr.ListMeta(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("scanning %s: %w", cfg.BaseDir, err)
+		return nil, fmt.Errorf("scanning %s: %w", cfg.RepoRoot(), err)
 	}
 	sort.SliceStable(repos, func(i, j int) bool {
 		return domain.LessRepo(repos[i], repos[j], domain.SortRecent)
@@ -151,7 +151,7 @@ func termScore(r RepoInfo, term string) int {
 	return score
 }
 
-// setDescription writes purpose/context for one repo back to .lazymux.json.
+// setDescription writes purpose/context for one repo back to the lazymux config.
 // The write goes through config.Update, which re-reads the file first so a
 // concurrently running TUI's edits to other fields survive.
 func setDescription(key, purpose, context string) (RepoInfo, error) {
