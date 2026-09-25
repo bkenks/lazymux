@@ -112,7 +112,7 @@ lazymux --help     # show keybindings + config location
 lazymux --version  # show the version
 ```
 
-On first run, lazymux creates `~/.config/lazymux/config.json` (moving an existing `~/lazymux/.lazymux.json` there, or migrating a `~/.config/lazymux/config.toml`, if present). If no [repo directory](#repo-directory) is set yet, it asks you for one, then lists any repos already in it. Register your forges (`F`), then clone (`n`) to start pulling repos in.
+On first run, lazymux creates `~/.config/lazymux/config.json` (moving an existing `~/lazymux/.lazymux.json` there, or migrating a `~/.config/lazymux/config.toml`, if present). If no [repo directory](#repo-directory) is set yet, it asks you for one, then lists any repos already in it. Register your forges (`F`), then clone (`c`) to start pulling repos in.
 
 ---
 
@@ -128,7 +128,7 @@ On first run, lazymux creates `~/.config/lazymux/config.json` (moving an existin
 | `s` | Open a **shell** in the repo's directory |
 | `y` | **Copy** the absolute repo path to clipboard |
 | `r` | **Refresh** the repo list |
-| `n` | **Clone** new repositories |
+| `c` | **Clone** new repositories |
 | `p` | **Pull** every repo (`git pull --ff-only`, skips conflicts) |
 | `S` | Cycle the **sort order** (recent → name a-z → name z-a → namespace) |
 | `g` | Show/hide the **forge label** on rows |

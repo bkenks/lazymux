@@ -77,8 +77,8 @@ type repoListKeyMap struct {
 
 var RepoListKeyMap = repoListKeyMap{
 	Clone: key.NewBinding(
-		key.WithKeys("n"),
-		key.WithHelp("n", "clone"),
+		key.WithKeys("c"),
+		key.WithHelp("c", "clone"),
 	),
 	Delete: key.NewBinding(
 		key.WithKeys("d"),
