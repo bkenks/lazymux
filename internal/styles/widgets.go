@@ -1,11 +1,14 @@
 package styles
 
 import (
+	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/progress"
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/huh/v2"
+	"charm.land/lipgloss/v2"
+	"github.com/bkenks/lazymux/internal/constants"
 )
 
 // NewDelegate returns the default list row renderer in the palette's colors.
@@ -109,4 +112,28 @@ func colorFormFields(f *huh.FieldStyles) {
 	f.TextInput.Cursor = f.TextInput.Cursor.Foreground(Accent)
 	f.TextInput.Placeholder = f.TextInput.Placeholder.Foreground(Subdued)
 	f.TextInput.Prompt = f.TextInput.Prompt.Foreground(Accent)
+}
+
+// FormKeyMap is huh's default key map with esc cancelling the form.
+func FormKeyMap() *huh.KeyMap {
+	keys := huh.NewDefaultKeyMap()
+	keys.Quit = key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel"))
+	return keys
+}
+
+// FitForm sizes form and its help line to the content area under a screen
+// title. huh cannot lay out at the 1×1 floor ContentSize returns before the
+// first window size arrives, so until then form is returned unchanged.
+func FitForm(form *huh.Form, title string) *huh.Form {
+	if constants.WindowSize.Width == 0 {
+		return form
+	}
+	const helpRows = 1
+	width, height := ContentSize(lipgloss.Height(MenuTitle.Render(title)) + helpRows)
+	return form.WithWidth(width).WithHeight(height)
+}
+
+// RenderFormScreen draws form under its screen title.
+func RenderFormScreen(title string, form *huh.Form) string {
+	return lipgloss.JoinVertical(lipgloss.Left, MenuTitle.Render(title), form.View())
 }

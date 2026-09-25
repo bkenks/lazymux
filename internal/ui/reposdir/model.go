@@ -9,9 +9,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
-	"charm.land/lipgloss/v2"
 	"github.com/bkenks/lazymux/internal/config"
-	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/styles"
 )
@@ -74,18 +72,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// resize fits the form and its help line under the title, once the first
-// window size is known.
-func (m *Model) resize() {
-	if constants.WindowSize.Width == 0 {
-		return
-	}
-	const helpRows = 1
-	width, height := styles.ContentSize(lipgloss.Height(styles.MenuTitle.Render(title)) + helpRows)
-	m.form = m.form.WithWidth(width).WithHeight(height)
-}
+func (m *Model) resize() { m.form = styles.FitForm(m.form, title) }
 
-func (m *Model) View() tea.View {
-	return tea.NewView(lipgloss.JoinVertical(lipgloss.Left,
-		styles.MenuTitle.Render(title), m.form.View()))
-}
+func (m *Model) View() tea.View { return tea.NewView(styles.RenderFormScreen(title, m.form)) }

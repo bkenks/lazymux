@@ -4,12 +4,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
+	"github.com/bkenks/lazymux/internal/ui/formtest"
 )
 
 // stubEditorOnPath writes an executable named name into a temp dir and makes
@@ -67,49 +67,16 @@ func TestValidateColor(t *testing.T) {
 	}
 }
 
-// press sends msg and feeds every resulting message back into the model, the
-// way the bubbletea runtime would, returning the messages the screen emits
-// for the app: SettingsChanged and SetState.
+// press sends msg and returns what the screen emits for the app:
+// SettingsChanged and SetState.
 func press(m *Model, msg tea.Msg) []tea.Msg {
-	var emitted []tea.Msg
-	queue := []tea.Msg{msg}
-	for steps := 0; len(queue) > 0 && steps < 200; steps++ {
-		next := queue[0]
-		queue = queue[1:]
-		switch next.(type) {
+	return formtest.Press(m, msg, func(msg tea.Msg) bool {
+		switch msg.(type) {
 		case events.SettingsChanged, events.SetState:
-			emitted = append(emitted, next)
-			continue
+			return true
 		}
-		_, cmd := m.Update(next)
-		queue = append(queue, runCmd(cmd)...)
-	}
-	return emitted
-}
-
-// runCmd runs cmd, dropping it if it hasn't returned within a short wait —
-// those are timers such as the cursor blink, which the tests don't need.
-func runCmd(cmd tea.Cmd) []tea.Msg {
-	if cmd == nil {
-		return nil
-	}
-	result := make(chan tea.Msg, 1)
-	go func() { result <- cmd() }()
-	var msg tea.Msg
-	select {
-	case msg = <-result:
-	case <-time.After(50 * time.Millisecond):
-		return nil
-	}
-	batch, ok := msg.(tea.BatchMsg)
-	if !ok {
-		return []tea.Msg{msg}
-	}
-	var msgs []tea.Msg
-	for _, inner := range batch {
-		msgs = append(msgs, runCmd(inner)...)
-	}
-	return msgs
+		return false
+	})
 }
 
 var enterKey = tea.KeyPressMsg{Code: tea.KeyEnter}

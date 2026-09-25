@@ -8,13 +8,10 @@ import (
 	"os/exec"
 	"strings"
 
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
-	"charm.land/lipgloss/v2"
 	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/config"
-	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/styles"
@@ -38,8 +35,6 @@ func New(cfg config.Config) *Model {
 
 func (m *Model) newForm() *huh.Form {
 	d := m.draft
-	formKeys := huh.NewDefaultKeyMap()
-	formKeys.Quit = key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel"))
 	fields := []huh.Field{
 		huh.NewInput().Title("Editor").
 			DescriptionFunc(func() string { return describeEditor(d.Tools.Editor) }, &d.Tools.Editor).
@@ -58,7 +53,7 @@ func (m *Model) newForm() *huh.Form {
 	fields = append(fields, colorInputs("Dark", &d.UI.Colors.Dark, styles.IsDark)...)
 	fields = append(fields, colorInputs("Light", &d.UI.Colors.Light, !styles.IsDark)...)
 	return huh.NewForm(huh.NewGroup(fields...)).
-		WithKeyMap(formKeys).WithShowHelp(true).WithTheme(styles.FormTheme)
+		WithKeyMap(styles.FormKeyMap()).WithShowHelp(true).WithTheme(styles.FormTheme)
 }
 
 func toggle(title string, value *bool) *huh.Confirm {
@@ -168,19 +163,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// resize fits the form and its help line under the title. huh cannot lay out
-// at the 1×1 floor ContentSize returns before the first window size arrives,
-// so it waits.
-func (m *Model) resize() {
-	if constants.WindowSize.Width == 0 {
-		return
-	}
-	const helpRows = 1
-	width, height := styles.ContentSize(lipgloss.Height(styles.MenuTitle.Render(title)) + helpRows)
-	m.form = m.form.WithWidth(width).WithHeight(height)
-}
+func (m *Model) resize() { m.form = styles.FitForm(m.form, title) }
 
-func (m *Model) View() tea.View {
-	return tea.NewView(lipgloss.JoinVertical(lipgloss.Left,
-		styles.MenuTitle.Render(title), m.form.View()))
-}
+func (m *Model) View() tea.View { return tea.NewView(styles.RenderFormScreen(title, m.form)) }
