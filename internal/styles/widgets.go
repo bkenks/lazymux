@@ -2,20 +2,23 @@ package styles
 
 import (
 	"charm.land/bubbles/v2/list"
+	"charm.land/bubbles/v2/progress"
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/huh/v2"
 )
 
-// NewDelegate returns the default list row renderer styled for the terminal
-// background, with the selected row in the accent color when one is set.
+// NewDelegate returns the default list row renderer in the palette's colors.
 func NewDelegate() list.DefaultDelegate {
 	d := list.NewDefaultDelegate()
-	d.Styles = list.NewDefaultItemStyles(IsDark)
-	if Accent != nil {
-		d.Styles.SelectedTitle = d.Styles.SelectedTitle.Foreground(Accent).BorderForeground(Accent)
-		d.Styles.SelectedDesc = d.Styles.SelectedDesc.Foreground(Accent).BorderForeground(Accent)
-	}
+	s := list.NewDefaultItemStyles(IsDark)
+	s.NormalTitle = s.NormalTitle.Foreground(Text)
+	s.NormalDesc = s.NormalDesc.Foreground(Muted)
+	s.SelectedTitle = s.SelectedTitle.Foreground(Accent).BorderForeground(AccentMuted)
+	s.SelectedDesc = s.SelectedDesc.Foreground(AccentMuted).BorderForeground(AccentMuted)
+	s.DimmedTitle = s.DimmedTitle.Foreground(Muted)
+	s.DimmedDesc = s.DimmedDesc.Foreground(Subdued)
+	d.Styles = s
 	return d
 }
 
@@ -26,20 +29,35 @@ func NewList(items []list.Item, delegate list.ItemDelegate, width, height int) l
 	return l
 }
 
-// StyleList styles a list for the terminal background, including its filter
-// input, pagination dots, and help, with the title and filter cursor in the
-// accent color when one is set.
+// StyleList styles a list, including its filter input, pagination dots, and
+// help, in the palette's colors.
 func StyleList(l *list.Model) {
 	s := list.DefaultStyles(IsDark)
-	if Accent != nil {
-		s.Title = s.Title.Background(Accent)
-		s.Filter.Cursor.Color = Accent
-	}
+	s.Title = s.Title.Background(Main).Foreground(OnMain)
+	s.Spinner = s.Spinner.Foreground(Muted)
+	s.Filter.Cursor.Color = Accent
+	s.Filter.Focused.Prompt = s.Filter.Focused.Prompt.Foreground(Accent)
+	s.Filter.Blurred.Prompt = s.Filter.Blurred.Prompt.Foreground(Accent)
+	s.StatusBar = s.StatusBar.Foreground(Muted)
+	s.StatusEmpty = s.StatusEmpty.Foreground(Subdued)
+	s.StatusBarActiveFilter = s.StatusBarActiveFilter.Foreground(Text)
+	s.StatusBarFilterCount = s.StatusBarFilterCount.Foreground(Faint)
+	s.NoItems = s.NoItems.Foreground(Muted)
+	s.ArabicPagination = s.ArabicPagination.Foreground(Subdued)
+	s.ActivePaginationDot = s.ActivePaginationDot.Foreground(Muted)
+	s.InactivePaginationDot = s.InactivePaginationDot.Foreground(Faint)
+	s.DividerDot = s.DividerDot.Foreground(Faint)
 	l.Styles = s
 	l.FilterInput.SetStyles(s.Filter)
 	l.Paginator.ActiveDot = s.ActivePaginationDot.String()
 	l.Paginator.InactiveDot = s.InactivePaginationDot.String()
 	l.Help = Help
+}
+
+// NewProgress returns a progress bar that blends from the main color to the
+// accent.
+func NewProgress() progress.Model {
+	return progress.New(progress.WithColors(Main, Accent), progress.WithoutPercentage())
 }
 
 // NewTextInput returns a text input styled for the terminal background.
@@ -56,29 +74,39 @@ func NewTextArea() textarea.Model {
 	return ta
 }
 
-// FormTheme is the huh theme for the terminal background, with its indigo and
-// fuchsia accents replaced by the accent color when one is set. huh only learns
-// the background from a message lazymux never requests, so this ignores its
-// guess.
+// FormTheme is the huh theme in the palette's colors, keeping huh's red for
+// errors. huh only learns the background from a message lazymux never
+// requests, so this ignores its guess.
 var FormTheme = huh.ThemeFunc(func(bool) *huh.Styles {
 	t := huh.ThemeCharm(IsDark)
-	if Accent != nil {
-		accentFormFields(&t.Focused)
-		accentFormFields(&t.Blurred)
-		t.Group.Title = t.Focused.Title
-	}
+	colorFormFields(&t.Focused)
+	colorFormFields(&t.Blurred)
+	t.Focused.Base = t.Focused.Base.BorderForeground(Faint)
+	t.Focused.Card = t.Focused.Base
+	t.Group.Title = t.Focused.Title
+	t.Group.Description = t.Focused.Description
+	t.Help = Help.Styles
 	return t
 })
 
-func accentFormFields(f *huh.FieldStyles) {
-	f.Title = f.Title.Foreground(Accent)
-	f.NoteTitle = f.NoteTitle.Foreground(Accent)
-	f.Directory = f.Directory.Foreground(Accent)
+func colorFormFields(f *huh.FieldStyles) {
+	f.Title = f.Title.Foreground(MainText)
+	f.NoteTitle = f.NoteTitle.Foreground(MainText)
+	f.Directory = f.Directory.Foreground(MainText)
+	f.Description = f.Description.Foreground(Muted)
 	f.SelectSelector = f.SelectSelector.Foreground(Accent)
 	f.MultiSelectSelector = f.MultiSelectSelector.Foreground(Accent)
 	f.NextIndicator = f.NextIndicator.Foreground(Accent)
 	f.PrevIndicator = f.PrevIndicator.Foreground(Accent)
-	f.FocusedButton = f.FocusedButton.Background(Accent)
-	f.Next = f.Next.Background(Accent)
+	f.Option = f.Option.Foreground(Text)
+	f.UnselectedOption = f.UnselectedOption.Foreground(Text)
+	f.SelectedOption = f.SelectedOption.Foreground(Accent)
+	f.SelectedPrefix = f.SelectedPrefix.Foreground(Accent)
+	f.UnselectedPrefix = f.UnselectedPrefix.Foreground(Muted)
+	f.FocusedButton = f.FocusedButton.Foreground(OnMain).Background(Main)
+	f.Next = f.Next.Foreground(OnMain).Background(Main)
+	f.BlurredButton = f.BlurredButton.Foreground(OnSurface).Background(Surface)
+	f.TextInput.Cursor = f.TextInput.Cursor.Foreground(Accent)
+	f.TextInput.Placeholder = f.TextInput.Placeholder.Foreground(Subdued)
 	f.TextInput.Prompt = f.TextInput.Prompt.Foreground(Accent)
 }

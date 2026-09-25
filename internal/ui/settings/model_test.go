@@ -54,15 +54,15 @@ func TestValidateEditorCommandRejects(t *testing.T) {
 	}
 }
 
-func TestValidateAccentColor(t *testing.T) {
+func TestValidateColor(t *testing.T) {
 	for _, ok := range []string{"", "#7D56F4", "#7d56f4", "#abc", " #7D56F4 "} {
-		if err := validateAccentColor(ok); err != nil {
-			t.Errorf("validateAccentColor(%q) = %v, want nil", ok, err)
+		if err := validateColor(ok); err != nil {
+			t.Errorf("validateColor(%q) = %v, want nil", ok, err)
 		}
 	}
 	for _, bad := range []string{"7D56F4", "#7D56F", "#GGGGGG", "purple", "#7D56F4FF"} {
-		if err := validateAccentColor(bad); err == nil {
-			t.Errorf("validateAccentColor(%q) = nil, want an error", bad)
+		if err := validateColor(bad); err == nil {
+			t.Errorf("validateColor(%q) = nil, want an error", bad)
 		}
 	}
 }
@@ -114,16 +114,21 @@ func runCmd(cmd tea.Cmd) []tea.Msg {
 
 var enterKey = tea.KeyPressMsg{Code: tea.KeyEnter}
 
-// fillAccent presses enter past every field before the accent color, types
-// accent, and submits, returning what the screen emitted.
-func fillAccent(m *Model, accent string) []tea.Msg {
+// fillColors presses enter past every field before the colors, types the
+// dark mode main, accent and gray colors and then the light mode ones, and
+// submits, returning what the screen emitted.
+func fillColors(m *Model, dark, light [3]string) []tea.Msg {
 	for range 7 {
 		press(m, enterKey)
 	}
-	for _, r := range accent {
-		press(m, tea.KeyPressMsg{Code: r, Text: string(r)})
+	var emitted []tea.Msg
+	for _, color := range append(dark[:], light[:]...) {
+		for _, r := range color {
+			press(m, tea.KeyPressMsg{Code: r, Text: string(r)})
+		}
+		emitted = press(m, enterKey)
 	}
-	return press(m, enterKey)
+	return emitted
 }
 
 func newTestModel(t *testing.T) *Model {
@@ -139,7 +144,7 @@ func newTestModel(t *testing.T) *Model {
 func TestSubmitEmitsEditedSettings(t *testing.T) {
 	m := newTestModel(t)
 
-	emitted := fillAccent(m, "#7D56F4")
+	emitted := fillColors(m, [3]string{"#7D56F4", " #EE6FF8 ", ""}, [3]string{"", "", "#333"})
 
 	if len(emitted) != 1 {
 		t.Fatalf("emitted %v, want one SettingsChanged", emitted)
@@ -148,19 +153,23 @@ func TestSubmitEmitsEditedSettings(t *testing.T) {
 	if !ok {
 		t.Fatalf("emitted %T, want SettingsChanged", emitted[0])
 	}
-	if got := changed.Config.UI.AccentColor; got != "#7D56F4" {
-		t.Errorf("accent color = %q, want #7D56F4", got)
+	want := config.ColorModes{
+		Dark:  config.Colors{Main: "#7D56F4", Accent: "#EE6FF8"},
+		Light: config.Colors{Gray: "#333"},
+	}
+	if got := changed.Config.UI.Colors; got != want {
+		t.Errorf("colors = %+v, want %+v", got, want)
 	}
 	if got := changed.Config.Tools.Editor; got != "zed" {
 		t.Errorf("editor = %q, want zed kept", got)
 	}
 }
 
-func TestInvalidAccentBlocksSubmit(t *testing.T) {
+func TestInvalidColorBlocksSubmit(t *testing.T) {
 	m := newTestModel(t)
 
-	if emitted := fillAccent(m, "purple"); len(emitted) != 0 {
-		t.Errorf("emitted %v for an invalid accent, want nothing", emitted)
+	if emitted := fillColors(m, [3]string{}, [3]string{"", "purple", ""}); len(emitted) != 0 {
+		t.Errorf("emitted %v for an invalid light accent, want nothing", emitted)
 	}
 }
 

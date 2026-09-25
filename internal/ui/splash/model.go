@@ -17,12 +17,6 @@ import (
 
 const splashDuration = 1600 * time.Millisecond
 
-// gradientFrom/To bound the wordmark's horizontal color sweep.
-var (
-	gradientFrom, _ = colorful.Hex("#AD58B4")
-	gradientTo, _   = colorful.Hex("#EE6FF8")
-)
-
 type Model struct {
 	version string
 }
@@ -47,7 +41,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) View() tea.View {
-	wordmark := gradient("lazymux", gradientFrom, gradientTo)
+	from, _ := colorful.MakeColor(styles.Main)
+	to, _ := colorful.MakeColor(styles.Accent)
+	wordmark := gradient("lazymux", from, to)
 	inner := lipgloss.JoinVertical(
 		lipgloss.Center,
 		wordmark,

@@ -1,31 +1,34 @@
 package app
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/styles"
 )
 
-func TestSavedAccentRestylesTheRepoList(t *testing.T) {
+func TestSavedColorsRestyleTheRepoList(t *testing.T) {
 	t.Setenv("LAZYMUX_CONFIG", t.TempDir()+"/.lazymux.json")
-	t.Cleanup(func() { styles.Apply("default", true, nil) })
+	t.Cleanup(func() { styles.Apply(styles.DefaultPalette, true) })
 	m := New(config.Default(), "test")
 
 	edited := m.cfg.Clone()
-	edited.UI.AccentColor = "#123456"
+	edited.UI.Colors.Dark.Main = "#123456"
+	edited.UI.Colors.Light.Main = "#654321"
 	_, cmd := m.Update(events.SettingsChanged{Config: edited})
 
-	if got := config.Load().UI.AccentColor; got != "#123456" {
-		t.Errorf("saved accent = %q, want #123456", got)
+	if got := config.Load().UI.Colors; got != edited.UI.Colors {
+		t.Errorf("saved colors = %+v, want %+v", got, edited.UI.Colors)
 	}
-	want, _ := styles.ParseAccent("#123456")
+	want := lipgloss.Color("#123456")
 	if got := m.main.List.Styles.Title.GetBackground(); got != want {
-		t.Errorf("repo list title = %v, want the new accent %v", got, want)
+		t.Errorf("repo list title = %v, want the new dark mode main color %v", got, want)
 	}
 	for _, msg := range collectMsgs(cmd) {
 		if state, ok := msg.(events.SetState); ok && state.State == domain.StateMain {
@@ -33,6 +36,25 @@ func TestSavedAccentRestylesTheRepoList(t *testing.T) {
 		}
 	}
 	t.Error("saving settings did not return to the repo list")
+}
+
+func TestApplyColorsPicksTheTerminalMode(t *testing.T) {
+	t.Cleanup(func() { styles.Apply(styles.DefaultPalette, true) })
+	modes := config.ColorModes{
+		Dark:  config.Colors{Accent: "#112233"},
+		Light: config.Colors{Accent: "#445566", Gray: "gray"},
+	}
+
+	if err := ApplyColors(modes, true); err != nil || styles.Accent != lipgloss.Color("#112233") {
+		t.Errorf("dark: accent = %v, err = %v, want #112233 and no error", styles.Accent, err)
+	}
+	err := ApplyColors(modes, false)
+	if styles.Accent != lipgloss.Color("#445566") {
+		t.Errorf("light: accent = %v, want #445566", styles.Accent)
+	}
+	if err == nil || !strings.Contains(err.Error(), "light mode gray color") {
+		t.Errorf("light: err = %v, want one naming the light mode gray color", err)
+	}
 }
 
 // collectMsgs runs cmd and any batch inside it, skipping commands that don't

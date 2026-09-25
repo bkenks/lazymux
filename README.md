@@ -331,8 +331,10 @@ Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`
     "shell": ""
   },
   "ui": {
-    "theme": "default",
-    "accentColor": "",
+    "colors": {
+      "dark": { "main": "", "accent": "", "gray": "" },
+      "light": { "main": "", "accent": "", "gray": "" }
+    },
     "showFullPath": false,
     "showForge": true,
     "showStats": true,
@@ -374,14 +376,15 @@ Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`
   `purpose`/`context` the MCP server reads and writes.
 
 - `ui.sortMode` — repo list order: `recent`, `name-asc`, `name-desc`, or `namespace` (cycled in-app with `S`).
-- `ui.theme` — `default` or `mono`. Each has light and dark colors; lazymux asks the terminal
-  for its background at launch and uses the matching set, falling back to dark if the terminal
-  doesn't answer.
-- `ui.accentColor` — a hex value (`#7D56F4` or `#75F`) that replaces the theme's pink and
-  purple accent everywhere: titles, the selected row, form fields and buttons. Empty keeps
-  the theme's own.
+- `ui.colors` — three hex base colors (`#7D56F4` or `#75F`) that every color in the UI comes
+  from, set separately for `dark` and `light` terminal backgrounds. `main` colors title bars and
+  buttons, `accent` the selected row and highlights, and `gray` text, borders and hints. lazymux
+  stretches each one into a scale of lighter and darker shades and picks from those, so the
+  pieces stay matched whatever you choose. lazymux asks the terminal for its background at
+  launch and uses that mode's colors, falling back to dark if the terminal doesn't answer. An
+  empty color keeps the default (`#5F5FD7`, `#EE6FF8`, `#777777`).
 
-The in-app settings screen is one form covering `editor`, `defaultProtocol`, `confirmDelete`, `showFullPath`, `showForge`, `showStats`, `sortMode`, and `accentColor`. `enter` moves to the next field and saves on the last one; `esc` leaves without saving. The editor field resolves the command on `PATH` and won't let the form save one it cannot find; the accent field only takes a hex value. `shell` (the shell keybind commands and `s` use) and `theme` are file-only for now — edit and relaunch.
+The in-app settings screen is one form covering `editor`, `defaultProtocol`, `confirmDelete`, `showFullPath`, `showForge`, `showStats`, `sortMode`, and the dark and light mode `colors`. `enter` moves to the next field and saves on the last one; `esc` leaves without saving. The editor field resolves the command on `PATH` and won't let the form save one it cannot find; the color fields only take a hex value. `shell` (the shell keybind commands and `s` use) is file-only for now — edit and relaunch.
 
 ### Repo directory
 

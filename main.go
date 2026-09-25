@@ -11,7 +11,6 @@ import (
 	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/constants"
 	"github.com/bkenks/lazymux/internal/mcp"
-	"github.com/bkenks/lazymux/internal/styles"
 )
 
 func main() {
@@ -33,11 +32,10 @@ func main() {
 	}
 
 	cfg := config.Load()
-	accent, err := styles.ParseAccent(cfg.UI.AccentColor)
-	if err != nil {
+	isDark := lipgloss.HasDarkBackground(os.Stdin, os.Stdout)
+	if err := app.ApplyColors(cfg.UI.Colors, isDark); err != nil {
 		cfg.Warnings = append(cfg.Warnings, err.Error())
 	}
-	styles.Apply(cfg.UI.Theme, lipgloss.HasDarkBackground(os.Stdin, os.Stdout), accent)
 
 	tui := app.New(cfg, version())
 	p := tea.NewProgram(tui)

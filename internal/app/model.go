@@ -90,7 +90,7 @@ func New(cfg config.Config, version string) *ModelManager {
 		main:          *repolist.New(),
 		confirmDelete: *confirm.New(),
 		clonerepos:    *clonerepos.New(cfg),
-		cloneProgress: progress.New(progress.WithDefaultBlend(), progress.WithoutPercentage()),
+		cloneProgress: styles.NewProgress(),
 	}
 
 	m.main.SetKeybinds(cfg.Keybinds)

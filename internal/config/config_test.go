@@ -66,7 +66,7 @@ func TestMigrateLegacyToml(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("XDG_CONFIG_HOME", xdg)
-	toml := "[tools]\neditor = \"nvim\"\n[ui]\ntheme = \"dracula\"\n[behavior]\ndefault_protocol = \"ssh\"\nconfirm_delete = false\n"
+	toml := "[tools]\neditor = \"nvim\"\n[ui]\nshow_full_path = true\n[behavior]\ndefault_protocol = \"ssh\"\nconfirm_delete = false\n"
 	if err := os.WriteFile(filepath.Join(xdg, "lazymux", "config.toml"), []byte(toml), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -75,8 +75,8 @@ func TestMigrateLegacyToml(t *testing.T) {
 	if got.Tools.Editor != "nvim" {
 		t.Errorf("editor = %q, want nvim", got.Tools.Editor)
 	}
-	if got.UI.Theme != "dracula" {
-		t.Errorf("theme = %q, want dracula", got.UI.Theme)
+	if !got.UI.ShowFullPath {
+		t.Errorf("showFullPath should be true")
 	}
 	if got.Behavior.DefaultProtocol != "ssh" {
 		t.Errorf("protocol = %q, want ssh", got.Behavior.DefaultProtocol)

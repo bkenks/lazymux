@@ -44,12 +44,24 @@ type Tools struct {
 	Shell  string `json:"shell"`
 }
 
+// Colors are the hex base colors ("#7D56F4") the UI palette is derived from.
+// An empty one keeps lazymux's default.
+type Colors struct {
+	Main   string `json:"main"`
+	Accent string `json:"accent"`
+	Gray   string `json:"gray"`
+}
+
+// ColorModes holds separate base colors for dark and light terminal
+// backgrounds.
+type ColorModes struct {
+	Dark  Colors `json:"dark"`
+	Light Colors `json:"light"`
+}
+
 type UI struct {
-	Theme string `json:"theme"`
-	// AccentColor is a hex value ("#7D56F4") that replaces the theme's accent
-	// color everywhere. Empty keeps the theme's own.
-	AccentColor  string `json:"accentColor"`
-	ShowFullPath bool   `json:"showFullPath"`
+	Colors       ColorModes `json:"colors"`
+	ShowFullPath bool       `json:"showFullPath"`
 	// ShowForge is the default visibility of the "forge:" line in the repo
 	// list. The list's `g` key toggles it for the session; this is the value
 	// restored on launch.
@@ -275,7 +287,6 @@ func Default() Config {
 			Shell:  "",
 		},
 		UI: UI{
-			Theme:        "default",
 			ShowFullPath: false,
 			ShowForge:    true,
 			ShowStats:    true,
@@ -569,8 +580,7 @@ type legacyConfig struct {
 		Shell  string `toml:"shell"`
 	} `toml:"tools"`
 	UI struct {
-		Theme        string `toml:"theme"`
-		ShowFullPath bool   `toml:"show_full_path"`
+		ShowFullPath bool `toml:"show_full_path"`
 	} `toml:"ui"`
 	Behavior struct {
 		DefaultProtocol string `toml:"default_protocol"`
@@ -625,7 +635,7 @@ func moveLegacyJSON(path string) (Config, bool) {
 }
 
 // migrateLegacy folds a legacy config.toml into the new Config, preserving the
-// user's editor/theme/behavior choices. Returns (cfg, true) only on success.
+// user's editor/UI/behavior choices. Returns (cfg, true) only on success.
 func migrateLegacy(base Config) (Config, bool) {
 	p := legacyPath()
 	if p == "" {
@@ -643,9 +653,6 @@ func migrateLegacy(base Config) (Config, bool) {
 		base.Tools.Editor = old.Tools.Editor
 	}
 	base.Tools.Shell = old.Tools.Shell
-	if old.UI.Theme != "" {
-		base.UI.Theme = old.UI.Theme
-	}
 	base.UI.ShowFullPath = old.UI.ShowFullPath
 	if old.Behavior.DefaultProtocol != "" {
 		base.Behavior.DefaultProtocol = old.Behavior.DefaultProtocol

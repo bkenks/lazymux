@@ -1,6 +1,8 @@
 package app
 
 import (
+	"fmt"
+
 	tea "charm.land/bubbletea/v2"
 	"github.com/bkenks/lazymux/internal/commands"
 	"github.com/bkenks/lazymux/internal/config"
@@ -17,7 +19,7 @@ func (m *ModelManager) applySettings(edited config.Config) tea.Cmd {
 	saveFailed := m.saveConfig("settings", func(c *config.Config) {
 		c.Tools.Editor = edited.Tools.Editor
 		c.Behavior = edited.Behavior
-		c.UI.AccentColor = edited.UI.AccentColor
+		c.UI.Colors = edited.UI.Colors
 		c.UI.ShowFullPath = edited.UI.ShowFullPath
 		c.UI.ShowForge = edited.UI.ShowForge
 		c.UI.ShowStats = edited.UI.ShowStats
@@ -31,8 +33,8 @@ func (m *ModelManager) applySettings(edited config.Config) tea.Cmd {
 	return tea.Batch(append(cmds, m.toastCmd(events.ToastInfo, "settings saved"))...)
 }
 
-// showSettings applies the saved UI settings to the repo list, restyling it
-// when the accent color changed from prev.
+// showSettings applies the saved UI settings to the repo list, restyling the
+// app when the colors changed from prev.
 func (m *ModelManager) showSettings(prev config.UI) tea.Cmd {
 	ui := m.cfg.UI
 	domain.ShowFullPath = ui.ShowFullPath
@@ -45,13 +47,28 @@ func (m *ModelManager) showSettings(prev config.UI) tea.Cmd {
 		domain.Sort = domain.ParseSortMode(ui.SortMode)
 		cmds = append(cmds, m.main.Resort())
 	}
-	if ui.AccentColor != prev.AccentColor {
-		accent, err := styles.ParseAccent(ui.AccentColor)
-		if err != nil {
+	if ui.Colors != prev.Colors {
+		if err := ApplyColors(ui.Colors, styles.IsDark); err != nil {
 			cmds = append(cmds, m.toastCmd(events.ToastError, err.Error()))
 		}
-		styles.Apply(ui.Theme, styles.IsDark, accent)
 		m.main.Restyle()
+		m.cloneProgress = styles.NewProgress()
 	}
 	return tea.Batch(cmds...)
+}
+
+// ApplyColors styles the app with the base colors for a dark or a light
+// terminal background. Invalid colors fall back to the defaults and are
+// reported in the returned error.
+func ApplyColors(modes config.ColorModes, isDark bool) error {
+	mode, colors := "light", modes.Light
+	if isDark {
+		mode, colors = "dark", modes.Dark
+	}
+	palette, err := styles.NewPalette(colors.Main, colors.Accent, colors.Gray)
+	styles.Apply(palette, isDark)
+	if err != nil {
+		return fmt.Errorf("%s mode %w", mode, err)
+	}
+	return nil
 }

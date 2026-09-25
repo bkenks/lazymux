@@ -59,11 +59,11 @@ func New() *Model {
 	newList.AdditionalFullHelpKeys = constants.RepoListKeyMap.HelpBinds(constants.Full)
 
 	sp := spinner.New(spinner.WithSpinner(spinner.Dot))
-	sp.Style = lipgloss.NewStyle().Foreground(styles.Purple)
+	sp.Style = lipgloss.NewStyle().Foreground(styles.MainText)
 
 	m := &Model{
 		List:     newList,
-		progress: progress.New(progress.WithDefaultBlend(), progress.WithoutPercentage()),
+		progress: styles.NewProgress(),
 		spinner:  sp,
 	}
 	m.applySize()
@@ -312,11 +312,13 @@ func (m *Model) applySize() {
 func (m *Model) SyncForgeVisibility() { m.List.SetDelegate(newDelegate()) }
 
 // Restyle re-applies the current styles after styles.Apply changed them, such
-// as a new accent color saved from settings.
+// as new colors saved from settings.
 func (m *Model) Restyle() {
 	styles.StyleList(&m.List)
 	m.List.SetDelegate(newDelegate())
-	m.spinner.Style = lipgloss.NewStyle().Foreground(styles.Purple)
+	m.spinner.Style = lipgloss.NewStyle().Foreground(styles.MainText)
+	m.progress = styles.NewProgress()
+	m.applySize()
 }
 
 // UpdateRepoList replaces the list's items. It returns the command from

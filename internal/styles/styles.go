@@ -9,19 +9,22 @@ import (
 	colorful "github.com/lucasb-eyer/go-colorful"
 )
 
-// The palette colors and every style built from them are set by Apply, which
-// init runs with the default theme; rebuildStyles is their one definition.
+// The colors and every style built from them are set by Apply, which init runs
+// with the default palette; rebuildStyles is their one definition.
 var (
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Colors
-	DarkPink         color.Color
-	DullGrey         color.Color
-	Purple           color.Color
-	VerySubduedColor color.Color
-	SubduedColor     color.Color
-	MediumGrey       color.Color
-	DarkPurple       color.Color
-	White            color.Color
+	Main        color.Color
+	OnMain      color.Color
+	MainText    color.Color
+	Accent      color.Color
+	AccentMuted color.Color
+	Text        color.Color
+	Muted       color.Color
+	Subdued     color.Color
+	Faint       color.Color
+	Surface     color.Color
+	OnSurface   color.Color
 
 	// End "Colors"
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -107,12 +110,12 @@ var (
 )
 
 // newHelpModel builds a help.Model styled from the current palette. Rebuilt by
-// rebuildStyles so a theme swap re-colors it.
+// rebuildStyles so a palette change re-colors it.
 func newHelpModel() help.Model {
 	h := help.New()
 	h.Styles = help.DefaultStyles(IsDark)
-	key := lipgloss.NewStyle().Foreground(VerySubduedColor)
-	desc := lipgloss.NewStyle().Foreground(SubduedColor)
+	key := lipgloss.NewStyle().Foreground(Faint)
+	desc := lipgloss.NewStyle().Foreground(Subdued)
 	h.Styles.ShortKey = key
 	h.Styles.FullKey = key
 	h.Styles.ShortDesc = desc
@@ -137,16 +140,16 @@ const (
 )
 
 // Subtle renders muted secondary text (input labels, hints). It's a function
-// so it reads the current palette after styles.Apply swaps it for the theme.
-func Subtle(s string) string { return lipgloss.NewStyle().Foreground(MediumGrey).Render(s) }
+// so it reads the current palette after styles.Apply changes it.
+func Subtle(s string) string { return lipgloss.NewStyle().Foreground(Muted).Render(s) }
 
 // RenderToast renders the footer toast at the given opacity (0..1), blending its
 // text color toward the terminal background so it can fade in and out. width is
 // the full footer width; opacity>=1 renders at the plain palette color.
 func RenderToast(msg string, isError bool, opacity float64, width int) string {
-	base, target := ToastInfoStyle, SubduedColor
+	base, target := ToastInfoStyle, Subdued
 	if isError {
-		base, target = ToastErrorStyle, DarkPink
+		base, target = ToastErrorStyle, Accent
 	}
 	if opacity < 0 {
 		opacity = 0
