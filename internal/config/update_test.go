@@ -54,7 +54,7 @@ func TestUpdateKeepsEditsMadeByAnotherWriter(t *testing.T) {
 	stale := Load()
 
 	if _, err := Update(func(c *Config) {
-		c.Repos["ns/repo"] = RepoLink{Purpose: "written by the MCP server"}
+		c.Repos["ns/repo"] = RepoLink{TagPrefix: "written elsewhere/v"}
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -63,8 +63,8 @@ func TestUpdateKeepsEditsMadeByAnotherWriter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Repos["ns/repo"].Purpose != "written by the MCP server" {
-		t.Errorf("purpose lost: %+v", got.Repos["ns/repo"])
+	if got.Repos["ns/repo"].TagPrefix != "written elsewhere/v" {
+		t.Errorf("tag prefix lost: %+v", got.Repos["ns/repo"])
 	}
 	if stale.Tools.Editor == "vim" {
 		t.Error("Update mutated a previously loaded config")
@@ -173,45 +173,11 @@ func TestRepoLinkRenameUpstreamDropsDuplicate(t *testing.T) {
 	}
 }
 
-func TestRepoLinkWithForgeLinksKeepsDescription(t *testing.T) {
-	stored := RepoLink{Upstreams: []string{"a"}, Origin: "a", Purpose: "p", Context: "c"}
-	edited := RepoLink{Upstreams: []string{"b"}, Origin: "b", Scheme: SchemeSSH}
-
-	got := stored.WithForgeLinks(edited)
-	if got.Purpose != "p" || got.Context != "c" || got.Origin != "b" || got.Scheme != SchemeSSH {
-		t.Errorf("got %+v", got)
-	}
-}
-
 func TestRepoLinkWithForgeLinksKeepsTagFormat(t *testing.T) {
 	stored := RepoLink{Origin: "a", TagPrefix: "v", TagSuffix: "-pkg"}
 
 	got := stored.WithForgeLinks(RepoLink{Origin: "b"})
 	if got.TagPrefix != "v" || got.TagSuffix != "-pkg" {
 		t.Errorf("got %+v, want the tag format kept", got)
-	}
-}
-
-func TestRepoLinkWithRepoSettingsKeepsDescription(t *testing.T) {
-	stored := RepoLink{Origin: "a", TagPrefix: "v", Purpose: "p", Context: "c"}
-	edited := RepoLink{Upstreams: []string{"b"}, Origin: "b", TagSuffix: "-pkg"}
-
-	got := stored.WithRepoSettings(edited)
-	if got.Purpose != "p" || got.Context != "c" || got.Origin != "b" {
-		t.Errorf("got %+v", got)
-	}
-	if got.TagPrefix != "" || got.TagSuffix != "-pkg" {
-		t.Errorf("tag format = %q/%q, want the edited one", got.TagPrefix, got.TagSuffix)
-	}
-}
-
-func TestLoadReplacesOutOfRangeMCPPort(t *testing.T) {
-	writeConfigFile(t, `{"mcp": {"port": 99999}}`)
-	cfg := Load()
-	if cfg.MCP.Port != DefaultMCPPort {
-		t.Errorf("Port = %d, want the default", cfg.MCP.Port)
-	}
-	if len(cfg.Warnings) != 1 {
-		t.Errorf("Warnings = %q, want one for the bad port", cfg.Warnings)
 	}
 }

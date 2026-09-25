@@ -4,11 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -29,14 +27,6 @@ const DefaultSortMode = "recent"
 const (
 	SchemeHTTPS = "https"
 	SchemeSSH   = "ssh"
-)
-
-// Defaults for the MCP server. It binds to loopback so the repo inventory
-// isn't exposed to the network unless the user opts in via `mcp set-url`.
-const (
-	DefaultMCPHost = "127.0.0.1"
-	DefaultMCPPort = 7777
-	DefaultMCPPath = "/mcp"
 )
 
 type Tools struct {
@@ -94,9 +84,7 @@ type Forge struct {
 // the repo is pushed to; Origin is the single one the placeholder insteadOf
 // rewrite resolves to, making it the fetch/pull URL. Origin is always one of
 // Upstreams. Scheme is the URL scheme used for that repo. TagPrefix and
-// TagSuffix wrap the version in the repo's release tags. It also carries the
-// human/LLM-facing description of the repo written by the MCP server (see
-// internal/mcp).
+// TagSuffix wrap the version in the repo's release tags.
 type RepoLink struct {
 	Upstreams []string `json:"upstreams"`
 	Origin    string   `json:"origin"`
@@ -110,13 +98,6 @@ type RepoLink struct {
 	// the file on the next Save.
 	LegacyForges  []string `json:"forges,omitempty"`
 	LegacyPrimary string   `json:"primary,omitempty"`
-
-	// Purpose is a one-line summary of what the repo is for, used to route a
-	// natural-language request to the right repo.
-	Purpose string `json:"purpose,omitempty"`
-	// Context is longer-form detail — stack, conventions, when to reach for
-	// this repo over a sibling.
-	Context string `json:"context,omitempty"`
 }
 
 // Clone returns a copy of the link that shares no slices with the original.
@@ -194,7 +175,7 @@ func (l *RepoLink) ToggleScheme() {
 }
 
 // WithForgeLinks returns l with Upstreams, Origin and Scheme taken from src,
-// keeping l's Purpose and Context.
+// keeping l's tag format.
 func (l RepoLink) WithForgeLinks(src RepoLink) RepoLink {
 	l.Upstreams = slices.Clone(src.Upstreams)
 	l.Origin = src.Origin
@@ -202,20 +183,9 @@ func (l RepoLink) WithForgeLinks(src RepoLink) RepoLink {
 	return l
 }
 
-// WithRepoSettings returns l with the forge links and tag format taken from
-// src, keeping l's Purpose and Context.
-func (l RepoLink) WithRepoSettings(src RepoLink) RepoLink {
-	l = l.WithForgeLinks(src)
-	l.TagPrefix = src.TagPrefix
-	l.TagSuffix = src.TagSuffix
-	return l
-}
-
-// IsEmpty reports whether the link records no forges, tag format or
-// description.
+// IsEmpty reports whether the link records neither forges nor a tag format.
 func (l RepoLink) IsEmpty() bool {
-	return len(l.Upstreams) == 0 && l.Origin == "" && l.TagPrefix == "" &&
-		l.TagSuffix == "" && l.Purpose == "" && l.Context == ""
+	return len(l.Upstreams) == 0 && l.Origin == "" && l.TagPrefix == "" && l.TagSuffix == ""
 }
 
 // NormalizeScheme maps any scheme string to SchemeSSH or SchemeHTTPS.
@@ -224,34 +194,6 @@ func NormalizeScheme(scheme string) string {
 		return SchemeSSH
 	}
 	return SchemeHTTPS
-}
-
-// MCP configures the MCP server that exposes the repo inventory to LLMs.
-type MCP struct {
-	// Host is the bind address ("127.0.0.1" to stay local, "0.0.0.0" to expose
-	// the server on the network).
-	Host string `json:"host"`
-	Port int    `json:"port"`
-	// Path is the HTTP path the streamable-HTTP endpoint is mounted at.
-	Path string `json:"path"`
-}
-
-// Endpoint is the full URL clients connect to.
-func (m MCP) Endpoint() string {
-	return fmt.Sprintf("http://%s%s", m.Addr(), m.Path)
-}
-
-// ValidatePort reports an error unless port is a usable TCP port.
-func ValidatePort(port int) error {
-	if port < 1 || port > 65535 {
-		return fmt.Errorf("port %d is out of range (1-65535)", port)
-	}
-	return nil
-}
-
-// Addr is the host:port pair passed to net.Listen.
-func (m MCP) Addr() string {
-	return net.JoinHostPort(m.Host, strconv.Itoa(m.Port))
 }
 
 // Keybind binds a key combo on the repo list to a shell command that runs in
@@ -277,7 +219,6 @@ type Config struct {
 	Tools    Tools    `json:"tools"`
 	UI       UI       `json:"ui"`
 	Behavior Behavior `json:"behavior"`
-	MCP      MCP      `json:"mcp"`
 
 	Forges   []Forge   `json:"forges"`
 	Keybinds []Keybind `json:"keybinds"`
@@ -310,11 +251,6 @@ func Default() Config {
 		Behavior: Behavior{
 			DefaultProtocol: SchemeHTTPS,
 			ConfirmDelete:   true,
-		},
-		MCP: MCP{
-			Host: DefaultMCPHost,
-			Port: DefaultMCPPort,
-			Path: DefaultMCPPath,
 		},
 		Forges:   []Forge{},
 		Keybinds: []Keybind{},
@@ -512,24 +448,6 @@ func normalize(cfg Config) Config {
 				cfg.Behavior.DefaultProtocol, d.Behavior.DefaultProtocol))
 		cfg.Behavior.DefaultProtocol = d.Behavior.DefaultProtocol
 	}
-	if cfg.MCP.Host == "" {
-		cfg.MCP.Host = d.MCP.Host
-	}
-	if cfg.MCP.Port == 0 {
-		cfg.MCP.Port = d.MCP.Port
-	} else if err := ValidatePort(cfg.MCP.Port); err != nil {
-		cfg.Warnings = append(cfg.Warnings,
-			fmt.Sprintf("mcp %v, using %d", err, d.MCP.Port))
-		cfg.MCP.Port = d.MCP.Port
-	}
-	// A hand-edited path like "mcp" or "/mcp/" would otherwise never match the
-	// route the server registers.
-	cfg.MCP.Path = strings.TrimRight(cfg.MCP.Path, "/")
-	if cfg.MCP.Path == "" {
-		cfg.MCP.Path = d.MCP.Path
-	} else if !strings.HasPrefix(cfg.MCP.Path, "/") {
-		cfg.MCP.Path = "/" + cfg.MCP.Path
-	}
 	if cfg.Repos == nil {
 		cfg.Repos = map[string]RepoLink{}
 	}
@@ -678,7 +596,7 @@ func migrateLegacy(base Config) (Config, bool) {
 
 // Save serializes cfg to Path() as indented JSON, creating parents as needed.
 // The write goes to a temp file in the same directory and is renamed into
-// place, so a crash (or the MCP server and the TUI writing at once) can't
+// place, so a crash (or two lazymux processes writing at once) can't
 // leave a half-written config behind.
 func Save(cfg Config) error {
 	if cfg.LoadFailed {

@@ -316,11 +316,10 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case events.RepoSettingsChanged:
 			cmds = append(cmds, m.saveConfig("repo settings", func(c *config.Config) {
-				link := c.Repos[msg.Key].WithRepoSettings(msg.Link)
-				if link.IsEmpty() {
+				if msg.Link.IsEmpty() {
 					delete(c.Repos, msg.Key)
 				} else {
-					c.Repos[msg.Key] = link
+					c.Repos[msg.Key] = msg.Link
 				}
 			}))
 			if msg.Link.Origin != "" {
@@ -473,8 +472,8 @@ func (m *ModelManager) saveKeybinds(keybinds []config.Keybind) tea.Cmd {
 	return m.toastCmd(events.ToastInfo, "keybinds saved")
 }
 
-// saveConfig applies change to the config file, re-read first so edits the MCP
-// server made meanwhile survive, and adopts the result as the app's config. If
+// saveConfig applies change to the config file, re-read first so edits another
+// process made meanwhile survive, and adopts the result as the app's config. If
 // the write fails, change is still applied in memory for this session and the
 // returned command toasts the error, naming what couldn't be saved. It returns
 // nil on success.

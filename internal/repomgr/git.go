@@ -149,17 +149,6 @@ func exitCode(err error) int {
 // containing a .git entry; walking stops descending once one is found, so
 // nested namespaces work.
 func List(cfg config.Config) ([]domain.Repo, error) {
-	return list(cfg, true)
-}
-
-// ListMeta is List without the per-repo git stats, which cost three git
-// subprocesses each. Callers that only need locations and forge links (the
-// MCP server) should use this.
-func ListMeta(cfg config.Config) ([]domain.Repo, error) {
-	return list(cfg, false)
-}
-
-func list(cfg config.Config, withStats bool) ([]domain.Repo, error) {
 	if err := cfg.ValidateRepoRoot(); err != nil {
 		return nil, err
 	}
@@ -190,10 +179,7 @@ func list(cfg config.Config, withStats bool) ([]domain.Repo, error) {
 		path := filepath.Join(base, rel)
 		key := filepath.ToSlash(rel)
 		link := cfg.Repos[key]
-		var stats repoStats
-		if withStats {
-			stats = gitStats(path)
-		}
+		stats := gitStats(path)
 		repos = append(repos, domain.Repo{
 			Name:             filepath.Base(path),
 			Path:             key,

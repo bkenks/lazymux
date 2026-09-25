@@ -130,7 +130,7 @@ func TestListFollowsSymlinkedBaseDir(t *testing.T) {
 	}
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 
-	repos, err := ListMeta(config.Config{ReposDir: link})
+	repos, err := List(config.Config{ReposDir: link})
 	if err != nil {
 		t.Fatal(err)
 	}

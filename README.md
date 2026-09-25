@@ -110,7 +110,6 @@ lazymux](.project/docs/build.md) for the other build tasks.
 lazymux            # launch the TUI
 lazymux --help     # show keybindings + config location
 lazymux --version  # show the version
-lazymux mcp start  # serve the repo inventory to LLMs (see "MCP server")
 ```
 
 On first run, lazymux creates `~/.config/lazymux/config.json` (moving an existing `~/lazymux/.lazymux.json` there, or migrating a `~/.config/lazymux/config.toml`, if present). If no [repo directory](#repo-directory) is set yet, it asks you for one, then lists any repos already in it. Register your forges (`F`), then clone (`n`) to start pulling repos in.
@@ -240,100 +239,6 @@ Changes save to disk immediately.
 
 ---
 
-## MCP server
-
-lazymux already knows where every repo on your machine lives. `lazymux mcp` hands that
-inventory to an LLM over the [Model Context Protocol](https://modelcontextprotocol.io),
-so an assistant can work out *which* repo a request is about — "fix the login bug on the
-marketing site" — and get back an absolute path instead of guessing or globbing your home
-directory.
-
-```bash
-lazymux mcp start            # start it in the background
-lazymux mcp stop             # stop it
-lazymux mcp list             # config, endpoint, and whether it's running (alias: status)
-lazymux mcp set-port 8080    # change the port
-lazymux mcp set-url 0.0.0.0  # change the bind host (accepts host, host:port, or a full URL)
-lazymux mcp serve            # run in the foreground, for a supervisor or for debugging
-```
-
-`start` and `stop` are unix-only; on Windows, run `lazymux mcp serve` instead.
-
-Then point a client at the endpoint (`http://127.0.0.1:7777/mcp` by default):
-
-```bash
-claude mcp add --transport http lazymux http://127.0.0.1:7777/mcp
-```
-
-### Running the MCP server as a service
-
-`lazymux mcp start` has to be re-run after every reboot. To keep the endpoint up, hand
-`lazymux mcp serve` — the foreground mode — to a supervisor.
-
-**systemd user unit.** Write `~/.config/systemd/user/lazymux-mcp.service`:
-
-```ini
-[Unit]
-Description=lazymux MCP server
-
-[Service]
-ExecStart=%h/.local/bin/lazymux mcp serve
-Restart=always
-
-[Install]
-WantedBy=default.target
-```
-
-```bash
-systemctl --user enable --now lazymux-mcp
-loginctl enable-linger "$USER"   # keep it running when you are not logged in
-```
-
-Run only one supervisor — two will fight over the port. A supervised server replaces
-`lazymux mcp start`; don't run both.
-
-### Tools
-
-| tool | what it does |
-|---|---|
-| `list_repositories` | every managed repo — path, forge links, recorded purpose. Recently-used first. |
-| `search_repositories` | rank repos against a plain-English description of the task |
-| `get_repository` | one repo by its `<namespace>/<name>` key |
-| `set_repository_purpose` | write a `purpose` and/or `context` back into the config |
-
-That last one is what makes this improve over time. A repo starts out as just a path; once
-an assistant works out what it's for it records a purpose, and every later session routes
-straight there. `list_repositories` reports which repos still have nothing recorded, so a
-model knows what's worth describing.
-
-Purposes land in the same `repos` object as forge links:
-
-```json
-"repos": {
-  "bkenks/myrepo": {
-    "upstreams": ["forgejo", "github"],
-    "origin": "forgejo",
-    "scheme": "https",
-    "purpose": "compose stacks for the homelab",
-    "context": "One directory per stack. Deployed by Komodo; don't edit .env by hand."
-  }
-}
-```
-
-You can write these by hand too — the MCP server is just one way to fill them in.
-
-The server binds to `127.0.0.1` by default, so the inventory isn't exposed to your network.
-`set-url 0.0.0.0` opts into that; there's no authentication, so only do it on a network you
-trust. Changing the host or port doesn't affect a server that's already running — stop and
-start it to apply.
-
-State lives next to the config: `.lazymux-mcp.pid` and `.lazymux-mcp.log` in the same
-directory as `config.json`, so `$LAZYMUX_CONFIG` keeps a dev instance fully separate.
-While running, the server holds a lock on the pidfile; a pidfile nobody holds is stale
-and is cleared, so a crashed server never blocks the next start.
-
----
-
 ## Configuration
 
 Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`, by default `~/.config/lazymux/config.json` (override the path with `$LAZYMUX_CONFIG`). It's created on first run — moving a config from the old `~/lazymux/.lazymux.json` location, or migrating the legacy `~/.config/lazymux/config.toml`, if either exists. Edit it directly or use the in-app screens.
@@ -360,11 +265,6 @@ Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`
     "defaultProtocol": "https",
     "confirmDelete": true
   },
-  "mcp": {
-    "host": "127.0.0.1",
-    "port": 7777,
-    "path": "/mcp"
-  },
   "forges": [
     { "name": "github", "host": "github.com" },
     { "name": "forgejo", "host": "fj.example.com" }
@@ -377,8 +277,7 @@ Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`
       "upstreams": ["forgejo", "github"],
       "origin": "forgejo",
       "scheme": "https",
-      "tagPrefix": "v",
-      "purpose": "compose stacks for the homelab"
+      "tagPrefix": "v"
     }
   }
 }
@@ -386,11 +285,10 @@ Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`
 
 - `reposDir` — directory repos live under as `<namespace>/<repo>`; see [Repo directory](#repo-directory).
 - `placeholderHost` — the fake host stored in every managed repo's `origin`.
-- `mcp` — where the MCP server binds (managed with `lazymux mcp set-url` / `set-port`).
 - `forges` — the registry (managed in-app with `F`).
 - `keybinds` — custom keybinds (managed in-app with `2`).
 - `repos` — per-repo upstreams, origin, scheme, and `tagPrefix`/`tagSuffix` (managed in-app
-  with `3`), plus the `purpose`/`context` the MCP server reads and writes.
+  with `3`).
 
 - `ui.sortMode` — repo list order: `recent`, `name-asc`, `name-desc`, or `namespace` (cycled in-app with `S`).
 - `ui.colors` — three hex base colors (`#7D56F4` or `#75F`) that every color in the UI comes

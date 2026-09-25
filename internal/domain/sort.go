@@ -74,13 +74,12 @@ func SortRepos(items []list.Item, mode SortMode) {
 		if !aok || !bok {
 			return false
 		}
-		return LessRepo(a, b, mode)
+		return lessRepo(a, b, mode)
 	})
 }
 
-// LessRepo reports whether a sorts before b under mode. It is the single
-// ordering the repo list and the MCP inventory share.
-func LessRepo(a, b Repo, mode SortMode) bool {
+// lessRepo reports whether a sorts before b under mode.
+func lessRepo(a, b Repo, mode SortMode) bool {
 	switch mode {
 	case SortNameAsc:
 		return lessName(a, b)
