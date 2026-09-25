@@ -160,13 +160,13 @@ func ListMeta(cfg config.Config) ([]domain.Repo, error) {
 }
 
 func list(cfg config.Config, withStats bool) ([]domain.Repo, error) {
+	if err := cfg.ValidateRepoRoot(); err != nil {
+		return nil, err
+	}
 	base := cfg.RepoRoot()
 	// WalkDir doesn't follow a symlinked root, so walk its target and report
 	// paths under base as configured.
 	root, err := filepath.EvalSymlinks(base)
-	if os.IsNotExist(err) {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, fmt.Errorf("resolving %s: %w", base, err)
 	}

@@ -12,4 +12,5 @@ const (
 	StateForgeRegistry // manage the forge registry
 	StateRepoForges    // change a repo's upstreams/origin/scheme
 	StateKeybinds      // manage custom keybinds
+	StateReposDir      // choose the repo directory before the repo list opens
 )

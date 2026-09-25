@@ -12,7 +12,7 @@
 
 **lazymux** is a TUI (Terminal User Interface) built with [Bubbletea](https://github.com/charmbracelet/bubbletea) that manages where your repositories live and unifies them with your editor and the terminal tools you use in a single workflow. It gives you a searchable list of all your repos, and from there you can clone new repos, delete old ones, copy a repo's path, drop into a shell, open the project in your editor, or run any command you've bound to a key — all with a keystroke.
 
-It manages repo locations natively (no `ghq` required): repos are cloned into `<root>/<namespace>/<repo>` (see [Repo root](#repo-root)), and a **forge registry** lets you link each repo to one or more git hosts (GitHub, a self-hosted Forgejo/Gitea, GitLab, …) as **upstreams**, with one of them set as the **origin** you fetch from.
+It manages repo locations natively (no `ghq` required): repos are cloned into `<repos>/<namespace>/<repo>` (see [Repo directory](#repo-directory)), and a **forge registry** lets you link each repo to one or more git hosts (GitHub, a self-hosted Forgejo/Gitea, GitLab, …) as **upstreams**, with one of them set as the **origin** you fetch from.
 
 No more `cd`-ing around. No more remembering paths. Just launch `lazymux` and go.
 
@@ -42,7 +42,7 @@ lazymux is built for repos that live on more than one host — for example a sel
 
 ## Features
 
-- **Native repo management** — clone into `<root>/<namespace>/<repo>`, list, delete, and pull-all, all with plain `git` (no `ghq`)
+- **Native repo management** — clone into `<repos>/<namespace>/<repo>`, list, delete, and pull-all, all with plain `git` (no `ghq`)
 - **Forge registry** — register git hosts and link repos to one or more of them as upstreams, with a per-repo origin
 - **Stable placeholder remotes** — switch a repo's forge without ever touching its `origin`
 - **Browse all repos** in a clean, filterable list, sorted by most-recently used
@@ -112,7 +112,7 @@ lazymux --version  # show the version
 lazymux mcp start  # serve the repo inventory to LLMs (see "MCP server")
 ```
 
-On first run, lazymux creates `~/.config/lazymux/config.json` (moving an existing `~/lazymux/.lazymux.json` there, or migrating a `~/.config/lazymux/config.toml`, if present). It then lists any repos already under the [repo root](#repo-root). Register your forges (`F`), then clone (`n`) to start pulling repos in.
+On first run, lazymux creates `~/.config/lazymux/config.json` (moving an existing `~/lazymux/.lazymux.json` there, or migrating a `~/.config/lazymux/config.toml`, if present). If no [repo directory](#repo-directory) is set yet, it asks you for one, then lists any repos already in it. Register your forges (`F`), then clone (`n`) to start pulling repos in.
 
 ---
 
@@ -324,7 +324,7 @@ Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`
 
 ```json
 {
-  "baseDir": "~/Development",
+  "reposDir": "/home/you/Development",
   "placeholderHost": "lazymux-placeholder",
   "tools": {
     "editor": "codium",
@@ -365,7 +365,7 @@ Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`
 }
 ```
 
-- `baseDir` — root under which repos live as `<namespace>/<repo>`. Omit it to use the default; see [Repo root](#repo-root).
+- `reposDir` — directory repos live under as `<namespace>/<repo>`; see [Repo directory](#repo-directory).
 - `placeholderHost` — the fake host stored in every managed repo's `origin`.
 - `mcp` — where the MCP server binds (managed with `lazymux mcp set-url` / `set-port`).
 - `forges` — the registry (managed in-app with `F`).
@@ -383,16 +383,11 @@ Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`
 
 The in-app settings screen is one form covering `editor`, `defaultProtocol`, `confirmDelete`, `showFullPath`, `showForge`, `showStats`, `sortMode`, and `accentColor`. `enter` moves to the next field and saves on the last one; `esc` leaves without saving. The editor field resolves the command on `PATH` and won't let the form save one it cannot find; the accent field only takes a hex value. `shell` (the shell keybind commands and `s` use) and `theme` are file-only for now — edit and relaunch.
 
-### Repo root
+### Repo directory
 
-Repos live under the first of these that is set:
+Repos live under `$LAZYMUX_REPOS` if it is set, otherwise under `reposDir` in the config. lazymux has no default: at startup, if neither names an existing directory, it asks for one before opening the repo list, creating the directory if needed and saving it as `reposDir`. The prompt only closes once a directory is set (`ctrl+c` quits).
 
-1. `$LAZYMUX_ROOT`
-2. `baseDir` in the config
-3. `$XDG_DATA_HOME/lazymux/repos`
-4. `~/.local/share/lazymux/repos`
-
-A config moved from `~/lazymux/.lazymux.json` keeps `baseDir` pointing at `~/lazymux`, so existing repos stay where they are. Move them and change or remove `baseDir` to relocate them.
+A config that still has the older `baseDir` key is read as `reposDir`. A config moved from `~/lazymux/.lazymux.json` keeps pointing at `~/lazymux`, so existing repos stay where they are; move them and change `reposDir` to relocate them.
 
 Repo interaction history (used for recency sorting) lives at `$XDG_DATA_HOME/lazymux/interactions.json` (fallback `~/.local/share/lazymux/interactions.json`).
 
@@ -406,7 +401,7 @@ lazymux is built using the [Charmbracelet](https://github.com/charmbracelet) sta
 - **[Bubbles](https://github.com/charmbracelet/bubbles)** — Pre-built TUI components (list, text input, key bindings)
 - **[Lipgloss](https://github.com/charmbracelet/lipgloss)** — Terminal styling and layout
 
-On startup, lazymux walks the repo root to populate the repository list. Cloning runs `git clone` against the real URL, then rewrites the repo to a placeholder `origin` resolved to its origin forge (plus a push URL per upstream); a custom keybind hands the terminal to its command until it exits; deletion removes the local directory (and now-empty namespace parents). Errors surface in the status footer instead of crashing the TUI.
+On startup, lazymux walks the repo directory to populate the repository list. Cloning runs `git clone` against the real URL, then rewrites the repo to a placeholder `origin` resolved to its origin forge (plus a push URL per upstream); a custom keybind hands the terminal to its command until it exits; deletion removes the local directory (and now-empty namespace parents). Errors surface in the status footer instead of crashing the TUI.
 
 ---
 

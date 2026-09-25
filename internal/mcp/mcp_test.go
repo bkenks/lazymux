@@ -185,7 +185,7 @@ func newTestWorkspace(t *testing.T, keys ...string) config.Config {
 	}
 
 	cfg := config.Default()
-	cfg.BaseDir = base
+	cfg.ReposDir = base
 	if err := config.Save(cfg); err != nil {
 		t.Fatalf("saving config: %v", err)
 	}
@@ -214,7 +214,7 @@ func TestInventoryFindsReposAndPurposes(t *testing.T) {
 	if got.Namespace != "bkenks" {
 		t.Errorf("Namespace = %q, want %q", got.Namespace, "bkenks")
 	}
-	if got.Path != filepath.Join(cfg.BaseDir, "bkenks", "lazymux") {
+	if got.Path != filepath.Join(cfg.ReposDir, "bkenks", "lazymux") {
 		t.Errorf("Path = %q, want the absolute on-disk path", got.Path)
 	}
 }

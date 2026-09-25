@@ -25,6 +25,7 @@ import (
 	"github.com/bkenks/lazymux/internal/ui/keybinds"
 	"github.com/bkenks/lazymux/internal/ui/repoforges"
 	"github.com/bkenks/lazymux/internal/ui/repolist"
+	"github.com/bkenks/lazymux/internal/ui/reposdir"
 	"github.com/bkenks/lazymux/internal/ui/settings"
 	"github.com/bkenks/lazymux/internal/ui/splash"
 )
@@ -56,6 +57,7 @@ type ModelManager struct {
 	forgeRegistry *forgeregistry.Model
 	repoForges    *repoforges.Model
 	keybinds      *keybinds.Model
+	reposDir      *reposdir.Model
 
 	active tea.Model
 
@@ -98,7 +100,10 @@ func New(cfg config.Config, version string) *ModelManager {
 }
 
 func (m *ModelManager) Init() tea.Cmd {
-	cmds := []tea.Cmd{m.splash.Init(), commands.RefreshReposCmd()}
+	cmds := []tea.Cmd{m.splash.Init()}
+	if m.cfg.ValidateRepoRoot() == nil {
+		cmds = append(cmds, commands.RefreshReposCmd())
+	}
 	warnings := append(slices.Clone(m.cfg.Warnings), m.keybindClashes()...)
 	if len(warnings) > 0 {
 		cmds = append(cmds, m.toastCmd(events.ToastError, strings.Join(warnings, "; ")))
@@ -124,8 +129,8 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case domain.StateSplash:
 				m.active = &m.splash
 
-			case domain.StateMain:
-				m.active = &m.main
+			case domain.StateMain, domain.StateReposDir:
+				cmds = append(cmds, m.showMainOrReposDir())
 
 			case domain.StateConfirmDelete:
 				repo, ok := m.main.List.SelectedItem().(domain.Repo)
@@ -389,6 +394,8 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case events.SettingsChanged:
 			cmds = append(cmds, m.applySettings(msg.Config))
+		case events.ReposDirChosen:
+			cmds = append(cmds, m.applyReposDir(msg.Dir))
 		}
 	}
 

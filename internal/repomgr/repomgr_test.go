@@ -107,7 +107,7 @@ func TestRenderGitConfig(t *testing.T) {
 	}
 
 	cfg := config.Config{
-		BaseDir:         base,
+		ReposDir:        base,
 		PlaceholderHost: config.DefaultPlaceholderHost,
 		Forges: []config.Forge{
 			{Name: "github", Host: "github.com"},

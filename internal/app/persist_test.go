@@ -14,7 +14,7 @@ import (
 func newPersistedApp(t *testing.T, cfg config.Config) *ModelManager {
 	t.Helper()
 	t.Setenv("LAZYMUX_CONFIG", filepath.Join(t.TempDir(), ".lazymux.json"))
-	cfg.BaseDir = t.TempDir()
+	cfg.ReposDir = t.TempDir()
 	if err := config.Save(cfg); err != nil {
 		t.Fatal(err)
 	}

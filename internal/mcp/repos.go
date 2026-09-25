@@ -40,7 +40,7 @@ func (r RepoInfo) Described() bool { return r.Purpose != "" || r.Context != "" }
 func inventory(cfg config.Config) ([]RepoInfo, error) {
 	repos, err := repomgr.ListMeta(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("scanning %s: %w", cfg.RepoRoot(), err)
+		return nil, fmt.Errorf("scanning repos (start lazymux to set the repo directory): %w", err)
 	}
 	sort.SliceStable(repos, func(i, j int) bool {
 		return domain.LessRepo(repos[i], repos[j], domain.SortRecent)

@@ -83,13 +83,13 @@ func TestUpdateCreatesMissingConfig(t *testing.T) {
 	}
 }
 
-func TestLoadNormalizesBaseDir(t *testing.T) {
+func TestLoadNormalizesReposDir(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	writeConfigFile(t, `{"baseDir": "~/repos/../lazymux/"}`)
 
-	if got, want := Load().BaseDir, filepath.Join(home, "lazymux"); got != want {
-		t.Errorf("BaseDir = %q, want %q", got, want)
+	if got, want := Load().ReposDir, filepath.Join(home, "lazymux"); got != want {
+		t.Errorf("ReposDir = %q, want %q", got, want)
 	}
 }
 

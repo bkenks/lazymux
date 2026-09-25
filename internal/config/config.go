@@ -239,10 +239,12 @@ type Keybind struct {
 }
 
 type Config struct {
-	// BaseDir is the configured root under which repos live as
-	// <namespace>/<repo>. Empty means the default; RepoRoot resolves the
-	// directory actually used.
-	BaseDir         string `json:"baseDir,omitempty"`
+	// ReposDir is the configured directory repos live under as
+	// <namespace>/<repo>. RepoRoot resolves the directory actually used.
+	ReposDir string `json:"reposDir,omitempty"`
+	// LegacyBaseDir holds the pre-reposDir key. normalize folds it into
+	// ReposDir, and it is never written back.
+	LegacyBaseDir   string `json:"baseDir,omitempty"`
 	PlaceholderHost string `json:"placeholderHost"`
 
 	Tools    Tools    `json:"tools"`
@@ -323,16 +325,54 @@ func DataDir() string {
 	return filepath.Join(xdgDir("XDG_DATA_HOME", ".local", "share"), dirName)
 }
 
-// RepoRoot is the directory repos live under: $LAZYMUX_ROOT, then the
-// configured baseDir, then a repos directory in DataDir.
+// ReposEnvVar names the environment variable that overrides reposDir.
+const ReposEnvVar = "LAZYMUX_REPOS"
+
+// RepoRoot is the directory repos live under: $LAZYMUX_REPOS, then the
+// configured reposDir. It is empty when neither is set.
 func (c Config) RepoRoot() string {
-	if root := os.Getenv("LAZYMUX_ROOT"); root != "" {
-		return normalizeBaseDir(root)
+	if dir := os.Getenv(ReposEnvVar); dir != "" {
+		return normalizeDir(dir)
 	}
-	if c.BaseDir != "" {
-		return c.BaseDir
+	return c.ReposDir
+}
+
+// ValidateRepoRoot reports why RepoRoot can't hold repos: it is unset, missing
+// or not a directory.
+func (c Config) ValidateRepoRoot() error {
+	root := c.RepoRoot()
+	if root == "" {
+		return errors.New("no repo directory is set")
 	}
-	return filepath.Join(DataDir(), "repos")
+	info, err := os.Stat(root)
+	if errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("repo directory %s doesn't exist", root)
+	}
+	if err != nil {
+		return fmt.Errorf("checking repo directory %s: %w", root, err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("repo directory %s isn't a directory", root)
+	}
+	return nil
+}
+
+// ParseReposDir turns a user-entered repo directory into the clean absolute
+// path to store, expanding a leading ~. It rejects empty and relative input
+// and an existing path that isn't a directory.
+func ParseReposDir(input string) (string, error) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return "", errors.New("enter a directory")
+	}
+	dir := normalizeDir(input)
+	if !filepath.IsAbs(expandHome(input)) {
+		return "", errors.New("use an absolute path or one starting with ~")
+	}
+	if info, err := os.Stat(dir); err == nil && !info.IsDir() {
+		return "", fmt.Errorf("%s isn't a directory", dir)
+	}
+	return dir, nil
 }
 
 // Path returns the resolved config file path: config.json under
@@ -422,8 +462,12 @@ func readFile(path string) (Config, error) {
 // rest of the app can assume sane values.
 func normalize(cfg Config) Config {
 	d := Default()
-	if cfg.BaseDir != "" {
-		cfg.BaseDir = normalizeBaseDir(cfg.BaseDir)
+	if cfg.ReposDir == "" {
+		cfg.ReposDir = cfg.LegacyBaseDir
+	}
+	cfg.LegacyBaseDir = ""
+	if cfg.ReposDir != "" {
+		cfg.ReposDir = normalizeDir(cfg.ReposDir)
 	}
 	if cfg.PlaceholderHost == "" {
 		cfg.PlaceholderHost = d.PlaceholderHost
@@ -484,14 +528,20 @@ func normalize(cfg Config) Config {
 	return cfg
 }
 
-// normalizeBaseDir expands a leading ~ and makes dir absolute and clean, so
-// path comparisons against it hold.
-func normalizeBaseDir(dir string) string {
+// expandHome replaces a leading ~ in dir with the home directory.
+func expandHome(dir string) string {
 	if dir == "~" || strings.HasPrefix(dir, "~/") {
 		if home, err := os.UserHomeDir(); err == nil {
-			dir = filepath.Join(home, strings.TrimPrefix(dir, "~"))
+			return filepath.Join(home, strings.TrimPrefix(dir, "~"))
 		}
 	}
+	return dir
+}
+
+// normalizeDir expands a leading ~ and makes dir absolute and clean, so path
+// comparisons against it hold.
+func normalizeDir(dir string) string {
+	dir = expandHome(dir)
 	if abs, err := filepath.Abs(dir); err == nil {
 		return abs
 	}
@@ -559,8 +609,8 @@ func moveLegacyJSON(path string) (Config, bool) {
 			"using defaults, changes won't be saved: %v (fix it to move it to %s)", err, path)}
 		return cfg, true
 	}
-	if cfg.BaseDir == "" {
-		cfg.BaseDir = filepath.Dir(legacy)
+	if cfg.ReposDir == "" {
+		cfg.ReposDir = filepath.Dir(legacy)
 	}
 	if err := Save(cfg); err != nil {
 		cfg.Warnings = append(cfg.Warnings,

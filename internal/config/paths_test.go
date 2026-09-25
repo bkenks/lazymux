@@ -21,31 +21,112 @@ func isolatePaths(t *testing.T) string {
 
 func TestRepoRootResolutionOrder(t *testing.T) {
 	home := isolatePaths(t)
-	dataHome := filepath.Join(home, "data")
-	envRoot := filepath.Join(home, "env-root")
+	envDir := filepath.Join(home, "env-repos")
 
 	tests := []struct {
 		name     string
-		lazyRoot string
-		dataHome string
-		baseDir  string
+		envRepos string
+		reposDir string
 		want     string
 	}{
-		{"home fallback", "", "", "", filepath.Join(home, ".local", "share", "lazymux", "repos")},
-		{"relative XDG_DATA_HOME ignored", "", "data", "", filepath.Join(home, ".local", "share", "lazymux", "repos")},
-		{"XDG_DATA_HOME", "", dataHome, "", filepath.Join(dataHome, "lazymux", "repos")},
-		{"baseDir beats XDG_DATA_HOME", "", dataHome, "/srv/repos", "/srv/repos"},
-		{"LAZYMUX_ROOT beats baseDir", envRoot, dataHome, "/srv/repos", envRoot},
-		{"LAZYMUX_ROOT expands ~", "~/code", "", "", filepath.Join(home, "code")},
+		{"unset", "", "", ""},
+		{"reposDir", "", "/srv/repos", "/srv/repos"},
+		{"LAZYMUX_REPOS beats reposDir", envDir, "/srv/repos", envDir},
+		{"LAZYMUX_REPOS expands ~", "~/code", "", filepath.Join(home, "code")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("LAZYMUX_ROOT", tt.lazyRoot)
-			t.Setenv("XDG_DATA_HOME", tt.dataHome)
-			if got := (Config{BaseDir: tt.baseDir}).RepoRoot(); got != tt.want {
+			t.Setenv(ReposEnvVar, tt.envRepos)
+			if got := (Config{ReposDir: tt.reposDir}).RepoRoot(); got != tt.want {
 				t.Errorf("RepoRoot() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestValidateRepoRoot(t *testing.T) {
+	home := isolatePaths(t)
+	file := filepath.Join(home, "file")
+	if err := os.WriteFile(file, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name     string
+		reposDir string
+		wantErr  string
+	}{
+		{"unset", "", "no repo directory is set"},
+		{"missing", filepath.Join(home, "gone"), "doesn't exist"},
+		{"a file", file, "isn't a directory"},
+		{"a directory", home, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := Config{ReposDir: tt.reposDir}.ValidateRepoRoot()
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Errorf("ValidateRepoRoot() = %v, want nil", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("ValidateRepoRoot() = %v, want an error containing %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestParseReposDir(t *testing.T) {
+	home := isolatePaths(t)
+	file := filepath.Join(home, "file")
+	if err := os.WriteFile(file, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		input   string
+		want    string
+		wantErr bool
+	}{
+		{"  ~/Development/  ", filepath.Join(home, "Development"), false},
+		{"/srv/repos/../code", "/srv/code", false},
+		{"", "", true},
+		{"   ", "", true},
+		{"relative/dir", "", true},
+		{"~other/dir", "", true},
+		{file, "", true},
+	}
+	for _, tt := range tests {
+		got, err := ParseReposDir(tt.input)
+		if (err != nil) != tt.wantErr || got != tt.want {
+			t.Errorf("ParseReposDir(%q) = (%q, %v), want (%q, error %v)",
+				tt.input, got, err, tt.want, tt.wantErr)
+		}
+	}
+}
+
+func TestLoadFoldsLegacyBaseDirIntoReposDir(t *testing.T) {
+	home := isolatePaths(t)
+	path := filepath.Join(home, "config.json")
+	t.Setenv("LAZYMUX_CONFIG", path)
+	if err := os.WriteFile(path, []byte(`{"baseDir": "~/old"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := Load()
+	if want := filepath.Join(home, "old"); cfg.ReposDir != want {
+		t.Errorf("ReposDir = %q, want %q", cfg.ReposDir, want)
+	}
+	if err := Save(cfg); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "baseDir") || !strings.Contains(string(data), "reposDir") {
+		t.Errorf("saved config should hold reposDir and no baseDir:\n%s", data)
 	}
 }
 
@@ -72,22 +153,19 @@ func TestPathFollowsXDGConfigHome(t *testing.T) {
 	}
 }
 
-func TestFirstRunDoesNotPinTheDefaultRoot(t *testing.T) {
-	home := isolatePaths(t)
+func TestFirstRunLeavesTheRepoDirectoryUnset(t *testing.T) {
+	isolatePaths(t)
 
-	Load()
+	cfg := Load()
+	if err := cfg.ValidateRepoRoot(); err == nil {
+		t.Errorf("first run has repo directory %q, want none so the user picks one", cfg.RepoRoot())
+	}
 	data, err := os.ReadFile(Path())
 	if err != nil {
 		t.Fatalf("first run didn't write a config: %v", err)
 	}
-	if strings.Contains(string(data), "baseDir") {
-		t.Errorf("config pins baseDir on first run:\n%s", data)
-	}
-
-	dataHome := filepath.Join(home, "data")
-	t.Setenv("XDG_DATA_HOME", dataHome)
-	if got, want := Load().RepoRoot(), filepath.Join(dataHome, "lazymux", "repos"); got != want {
-		t.Errorf("RepoRoot() = %q, want %q", got, want)
+	if strings.Contains(string(data), "reposDir") {
+		t.Errorf("config sets reposDir on first run:\n%s", data)
 	}
 }
 

@@ -7,7 +7,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/bkenks/lazymux/internal/config"
 	"github.com/bkenks/lazymux/internal/domain"
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/charmbracelet/x/ansi"
@@ -20,9 +19,9 @@ func TestScreensFitTheWindow(t *testing.T) {
 	for _, state := range []domain.SessionState{
 		domain.StateSplash, domain.StateMain, domain.StateConfirmDelete,
 		domain.StateCloneRepo, domain.StateSettings, domain.StateForgeRegistry,
-		domain.StateKeybinds,
+		domain.StateKeybinds, domain.StateReposDir,
 	} {
-		m := New(config.Default(), "test")
+		m := New(configWithReposDir(t), "test")
 		m.Update(window)
 		m.Update(events.SetState{State: state})
 		m.Update(window)
@@ -40,7 +39,7 @@ func TestListScreensShowQuitOnce(t *testing.T) {
 	for _, state := range []domain.SessionState{
 		domain.StateMain, domain.StateForgeRegistry, domain.StateKeybinds,
 	} {
-		m := New(config.Default(), "test")
+		m := New(configWithReposDir(t), "test")
 		m.Update(window)
 		m.Update(events.SetState{State: state})
 		m.Update(window)

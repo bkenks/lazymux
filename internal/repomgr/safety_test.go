@@ -35,7 +35,7 @@ func TestRenderGitConfigLeavesRepoAloneWhenOriginIsMissing(t *testing.T) {
 	base := t.TempDir()
 	dir := initRepo(t, base, "me/demo")
 	cfg := config.Config{
-		BaseDir:         base,
+		ReposDir:        base,
 		PlaceholderHost: config.DefaultPlaceholderHost,
 		Forges:          []config.Forge{{Name: "github", Host: "github.com"}},
 	}
@@ -61,7 +61,7 @@ func TestRenderGitConfigKeepsUnrelatedInsteadOfRules(t *testing.T) {
 	mustGit(t, dir, "config", "--local",
 		"url.https://mirror.example/.insteadOf", "https://lazymux-placeholder2.example/")
 	cfg := config.Config{
-		BaseDir:         base,
+		ReposDir:        base,
 		PlaceholderHost: config.DefaultPlaceholderHost,
 		Forges:          []config.Forge{{Name: "github", Host: "github.com"}},
 	}
@@ -77,7 +77,7 @@ func TestRenderGitConfigKeepsUnrelatedInsteadOfRules(t *testing.T) {
 
 func TestRenderGitConfigReportsGitFailures(t *testing.T) {
 	cfg := config.Config{
-		BaseDir:         t.TempDir(),
+		ReposDir:        t.TempDir(),
 		PlaceholderHost: config.DefaultPlaceholderHost,
 		Forges:          []config.Forge{{Name: "github", Host: "github.com"}},
 	}
@@ -130,7 +130,7 @@ func TestListFollowsSymlinkedBaseDir(t *testing.T) {
 	}
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 
-	repos, err := ListMeta(config.Config{BaseDir: link})
+	repos, err := ListMeta(config.Config{ReposDir: link})
 	if err != nil {
 		t.Fatal(err)
 	}

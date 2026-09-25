@@ -70,8 +70,9 @@ Configuration:
   All settings, the forge registry, and per-repo forge links live in a single
   $XDG_CONFIG_HOME/lazymux/config.json, by default ~/.config/lazymux/config.json
   (override the path with $LAZYMUX_CONFIG). Repos are cloned into
-  <root>/<namespace>/<repo>, where <root> is the first of $LAZYMUX_ROOT, the
-  config's baseDir, or $XDG_DATA_HOME/lazymux/repos (~/.local/share/lazymux/repos).
+  <repos>/<namespace>/<repo>, where <repos> is $LAZYMUX_REPOS or else the
+  config's reposDir. If neither names an existing directory, lazymux asks for
+  one at startup.
 
 Keybindings (repo list):`)
 	fmt.Print(repoListKeysHelp())
