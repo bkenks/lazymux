@@ -66,14 +66,14 @@ func TestMigrateLegacyToml(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("XDG_CONFIG_HOME", xdg)
-	toml := "[tools]\neditor = \"nvim\"\n[ui]\nshow_full_path = true\n[behavior]\ndefault_protocol = \"ssh\"\nconfirm_delete = false\n"
+	toml := "[tools]\nshell = \"zsh\"\n[ui]\nshow_full_path = true\n[behavior]\ndefault_protocol = \"ssh\"\nconfirm_delete = false\n"
 	if err := os.WriteFile(filepath.Join(xdg, "lazymux", "config.toml"), []byte(toml), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	got := Load() // first run: no json yet → migrates the toml
-	if got.Tools.Editor != "nvim" {
-		t.Errorf("editor = %q, want nvim", got.Tools.Editor)
+	if got.Tools.Shell != "zsh" {
+		t.Errorf("shell = %q, want zsh", got.Tools.Shell)
 	}
 	if !got.UI.ShowFullPath {
 		t.Errorf("showFullPath should be true")

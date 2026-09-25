@@ -1,8 +1,6 @@
 package settings
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -11,48 +9,6 @@ import (
 	"github.com/bkenks/lazymux/internal/events"
 	"github.com/bkenks/lazymux/internal/ui/formtest"
 )
-
-// stubEditorOnPath writes an executable named name into a temp dir and makes
-// that dir the only entry on PATH for the duration of the test.
-func stubEditorOnPath(t *testing.T, name string) string {
-	t.Helper()
-	dir := t.TempDir()
-	path := filepath.Join(dir, name)
-	if err := os.WriteFile(path, []byte("#!/bin/sh\n"), 0o755); err != nil {
-		t.Fatalf("writing stub editor: %v", err)
-	}
-	t.Setenv("PATH", dir)
-	return path
-}
-
-func TestValidateEditorCommandAcceptsCommandOnPath(t *testing.T) {
-	want := stubEditorOnPath(t, "zed")
-
-	if err := validateEditorCommand("zed"); err != nil {
-		t.Fatalf("validateEditorCommand(zed) = %v, want no error", err)
-	}
-	if got := describeEditor("zed"); got != "✓ "+want {
-		t.Errorf("describeEditor(zed) = %q, want the resolved path %q", got, want)
-	}
-}
-
-func TestValidateEditorCommandAcceptsAbsolutePath(t *testing.T) {
-	path := stubEditorOnPath(t, "zed")
-
-	if err := validateEditorCommand(path); err != nil {
-		t.Fatalf("validateEditorCommand(%q) = %v, want no error", path, err)
-	}
-}
-
-func TestValidateEditorCommandRejects(t *testing.T) {
-	stubEditorOnPath(t, "zed")
-
-	for _, bad := range []string{"", "  ", "definitely-not-installed", "zed --wait"} {
-		if err := validateEditorCommand(bad); err == nil {
-			t.Errorf("validateEditorCommand(%q) = nil, want an error", bad)
-		}
-	}
-}
 
 func TestValidateColor(t *testing.T) {
 	for _, ok := range []string{"", "#7D56F4", "#7d56f4", "#abc", " #7D56F4 "} {
@@ -85,7 +41,7 @@ var enterKey = tea.KeyPressMsg{Code: tea.KeyEnter}
 // dark mode main, accent and gray colors and then the light mode ones, and
 // submits, returning what the screen emitted.
 func fillColors(m *Model, dark, light [3]string) []tea.Msg {
-	for range 7 {
+	for range 6 {
 		press(m, enterKey)
 	}
 	var emitted []tea.Msg
@@ -100,10 +56,7 @@ func fillColors(m *Model, dark, light [3]string) []tea.Msg {
 
 func newTestModel(t *testing.T) *Model {
 	t.Helper()
-	stubEditorOnPath(t, "zed")
-	cfg := config.Default()
-	cfg.Tools.Editor = "zed"
-	m := New(cfg)
+	m := New(config.Default())
 	press(m, m.Init())
 	return m
 }
@@ -126,9 +79,6 @@ func TestSubmitEmitsEditedSettings(t *testing.T) {
 	}
 	if got := changed.Config.UI.Colors; got != want {
 		t.Errorf("colors = %+v, want %+v", got, want)
-	}
-	if got := changed.Config.Tools.Editor; got != "zed" {
-		t.Errorf("editor = %q, want zed kept", got)
 	}
 }
 

@@ -163,13 +163,6 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) (bool, []tea.Cmd) {
 		}
 		cmds = append(cmds, commands.SetState(domain.StateConfirmDelete))
 
-	case key.Matches(msg, constants.RepoListKeyMap.VSCode):
-		repo := ConvertToRepoType(m.List.SelectedItem())
-		if repo.AbsPath == "" {
-			break
-		}
-		cmds = append(cmds, recordInteraction(repo.Path), commands.OpenInVSCode(repo.AbsPath))
-
 	case key.Matches(msg, constants.RepoListKeyMap.Settings):
 		cmds = append(cmds, commands.SetState(domain.StateSettings))
 

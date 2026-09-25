@@ -253,13 +253,13 @@ func TestUpdateMovesLegacyJSONBeforeWriting(t *testing.T) {
 	home := isolatePaths(t)
 	writeLegacyJSON(t, home, `{"forges": [{"name": "github", "host": "github.com"}]}`)
 
-	got, err := Update(func(c *Config) { c.Tools.Editor = "vim" })
+	got, err := Update(func(c *Config) { c.Tools.Shell = "zsh" })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got.Forges) != 1 || got.Tools.Editor != "vim" {
-		t.Errorf("Update() = forges %+v, editor %q; want the legacy forge and the change",
-			got.Forges, got.Tools.Editor)
+	if len(got.Forges) != 1 || got.Tools.Shell != "zsh" {
+		t.Errorf("Update() = forges %+v, shell %q; want the legacy forge and the change",
+			got.Forges, got.Tools.Shell)
 	}
 	if reloaded := Load(); len(reloaded.Forges) != 1 {
 		t.Errorf("legacy forges lost after Update: %+v", reloaded.Forges)
@@ -270,7 +270,7 @@ func TestUpdateRefusesToBuryUnreadableLegacyJSON(t *testing.T) {
 	home := isolatePaths(t)
 	writeLegacyJSON(t, home, `{not json`)
 
-	if _, err := Update(func(c *Config) { c.Tools.Editor = "vim" }); err == nil {
+	if _, err := Update(func(c *Config) { c.Tools.Shell = "zsh" }); err == nil {
 		t.Error("Update() succeeded over an unreadable legacy config")
 	}
 	if _, err := os.Stat(Path()); !os.IsNotExist(err) {

@@ -145,7 +145,7 @@ func TestSettingsSaveDoesNotOverwriteUnparseableConfig(t *testing.T) {
 func TestInitWarnsAboutClashingKeybinds(t *testing.T) {
 	cfg := taggedRepoConfig()
 	cfg.Keybinds = []config.Keybind{
-		{Name: "shadow", Keys: "o", Command: "true"},
+		{Name: "shadow", Keys: "c", Command: "true"},
 		{Name: "first", Keys: "ctrl+g", Command: "true"},
 		{Name: "second", Keys: "ctrl+g", Command: "true"},
 	}

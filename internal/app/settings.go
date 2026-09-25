@@ -17,7 +17,6 @@ import (
 func (m *ModelManager) applySettings(edited config.Config) tea.Cmd {
 	prev := m.cfg.UI
 	saveFailed := m.saveConfig("settings", func(c *config.Config) {
-		c.Tools.Editor = edited.Tools.Editor
 		c.Behavior = edited.Behavior
 		c.UI.Colors = edited.UI.Colors
 		c.UI.ShowFullPath = edited.UI.ShowFullPath

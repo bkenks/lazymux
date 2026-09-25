@@ -44,7 +44,7 @@ var buildVersion = "dev"
 func version() string { return buildVersion }
 
 func printHelp() {
-	fmt.Println(`lazymux — a TUI git repo manager (clone + your editor + custom keybinds)
+	fmt.Println(`lazymux — a TUI git repo manager (clone + custom keybinds)
 
 Usage: lazymux [flags]
 

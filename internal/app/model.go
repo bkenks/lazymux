@@ -368,15 +368,6 @@ func (m *ModelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, m.toastCmd(events.ToastInfo, "sorted by "+msg.Mode.Label()))
 			}
 
-		case events.OpenInVSCodeComplete:
-			if msg.Err != nil {
-				cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("editor failed: %v", msg.Err)))
-			}
-			cmds = append(cmds,
-				commands.SetState(domain.StateMain),
-				commands.RefreshReposCmd(),
-			)
-
 		case events.CmdComplete:
 			if msg.Err != nil {
 				cmds = append(cmds, m.toastCmd(events.ToastError, fmt.Sprintf("command failed: %v", msg.Err)))

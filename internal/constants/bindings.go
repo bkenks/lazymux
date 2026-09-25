@@ -59,7 +59,6 @@ var ListQuit = key.NewBinding(
 type repoListKeyMap struct {
 	Clone       key.Binding
 	Delete      key.Binding
-	VSCode      key.Binding
 	Settings    key.Binding
 	Refresh     key.Binding
 	CopyPath    key.Binding
@@ -83,10 +82,6 @@ var RepoListKeyMap = repoListKeyMap{
 	Delete: key.NewBinding(
 		key.WithKeys("d"),
 		key.WithHelp("d", "delete"),
-	),
-	VSCode: key.NewBinding(
-		key.WithKeys("o"),
-		key.WithHelp("o", "editor"),
 	),
 	Settings: key.NewBinding(
 		key.WithKeys("1"),
@@ -154,7 +149,6 @@ func (k repoListKeyMap) Commands() []RepoListCommand {
 		{k.Settings, "settings", "open settings", true},
 		{k.Keybinds, "keybinds", "manage custom keybinds", true},
 		{k.RepoConfig, "repo settings", "edit repo's forge links & tag format", true},
-		{k.VSCode, "editor", "open in editor", true},
 		{k.Shell, "shell", "shell in repo dir", false},
 		{k.CopyPath, "copy", "copy path", false},
 		{k.Refresh, "refresh", "refresh list", false},

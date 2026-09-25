@@ -36,7 +36,7 @@ func TestUpdateRefusesToOverwriteUnparseableConfig(t *testing.T) {
 	const broken = `{"forges": [`
 	path := writeConfigFile(t, broken)
 
-	_, err := Update(func(c *Config) { c.Tools.Editor = "vim" })
+	_, err := Update(func(c *Config) { c.Tools.Shell = "zsh" })
 	if err == nil {
 		t.Fatal("Update succeeded over a config that doesn't parse")
 	}
@@ -59,14 +59,14 @@ func TestUpdateKeepsEditsMadeByAnotherWriter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := Update(func(c *Config) { c.Tools.Editor = "vim" })
+	got, err := Update(func(c *Config) { c.Tools.Shell = "zsh" })
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.Repos["ns/repo"].TagPrefix != "written elsewhere/v" {
 		t.Errorf("tag prefix lost: %+v", got.Repos["ns/repo"])
 	}
-	if stale.Tools.Editor == "vim" {
+	if stale.Tools.Shell == "zsh" {
 		t.Error("Update mutated a previously loaded config")
 	}
 }
@@ -75,10 +75,10 @@ func TestUpdateCreatesMissingConfig(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "nested", ".lazymux.json")
 	t.Setenv("LAZYMUX_CONFIG", path)
 
-	if _, err := Update(func(c *Config) { c.Tools.Editor = "vim" }); err != nil {
+	if _, err := Update(func(c *Config) { c.Tools.Shell = "zsh" }); err != nil {
 		t.Fatal(err)
 	}
-	if Load().Tools.Editor != "vim" {
+	if Load().Tools.Shell != "zsh" {
 		t.Error("change not persisted")
 	}
 }

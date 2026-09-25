@@ -3,9 +3,6 @@
 package settings
 
 import (
-	"errors"
-	"fmt"
-	"os/exec"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -36,9 +33,6 @@ func New(cfg config.Config) *Model {
 func (m *Model) newForm() *huh.Form {
 	d := m.draft
 	fields := []huh.Field{
-		huh.NewInput().Title("Editor").
-			DescriptionFunc(func() string { return describeEditor(d.Tools.Editor) }, &d.Tools.Editor).
-			Value(&d.Tools.Editor).Validate(validateEditorCommand),
 		huh.NewSelect[string]().Title("Default clone protocol").Inline(true).
 			Options(huh.NewOptions(config.SchemeHTTPS, config.SchemeSSH)...).
 			Value(&d.Behavior.DefaultProtocol),
@@ -94,32 +88,6 @@ func sortOptions() []huh.Option[string] {
 	return options
 }
 
-// validateEditorCommand resolves an editor command the way exec.Command will
-// when a repo is opened, so a value the form accepts is a value that runs.
-func validateEditorCommand(command string) error {
-	command = strings.TrimSpace(command)
-	if command == "" {
-		return errors.New("editor cannot be empty")
-	}
-	if strings.ContainsAny(command, " \t") {
-		return errors.New("editor takes a command name only, no arguments")
-	}
-	if _, err := exec.LookPath(command); err != nil {
-		return fmt.Errorf("%q not found on PATH", command)
-	}
-	return nil
-}
-
-// describeEditor shows where the editor command resolves on PATH, or what the
-// field takes when it doesn't resolve.
-func describeEditor(command string) string {
-	path, err := exec.LookPath(strings.TrimSpace(command))
-	if err != nil {
-		return "Any command on your PATH."
-	}
-	return "✓ " + path
-}
-
 func validateColor(hex string) error {
 	hex = strings.TrimSpace(hex)
 	if hex == "" {
@@ -155,7 +123,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, commands.SetState(domain.StateMain)
 	case huh.StateCompleted:
 		edited := *m.draft
-		edited.Tools.Editor = strings.TrimSpace(edited.Tools.Editor)
 		trimColors(&edited.UI.Colors.Dark)
 		trimColors(&edited.UI.Colors.Light)
 		return m, func() tea.Msg { return events.SettingsChanged{Config: edited} }

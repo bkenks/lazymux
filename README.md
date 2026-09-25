@@ -10,7 +10,7 @@
 
 ## What is lazymux?
 
-**lazymux** is a TUI (Terminal User Interface) built with [Bubbletea](https://github.com/charmbracelet/bubbletea) that manages where your repositories live and unifies them with your editor and the terminal tools you use in a single workflow. It gives you a searchable list of all your repos, and from there you can clone new repos, delete old ones, copy a repo's path, drop into a shell, open the project in your editor, or run any command you've bound to a key — all with a keystroke.
+**lazymux** is a TUI (Terminal User Interface) built with [Bubbletea](https://github.com/charmbracelet/bubbletea) that manages where your repositories live and unifies them with the terminal tools you use in a single workflow. It gives you a searchable list of all your repos, and from there you can clone new repos, delete old ones, copy a repo's path, drop into a shell, or run any command you've bound to a key, such as opening the project in your editor — all with a keystroke.
 
 It manages repo locations natively (no `ghq` required): repos are cloned into `<repos>/<namespace>/<repo>` (see [Repo directory](#repo-directory)), and a **forge registry** lets you link each repo to one or more git hosts (GitHub, a self-hosted Forgejo/Gitea, GitLab, …) as **upstreams**, with one of them set as the **origin** you fetch from.
 
@@ -47,8 +47,7 @@ lazymux is built for repos that live on more than one host — for example a sel
 - **Stable placeholder remotes** — switch a repo's forge without ever touching its `origin`
 - **Browse all repos** in a clean, filterable list, sorted by most-recently used
 - **Release tags** — tag & push a repo's next major, minor or patch version, in a per-repo format like `v1.2.3`, `mypkg/v1.2.3` or `1.2.3-mypkg`
-- **Custom keybinds** — bind a key to any shell command (e.g. `lazygit`); it runs in the selected repo with the whole terminal
-- **Open in your editor** — any command on your `PATH`; the settings screen checks it resolves before saving
+- **Custom keybinds** — bind a key to any shell command (e.g. `lazygit`, or `code .` to open your editor); it runs in the selected repo with the whole terminal
 - **Drop into a shell** in the selected repo's directory
 - **Copy the repo's absolute path** to your clipboard
 - **Delete repos** with a confirmation prompt
@@ -124,7 +123,6 @@ On first run, lazymux creates `~/.config/lazymux/config.json` (moving an existin
 |---|---|
 | `↑` / `↓` | Navigate the repository list |
 | `/` | Filter / search repositories |
-| `o` | Open selected repo in your **editor** |
 | `s` | Open a **shell** in the repo's directory |
 | `y` | **Copy** the absolute repo path to clipboard |
 | `r` | **Refresh** the repo list |
@@ -224,6 +222,11 @@ style) in the selected repo's directory and hands it the whole terminal, the way
 Code with `esc`), otherwise after you press `Enter`, so a short command's output
 such as `git status` can be read first.
 
+To open the selected repo in your editor, bind a key to the editor's command with
+the repo as its argument, e.g. `o` → `code .` (or `codium .`, `zed .`), with
+**Return to lazymux on command end** on. For a terminal editor such as `nvim .`,
+lazymux comes back when you quit it.
+
 `ctrl+shift` combos and `cmd` need a terminal that reports them (kitty keyboard
 protocol — e.g. Ghostty, kitty, WezTerm, or iTerm2 with CSI u enabled).
 
@@ -248,7 +251,6 @@ Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`
   "reposDir": "/home/you/Development",
   "placeholderHost": "lazymux-placeholder",
   "tools": {
-    "editor": "codium",
     "shell": ""
   },
   "ui": {
@@ -299,7 +301,7 @@ Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`
   launch and uses that mode's colors, falling back to dark if the terminal doesn't answer. An
   empty color keeps the default (`#5F5FD7`, `#EE6FF8`, `#777777`).
 
-The in-app settings screen is one form covering `editor`, `defaultProtocol`, `confirmDelete`, `showFullPath`, `showForge`, `showStats`, `sortMode`, and the dark and light mode `colors`. `enter` moves to the next field and saves on the last one; `esc` leaves without saving. The editor field resolves the command on `PATH` and won't let the form save one it cannot find; the color fields only take a hex value. `shell` (the shell keybind commands and `s` use) is file-only for now — edit and relaunch.
+The in-app settings screen is one form covering `defaultProtocol`, `confirmDelete`, `showFullPath`, `showForge`, `showStats`, `sortMode`, and the dark and light mode `colors`. `enter` moves to the next field and saves on the last one; `esc` leaves without saving. The color fields only take a hex value. `shell` (the shell keybind commands and `s` use) is file-only for now — edit and relaunch.
 
 ### Repo directory
 

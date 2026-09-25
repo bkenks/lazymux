@@ -30,8 +30,7 @@ const (
 )
 
 type Tools struct {
-	Editor string `json:"editor"`
-	Shell  string `json:"shell"`
+	Shell string `json:"shell"`
 }
 
 // Colors are the hex base colors ("#7D56F4") the UI palette is derived from.
@@ -238,10 +237,6 @@ type Config struct {
 func Default() Config {
 	return Config{
 		PlaceholderHost: DefaultPlaceholderHost,
-		Tools: Tools{
-			Editor: "codium",
-			Shell:  "",
-		},
 		UI: UI{
 			ShowFullPath: false,
 			ShowForge:    true,
@@ -509,8 +504,7 @@ func migrateRepoLink(link RepoLink) RepoLink {
 // legacyConfig mirrors the old TOML schema for one-time migration.
 type legacyConfig struct {
 	Tools struct {
-		Editor string `toml:"editor"`
-		Shell  string `toml:"shell"`
+		Shell string `toml:"shell"`
 	} `toml:"tools"`
 	UI struct {
 		ShowFullPath bool `toml:"show_full_path"`
@@ -568,7 +562,7 @@ func moveLegacyJSON(path string) (Config, bool) {
 }
 
 // migrateLegacy folds a legacy config.toml into the new Config, preserving the
-// user's editor/UI/behavior choices. Returns (cfg, true) only on success.
+// user's shell/UI/behavior choices. Returns (cfg, true) only on success.
 func migrateLegacy(base Config) (Config, bool) {
 	p := legacyPath()
 	if p == "" {
@@ -581,9 +575,6 @@ func migrateLegacy(base Config) (Config, bool) {
 	var old legacyConfig
 	if _, err := toml.Decode(string(data), &old); err != nil {
 		return base, false
-	}
-	if old.Tools.Editor != "" {
-		base.Tools.Editor = old.Tools.Editor
 	}
 	base.Tools.Shell = old.Tools.Shell
 	base.UI.ShowFullPath = old.UI.ShowFullPath
