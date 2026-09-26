@@ -67,6 +67,18 @@ lazymux is built for repos that live on more than one host — for example a sel
 
 ## Installation
 
+### Install script
+
+On macOS or Linux:
+
+```bash
+curl -fsSL https://fj.ktbcloud.com/bkenks/lazymux/raw/branch/main/install.sh | bash
+```
+
+It downloads the latest release binary for your OS and CPU, checks it against the release's
+`SHA256SUMS`, and installs it to `~/.local/bin/lazymux`. Run it again to update. On Windows,
+use a prebuilt binary.
+
 ### Prebuilt binary
 
 Every release carries binaries for macOS, Linux and Windows on both amd64 and arm64,

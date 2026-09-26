@@ -2,14 +2,15 @@
 # /// script
 # requires-python = ">=3.13"
 # ///
-# MISE description="Run every check: go vet, go test, golangci-lint, ruff and ty"
+# MISE description="Run every check: go vet, go test, golangci-lint, ruff, ty, shellcheck and shfmt"
 
 """Run the checks CI, the pre-commit hook and `mise run release` all gate on.
 
     mise run check
 
 Go is vetted, tested and linted from the repo root; the mise task scripts are
-linted, format-checked and type-checked. The first failing check stops the run.
+linted, format-checked and type-checked; install.sh is linted and format-checked.
+The first failing check stops the run.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from _lib import run
 
 TASKS_DIR = ".mise/tasks"
+INSTALL_SCRIPT = "install.sh"
 PYTHON_VERSION = "3.13"
 
 
@@ -41,6 +43,8 @@ def main() -> None:
         TASKS_DIR,
         TASKS_DIR,
     )
+    run("shellcheck", INSTALL_SCRIPT)
+    run("shfmt", "--indent", "2", "--diff", INSTALL_SCRIPT)
 
 
 main()
