@@ -1,88 +1,53 @@
 # lazymux
 
-> A terminal UI that brings your entire repo workflow into one place — clone, organize, browse, and hack on repos across multiple git forges without ever leaving your terminal.
+> Every repo on your machine in one TUI. Clone, browse, release, and push to several git forges
+> without leaving the terminal.
 
 ![Go](https://img.shields.io/badge/Go-1.25.8+-00ADD8?style=flat&logo=go&logoColor=white)
 ![License](https://img.shields.io/github/license/bkenks/lazymux)
 ![Version](https://img.shields.io/github/v/tag/bkenks/lazymux?label=version)
 
----
+## Contents
 
-## What is lazymux?
+- [What it does](#what-it-does)
+- [Install](#install)
+- [Getting started](#getting-started)
+- [Repo list keys](#repo-list-keys)
+- [Forges and the placeholder remote](#forges-and-the-placeholder-remote)
+- [Screens](#screens)
+- [Configuration](#configuration)
+- [How it works](#how-it-works)
+- [License](#license)
 
-**lazymux** is a TUI (Terminal User Interface) built with [Bubbletea](https://github.com/charmbracelet/bubbletea) that manages where your repositories live and unifies them with the terminal tools you use in a single workflow. It gives you a searchable list of all your repos, and from there you can clone new repos, delete old ones, copy a repo's path, drop into a shell, or run any command you've bound to a key, such as opening the project in your editor — all with a keystroke.
+## What it does
 
-It manages repo locations natively (no `ghq` required): repos are cloned into `<repos>/<namespace>/<repo>` (see [Repo directory](#repo-directory)), and a **forge registry** lets you link each repo to one or more git hosts (GitHub, a self-hosted Forgejo/Gitea, GitLab, …) as **upstreams**, with one of them set as the **origin** you fetch from.
+lazymux keeps your repos in one directory as `<repos>/<namespace>/<repo>` and gives you a
+searchable list of them. From that list you can:
 
-No more `cd`-ing around. No more remembering paths. Just launch `lazymux` and go.
+- clone repos, pull all of them at once, or delete one
+- open a shell in a repo or copy its path
+- bind any key to any command: lazygit, your editor, Claude Code, whatever
+- tag and push the next major, minor or patch release
+- push to several forges at once and pick which one you fetch from
 
----
+It's plain `git` underneath, with no `ghq`. The only requirement is [git](https://git-scm.com/).
 
-## Forges & the placeholder remote
-
-lazymux is built for repos that live on more than one host — for example a self-hosted Forgejo that mirrors to GitHub.
-
-- You register your **forges** once (a name + host, e.g. `github` → `github.com`).
-- When you clone, lazymux auto-matches the URL's host to a registered forge, and lets you check off every forge the repo is pushed to — its **upstreams**. Exactly one upstream is the **origin**: the host fetch and pull read from.
-- Under the hood, every managed repo's `origin` is rewritten to a stable placeholder host (`lazymux-placeholder`), and a per-repo local git [`insteadOf`](https://git-scm.com/docs/git-config#Documentation/git-config.txt-urlltbasegtinsteadOf) rule resolves the placeholder to the **origin** forge. With more than one upstream, each gets a `pushurl`, so a single `git push` fans out to all of them:
-
-  ```ini
-  [remote "origin"]
-      url = https://lazymux-placeholder/bkenks/myrepo.git    # never changes
-      pushurl = https://github.com/bkenks/myrepo.git         # upstream
-      pushurl = https://fj.example.com/bkenks/myrepo.git     # upstream
-  [url "https://github.com/"]
-      insteadOf = https://lazymux-placeholder/               # origin = github
-  ```
-
-- If a forge goes down or you just want to fetch from somewhere else, **switch the origin** (`3` on the repo) and lazymux re-renders that one rule. The stored `origin` URL never changes — only the host it resolves to. There's no automatic failover; you're always in control of which forge is live.
-- A repo with a single upstream gets no `pushurl` at all: push follows the placeholder origin, exactly as before.
-
----
-
-## Features
-
-- **Native repo management** — clone into `<repos>/<namespace>/<repo>`, list, delete, and pull-all, all with plain `git` (no `ghq`)
-- **Forge registry** — register git hosts and link repos to one or more of them as upstreams, with a per-repo origin
-- **Stable placeholder remotes** — switch a repo's forge without ever touching its `origin`
-- **Browse all repos** in a clean, filterable list, sorted by most-recently used
-- **Release tags** — tag & push a repo's next major, minor or patch version, in a per-repo format like `v1.2.3`, `mypkg/v1.2.3` or `1.2.3-mypkg`
-- **Custom keybinds** — bind a key to any shell command (e.g. `lazygit`, or `code .` to open your editor); it runs in the selected repo with the whole terminal
-- **Drop into a shell** in the selected repo's directory
-- **Copy the repo's absolute path** to your clipboard
-- **Delete repos** with a confirmation prompt
-- **Single JSON config** at `~/.config/lazymux/config.json` — settings, forge registry, and per-repo links in one place
-- **Status footer** surfaces errors and confirmations without crashing the TUI
-- Reactive UI that adapts to your terminal size
-
----
-
-## Requirements
-
-| Tool | Purpose |
-|---|---|
-| [git](https://git-scm.com/) | Clone, pull, and the `insteadOf` remote rewriting lazymux relies on |
-
----
-
-## Installation
+## Install
 
 ### Install script
 
-On macOS or Linux:
+macOS or Linux:
 
 ```bash
 curl -fsSL https://fj.ktbcloud.com/bkenks/lazymux/raw/branch/main/install.sh | bash
 ```
 
-It downloads the latest release binary for your OS and CPU, checks it against the release's
-`SHA256SUMS`, and installs it to `~/.local/bin/lazymux`. Run it again to update. On Windows,
-use a prebuilt binary.
+It downloads the latest release for your OS and CPU, checks it against `SHA256SUMS`, and puts it
+in `~/.local/bin/lazymux`. Run it again to update.
 
 ### mise
 
-lazymux isn't in mise's registry, so point mise's `forgejo` backend at the repo yourself.
-Globally, from the command line:
+lazymux isn't in the mise registry, so point mise's `forgejo` backend at the repo:
 
 ```bash
 mise use -g 'forgejo:bkenks/lazymux[api_url=https://fj.ktbcloud.com/api/v1,bin=lazymux,minimum_release_age=0h]'
@@ -95,17 +60,17 @@ Or in a `mise.toml`:
 "forgejo:bkenks/lazymux" = { version = "latest", api_url = "https://fj.ktbcloud.com/api/v1", bin = "lazymux", minimum_release_age = "0h" }
 ```
 
-`api_url` points mise at this Forgejo instance, and `bin` installs the release asset as
-`lazymux`. `minimum_release_age = "0h"` lets mise pick a release as soon as it's published,
-even if your mise settings hold back newer releases for a while (`minimum_release_age`).
-`mise upgrade` updates it.
+- `api_url` points mise at my Forgejo instance.
+- `bin` installs the release binary as `lazymux`.
+- `minimum_release_age = "0h"` gets you a new release as soon as it's out, even if your mise
+  settings hold new releases back for a while.
+
+Update it with `mise upgrade`.
 
 ### Prebuilt binary
 
-Every release carries binaries for macOS, Linux and Windows on both amd64 and arm64,
-plus a `SHA256SUMS` file. Grab one from the
-[releases page](https://fj.ktbcloud.com/bkenks/lazymux/releases), verify it, and drop it
-on your `$PATH`:
+Every [release](https://fj.ktbcloud.com/bkenks/lazymux/releases) has binaries for macOS, Linux
+and Windows on amd64 and arm64, plus a `SHA256SUMS` file. This is the way to go on Windows.
 
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing
@@ -119,9 +84,8 @@ mv lazymux-*-darwin-arm64 ~/.local/bin/lazymux
 go install github.com/bkenks/lazymux@latest
 ```
 
-This builds and installs the `lazymux` binary into `$GOBIN` (or `$(go env GOPATH)/bin`) —
-make sure that's on your `$PATH`. It resolves through the GitHub mirror, so it lags a
-release until that mirror has the tag.
+This installs to `$GOBIN` (or `$(go env GOPATH)/bin`). It goes through the GitHub mirror, so it
+can lag a release, and `lazymux --version` prints `dev`.
 
 ### From source
 
@@ -131,162 +95,164 @@ cd lazymux
 mise run install
 ```
 
-Same destination, built from your checkout. See [building
-lazymux](.project/docs/build.md) for the other build tasks.
+The other build tasks are in [building lazymux](.project/docs/build.md).
 
----
-
-## Usage
+## Getting started
 
 ```bash
-lazymux            # launch the TUI
-lazymux --help     # show keybindings + config location
-lazymux --version  # show the version
+lazymux            # launch
+lazymux --help     # keys and config location
+lazymux --version
 ```
 
-On first run, lazymux creates `~/.config/lazymux/config.json` (moving an existing `~/lazymux/.lazymux.json` there, or migrating a `~/.config/lazymux/config.toml`, if present). If no [repo directory](#repo-directory) is set yet, it asks you for one, then lists any repos already in it. Register your forges (`F`), then clone (`c`) to start pulling repos in.
+The first launch writes `~/.config/lazymux/config.json` and asks where your repos live, unless
+`$LAZYMUX_REPOS` or `reposDir` already points at a directory. Then register your forges with
+`F` and clone with `c`.
 
----
-
-## Keybindings
-
-### Repository List
+## Repo list keys
 
 | Key | Action |
 |---|---|
-| `↑` / `↓` | Navigate the repository list |
-| `/` | Filter / search repositories |
-| `s` | Open a **shell** in the repo's directory |
-| `y` | **Copy** the absolute repo path to clipboard |
-| `r` | **Refresh** the repo list |
-| `c` | **Clone** new repositories |
-| `p` | **Pull** every repo (`git pull --ff-only`, skips conflicts) |
-| `S` | Cycle the **sort order** (recent → name a-z → name z-a → namespace) |
-| `g` | Show/hide the **forge label** on rows |
-| `t` | Show/hide the **git stats** on rows |
-| `v` | **Tag & push** the selected repo's next major, minor or patch version |
+| `↑` / `↓` | Move through the list |
+| `/` | Filter |
+| `s` | Open a **shell** in the repo |
+| `y` | **Copy** the repo's path |
+| `r` | **Refresh** the list |
+| `c` | **Clone** repos |
+| `p` | **Pull** every repo (`git pull --ff-only`, skips anything that can't fast-forward) |
+| `S` | Cycle the **sort**: recent, name a-z, name z-a, namespace |
+| `g` | Show or hide the **forge label** |
+| `t` | Show or hide **git stats** |
+| `v` | **Tag and push** the repo's next version |
 | `F` | Manage the **forge registry** |
-| `d` | **Delete** the selected repository |
-| `1` | Open **settings** |
-| `2` | Manage **custom keybinds** |
-| `3` | Open the selected repo's **settings** — tag format, upstreams, origin, scheme |
-| `Esc` | Clear the filter — `Esc` is back on every screen and never quits |
+| `d` | **Delete** the repo |
+| `1` | **Settings** |
+| `2` | **Custom keybinds** |
+| `3` | **Repo settings**: tag format, upstreams, origin, scheme |
+| `Esc` | Clear the filter. `Esc` is back on every screen and never quits |
 | `q` / `Ctrl+C` | Quit |
 
-Repo-list keys are unmodified letters, with the settings-style screens on numbers.
-Screens with a text field (clone, add-forge) keep their `Ctrl` shortcuts, since plain
-letters go into the input there.
+Letters do things, numbers open settings screens. The sort you pick is saved.
 
-The active sort shows in the list title, and the order you pick is saved — the list comes
-back in it next launch. It's also in the settings screen as **Sort repos by**.
+## Forges and the placeholder remote
 
-### Clone → Forge Select
+lazymux is built for repos that live on more than one host, like a self-hosted Forgejo that
+mirrors to GitHub.
 
-After entering one or more clone URLs, lazymux steps through each repo so you can confirm its forge links.
+- Register each forge once, a name and a host (`github` → `github.com`), with `F`.
+- Each repo has **upstreams**, every forge a push goes to, and one **origin**, the upstream fetch
+  and pull read from. Cloning matches the URL's host to a forge for you.
+- Every repo's `origin` URL points at a fake host, `lazymux-placeholder`. A local git
+  [`insteadOf`](https://git-scm.com/docs/git-config#Documentation/git-config.txt-urlltbasegtinsteadOf)
+  rule sends it to the origin forge, and each upstream gets a `pushurl`, so one `git push` hits
+  all of them:
+
+  ```ini
+  [remote "origin"]
+      url = https://lazymux-placeholder/bkenks/myrepo.git    # never changes
+      pushurl = https://github.com/bkenks/myrepo.git         # upstream
+      pushurl = https://fj.example.com/bkenks/myrepo.git     # upstream
+  [url "https://github.com/"]
+      insteadOf = https://lazymux-placeholder/               # origin = github
+  ```
+
+- Forge down? Switch the origin in repo settings (`3`). Only the `insteadOf` rule changes; the
+  stored URL never does. There's no automatic failover.
+- A repo with one upstream gets no `pushurl`, so push just follows `origin`.
+
+## Screens
+
+### Clone
+
+Paste one or more URLs, or press `Ctrl+T` to clone every repo in a namespace on one forge (`Tab`
+picks the forge). `Ctrl+P` goes, `Esc` backs out. Then lazymux walks you through each repo's
+forges:
 
 | Key | Action |
 |---|---|
-| `↑` / `↓` | Move the cursor |
-| `Space` | Toggle the forge under the cursor as an **upstream** |
-| `o` | Set the forge under the cursor as the **origin** (fetch/pull) |
-| `s` | Toggle the URL **scheme** (https ↔ ssh) for this repo |
-| `a` | **Add a new forge** from this repo's clone URL |
-| `Enter` | Confirm this repo (advance to the next) |
+| `Space` | Toggle the forge as an **upstream** |
+| `o` | Make the forge the **origin** |
+| `s` | Switch the **scheme** (https / ssh) |
+| `a` | **Add a forge** from the repo's URL |
+| `Enter` | Next repo |
 | `Esc` | Cancel the whole clone |
 
-### Forge Registry (`F`)
+### Forge registry (`F`)
 
 | Key | Action |
 |---|---|
-| `↑` / `↓` | Navigate forges |
 | `a` | Add a forge |
-| `e` / `Enter` | Edit the selected forge |
-| `d` | Delete the selected forge |
-| `Tab` | Switch between name / host fields (while editing) |
-| `Esc` | Save & back |
+| `e` / `Enter` | Edit it |
+| `d` | Delete it |
+| `Tab` | Switch between name and host while editing |
+| `Esc` | Save and go back |
 
-Each row shows how many repos link it. Deleting or renaming a forge cascades into the repos that use it: a rename updates their links, and a delete drops it — promoting another upstream to origin, or leaving the repo unlinked if it was its only one. Repos whose links changed have their remotes re-rendered automatically.
+Each row shows how many repos use the forge. Renaming a forge updates those repos. Deleting one
+drops it from them and promotes another upstream to origin if needed. lazymux re-renders their
+remotes either way.
 
-### Repo Settings (`3`)
+### Repo settings (`3`)
 
 One form for the selected repo:
 
-- **Tag prefix** / **Tag suffix** — the text its version tags wrap around `MAJOR.MINOR.PATCH`,
-  so `v` gives `v1.2.3`, `mypkg/v` gives `mypkg/v1.2.3`, and a `-mypkg` suffix gives
-  `1.2.3-mypkg`. Both start empty (`1.2.3`). The suffix field previews the repo's latest tag in
-  that format and the next patch / minor / major tags.
-- **Upstreams** — every forge a push goes to (`space` / `x` toggles one).
-- **Origin** — the upstream fetch and pull read from.
-- **Scheme** — https or ssh.
+- **Tag prefix** and **Tag suffix**: what goes around `MAJOR.MINOR.PATCH` in its release tags.
+  `v` gives `v1.2.3`, `mypkg/v` gives `mypkg/v1.2.3`, a `-mypkg` suffix gives `1.2.3-mypkg`. The
+  suffix field previews the latest tag and the next ones.
+- **Upstreams**: `Space` or `x` toggles a forge.
+- **Origin** and **Scheme**.
 
-`enter` moves to the next field and saves on the last one, re-rendering the repo's remote;
-`esc` leaves without saving.
+`Enter` moves through the fields and saves on the last one. `Esc` leaves without saving.
 
-### Tag Version (`v`)
+### Tag version (`v`)
 
-Pick **patch**, **minor** or **major**. Each option shows the tag it creates: the repo's highest
-local tag in its [tag format](#repo-settings-3), bumped, or a bump from `0.0.0` when there is none
-yet. Then confirm to create an annotated tag at `HEAD` and push just that tag to `origin`, which
-reaches every upstream. If the push fails, the tag stays in the local repo and the error says
-so; push it yourself with `git push origin <tag>`. Tags are read locally, so run `git fetch
---tags` first if someone else may have released.
+Pick patch, minor or major. Each option shows the tag it'll make: the repo's highest local tag in
+its tag format, bumped, or bumped from `0.0.0` if there isn't one. Confirm, and lazymux makes an
+annotated tag at `HEAD` and pushes just that tag to `origin`, which reaches every upstream.
 
-### Custom Keybinds (`2`)
+- If the push fails, the tag stays local. Retry with `git push origin <tag>`.
+- Tags are read locally, so `git fetch --tags` first if someone else might have released.
+
+### Custom keybinds (`2`)
 
 | Key | Action |
 |---|---|
-| `↑` / `↓` | Navigate keybinds |
-| `n` | **New** keybind |
-| `e` | **Edit** the selected keybind |
-| `Ctrl+\` | **Delete** the selected keybind (asks Yes / No) |
-| `Esc` | Back (cancels the form when one is open) |
+| `n` | New keybind |
+| `e` | Edit it |
+| `Ctrl+\` | Delete it |
+| `Esc` | Back, or cancel the form |
 
-Each keybind has a **Name**, a **Keybind**, a **Command** and a **Return to lazymux on
-command end** toggle. Type the keybind as
-text, e.g. `ctrl + g` or `cmd + shift + r`. Key names: `ctrl`, `alt`, `cmd`,
-`shift`, `tab`, `caps`, `return`, `esc`, `space`, `backspace`, `del`, arrows,
-`home`, `end`, `pgup`, `pgdown`, `insert`, `f1`–`f12`, plus any single character.
-A keybind lazymux already uses, or another custom keybind already has, is refused.
+A keybind is a name, a key, a command, and a **Return to lazymux on command end** toggle. Type
+the key as text, like `ctrl + g` or `cmd + shift + r`. Key names: `ctrl`, `alt`, `cmd`, `shift`,
+`tab`, `caps`, `return`, `esc`, `space`, `backspace`, `del`, arrows, `home`, `end`, `pgup`,
+`pgdown`, `insert`, `f1`–`f12`, or any single character. Keys lazymux or another keybind already
+uses are refused.
 
-Pressing a keybind on the repo list runs its command with your shell (`sh -c`
-style) in the selected repo's directory and hands it the whole terminal, the way
-`s` opens a shell. lazymux comes back when the command ends: straight away when
-**Return to lazymux on command end** is on (quitting lazygit with `q` or Claude
-Code with `esc`), otherwise after you press `Enter`, so a short command's output
-such as `git status` can be read first.
+Pressing it on the repo list runs the command in your shell, in the repo's directory, with the
+whole terminal. With the toggle on, lazymux comes back as soon as the command exits (quit lazygit
+with `q`, Claude Code with `esc`). With it off, you press `Enter` first, so you can read output
+like `git status`.
 
-To open the selected repo in your editor, bind a key to the editor's command with
-the repo as its argument, e.g. `o` → `code .` (or `codium .`, `zed .`), with
-**Return to lazymux on command end** on. For a terminal editor such as `nvim .`,
-lazymux comes back when you quit it.
+Want an editor key? Bind `o` to `code .` (or `zed .`, `nvim .`) with the toggle on.
 
-`ctrl+shift` combos and `cmd` need a terminal that reports them (kitty keyboard
-protocol — e.g. Ghostty, kitty, WezTerm, or iTerm2 with CSI u enabled).
+`ctrl+shift` combos and `cmd` need a terminal that reports them: Ghostty, kitty, WezTerm, or
+iTerm2 with CSI u on.
 
-### Confirm Delete (`d`)
+### Delete (`d`)
 
-| Key | Action |
-|---|---|
-| `←` / `h` · `→` / `l` | Choose Yes / No |
-| `Enter` | Confirm the choice |
-| `Ctrl+P` | Delete right away |
-| `Esc` | Back without deleting |
-
-Turn the prompt off with **Confirm before deleting** in settings (`1`).
-
----
+`←` / `→` (or `h` / `l`) picks yes or no, `Enter` confirms, `Ctrl+P` deletes right away, `Esc`
+backs out. Turn the prompt off with **Confirm before deleting** in settings.
 
 ## Configuration
 
-Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`, by default `~/.config/lazymux/config.json` (override the path with `$LAZYMUX_CONFIG`). It's created on first run — moving a config from the old `~/lazymux/.lazymux.json` location, or migrating the legacy `~/.config/lazymux/config.toml`, if either exists. Edit it directly or use the in-app screens.
+Everything is in one JSON file, `$XDG_CONFIG_HOME/lazymux/config.json`
+(`~/.config/lazymux/config.json` by default, or `$LAZYMUX_CONFIG`). Edit it by hand or through
+the app. Older `~/lazymux/.lazymux.json` and `config.toml` configs are moved over on first launch.
 
 ```json
 {
   "reposDir": "/home/you/Development",
   "placeholderHost": "lazymux-placeholder",
-  "tools": {
-    "shell": ""
-  },
+  "tools": { "shell": "" },
   "ui": {
     "colors": {
       "dark": { "main": "", "accent": "", "gray": "" },
@@ -297,10 +263,7 @@ Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`
     "showStats": true,
     "sortMode": "recent"
   },
-  "behavior": {
-    "defaultProtocol": "https",
-    "confirmDelete": true
-  },
+  "behavior": { "defaultProtocol": "https", "confirmDelete": true },
   "forges": [
     { "name": "github", "host": "github.com" },
     { "name": "forgejo", "host": "fj.example.com" }
@@ -319,45 +282,29 @@ Everything lives in a single JSON file at `$XDG_CONFIG_HOME/lazymux/config.json`
 }
 ```
 
-- `reposDir` — directory repos live under as `<namespace>/<repo>`; see [Repo directory](#repo-directory).
-- `placeholderHost` — the fake host stored in every managed repo's `origin`.
-- `forges` — the registry (managed in-app with `F`).
-- `keybinds` — custom keybinds (managed in-app with `2`).
-- `repos` — per-repo upstreams, origin, scheme, and `tagPrefix`/`tagSuffix` (managed in-app
-  with `3`).
+- `reposDir`: where repos live. `$LAZYMUX_REPOS` overrides it.
+- `placeholderHost`: the fake host in every repo's `origin`.
+- `tools.shell`: the shell `s` and keybinds use. File only; restart after changing it.
+- `ui.sortMode`: `recent`, `name-asc`, `name-desc`, or `namespace`.
+- `ui.colors`: three hex colors per terminal background. `main` is title bars and buttons,
+  `accent` the selected row and highlights, `gray` text and borders. lazymux builds every other
+  shade from these, so whatever you pick stays matched. Empty keeps the default (`#5F5FD7`,
+  `#EE6FF8`, `#777777`).
+- `forges`, `keybinds`, `repos`: managed with `F`, `2` and `3`.
 
-- `ui.sortMode` — repo list order: `recent`, `name-asc`, `name-desc`, or `namespace` (cycled in-app with `S`).
-- `ui.colors` — three hex base colors (`#7D56F4` or `#75F`) that every color in the UI comes
-  from, set separately for `dark` and `light` terminal backgrounds. `main` colors title bars and
-  buttons, `accent` the selected row and highlights, and `gray` text, borders and hints. lazymux
-  stretches each one into a scale of lighter and darker shades and picks from those, so the
-  pieces stay matched whatever you choose. lazymux asks the terminal for its background at
-  launch and uses that mode's colors, falling back to dark if the terminal doesn't answer. An
-  empty color keeps the default (`#5F5FD7`, `#EE6FF8`, `#777777`).
+Settings (`1`) covers the protocol, delete prompt, row display, sort and colors. `Enter` moves
+through the fields and saves on the last one; `Esc` leaves without saving.
 
-The in-app settings screen is one form covering `defaultProtocol`, `confirmDelete`, `showFullPath`, `showForge`, `showStats`, `sortMode`, and the dark and light mode `colors`. `enter` moves to the next field and saves on the last one; `esc` leaves without saving. The color fields only take a hex value. `shell` (the shell keybind commands and `s` use) is file-only for now — edit and relaunch.
+Recent-use history for the sort is in `$XDG_DATA_HOME/lazymux/interactions.json`
+(`~/.local/share/lazymux/interactions.json` by default).
 
-### Repo directory
+## How it works
 
-Repos live under `$LAZYMUX_REPOS` if it is set, otherwise under `reposDir` in the config. lazymux has no default: at startup, if neither names an existing directory, it asks for one before opening the repo list, creating the directory if needed and saving it as `reposDir`. The prompt only closes once a directory is set (`ctrl+c` quits).
-
-A config that still has the older `baseDir` key is read as `reposDir`. A config moved from `~/lazymux/.lazymux.json` keeps pointing at `~/lazymux`, so existing repos stay where they are; move them and change `reposDir` to relocate them.
-
-Repo interaction history (used for recency sorting) lives at `$XDG_DATA_HOME/lazymux/interactions.json` (fallback `~/.local/share/lazymux/interactions.json`).
-
----
-
-## How It Works
-
-lazymux is built using the [Charmbracelet](https://github.com/charmbracelet) stack:
-
-- **[Bubbletea](https://github.com/charmbracelet/bubbletea)** — Elm-inspired TUI framework for Go
-- **[Bubbles](https://github.com/charmbracelet/bubbles)** — Pre-built TUI components (list, text input, key bindings)
-- **[Lipgloss](https://github.com/charmbracelet/lipgloss)** — Terminal styling and layout
-
-On startup, lazymux walks the repo directory to populate the repository list. Cloning runs `git clone` against the real URL, then rewrites the repo to a placeholder `origin` resolved to its origin forge (plus a push URL per upstream); a custom keybind hands the terminal to its command until it exits; deletion removes the local directory (and now-empty namespace parents). Errors surface in the status footer instead of crashing the TUI.
-
----
+lazymux is Go on the [Charm](https://github.com/charmbracelet) stack: Bubbletea, Bubbles, Huh and
+Lipgloss. On launch it walks the repo directory to build the list. Cloning runs `git clone` on
+the real URL, then rewrites the repo to the placeholder remote. Keybinds hand the terminal to
+their command until it exits. Deleting removes the directory and any namespace directories left
+empty. Errors show up in the footer instead of crashing the app.
 
 ## License
 
