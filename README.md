@@ -4,8 +4,6 @@
 > without leaving the terminal.
 
 ![Go](https://img.shields.io/badge/Go-1.25.8+-00ADD8?style=flat&logo=go&logoColor=white)
-![License](https://img.shields.io/github/license/bkenks/gitkeeper)
-![Version](https://img.shields.io/github/v/tag/bkenks/gitkeeper?label=version)
 
 ## Contents
 
