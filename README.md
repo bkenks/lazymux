@@ -79,6 +79,27 @@ It downloads the latest release binary for your OS and CPU, checks it against th
 `SHA256SUMS`, and installs it to `~/.local/bin/lazymux`. Run it again to update. On Windows,
 use a prebuilt binary.
 
+### mise
+
+lazymux isn't in mise's registry, so point mise's `forgejo` backend at the repo yourself.
+Globally, from the command line:
+
+```bash
+mise use -g 'forgejo:bkenks/lazymux[api_url=https://fj.ktbcloud.com/api/v1,bin=lazymux,minimum_release_age=0h]'
+```
+
+Or in a `mise.toml`:
+
+```toml
+[tools]
+"forgejo:bkenks/lazymux" = { version = "latest", api_url = "https://fj.ktbcloud.com/api/v1", bin = "lazymux", minimum_release_age = "0h" }
+```
+
+`api_url` points mise at this Forgejo instance, and `bin` installs the release asset as
+`lazymux`. `minimum_release_age = "0h"` lets mise pick a release as soon as it's published,
+even if your mise settings hold back newer releases for a while (`minimum_release_age`).
+`mise upgrade` updates it.
+
 ### Prebuilt binary
 
 Every release carries binaries for macOS, Linux and Windows on both amd64 and arm64,
