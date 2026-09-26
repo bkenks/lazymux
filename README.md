@@ -201,7 +201,8 @@ One form for the selected repo:
 - **Upstreams**: `Space` or `x` toggles a forge.
 - **Origin** and **Scheme**.
 
-`Enter` moves through the fields and saves on the last one. `Esc` leaves without saving.
+`Enter` moves through the fields and saves on the last one; `Ctrl+s` saves from any field. `Esc`
+leaves without saving.
 
 ### Tag version (`v`)
 
@@ -219,6 +220,7 @@ annotated tag at `HEAD` and pushes just that tag to `origin`, which reaches ever
 | `n` | New keybind |
 | `e` | Edit it |
 | `Ctrl+\` | Delete it |
+| `Ctrl+s` | Save the form from any field |
 | `Esc` | Back, or cancel the form |
 
 A keybind is a name, a key, a command, and a **Return to lazymux on command end** toggle. Type
@@ -293,7 +295,8 @@ the app. Older `~/lazymux/.lazymux.json` and `config.toml` configs are moved ove
 - `forges`, `keybinds`, `repos`: managed with `F`, `2` and `3`.
 
 Settings (`1`) covers the protocol, delete prompt, row display, sort and colors. `Enter` moves
-through the fields and saves on the last one; `Esc` leaves without saving.
+through the fields and saves on the last one; `Ctrl+s` saves from any field; `Esc` leaves without
+saving.
 
 Recent-use history for the sort is in `$XDG_DATA_HOME/lazymux/interactions.json`
 (`~/.local/share/lazymux/interactions.json` by default).

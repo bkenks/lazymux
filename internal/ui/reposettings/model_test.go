@@ -165,3 +165,18 @@ func TestDescribeTagsPreviewsNextVersions(t *testing.T) {
 		}
 	}
 }
+
+func TestSaveKeySavesFromAnyField(t *testing.T) {
+	m := newTestModel(linkedConfig(), nil)
+	formtest.Type(m, "v")
+
+	emitted := press(m, tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
+
+	if len(emitted) == 0 {
+		t.Fatal("ctrl+s did not save")
+	}
+	changed, ok := emitted[0].(events.RepoSettingsChanged)
+	if !ok || changed.Link.TagPrefix != "v" || changed.Link.Origin != "github" {
+		t.Errorf("emitted %v, want RepoSettingsChanged with prefix v and origin github", emitted)
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"charm.land/bubbles/v2/progress"
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/bkenks/lazymux/internal/constants"
@@ -121,19 +122,55 @@ func FormKeyMap() *huh.KeyMap {
 	return keys
 }
 
-// FitForm sizes form and its help line to the content area under a screen
-// title. huh cannot lay out at the 1×1 floor ContentSize returns before the
-// first window size arrives, so until then form is returned unchanged.
+// SaveKey saves a form from whichever field has focus.
+var SaveKey = key.NewBinding(key.WithKeys("ctrl+s"), key.WithHelp("ctrl+s", "save"))
+
+// UpdateForm passes msg to form, whose fields are fields, saving the form
+// instead when msg is SaveKey.
+func UpdateForm(form *huh.Form, fields []huh.Field, msg tea.Msg) (*huh.Form, tea.Cmd) {
+	if keyMsg, ok := msg.(tea.KeyPressMsg); ok && key.Matches(keyMsg, SaveKey) {
+		return form, saveForm(form, fields)
+	}
+	model, cmd := form.Update(msg)
+	if updated, ok := model.(*huh.Form); ok {
+		form = updated
+	}
+	return form, cmd
+}
+
+// saveForm submits form once every one of its fields is valid. huh validates a
+// field only as focus leaves it, so each field is checked here; when any
+// fails, the fields show their errors and focus stays where it was.
+func saveForm(form *huh.Form, fields []huh.Field) tea.Cmd {
+	focused := form.GetFocusedField()
+	for _, field := range fields {
+		field.Blur()
+	}
+	if len(form.Errors()) > 0 {
+		return focused.Focus()
+	}
+	return form.NextGroup()
+}
+
+// FitForm sizes form to the content area under a screen title and above its
+// help line. huh cannot lay out at the 1×1 floor ContentSize returns before
+// the first window size arrives, so until then form is returned unchanged.
 func FitForm(form *huh.Form, title string) *huh.Form {
 	if constants.WindowSize.Width == 0 {
 		return form
 	}
-	const helpRows = 1
+	const helpRows = 2
 	width, height := ContentSize(lipgloss.Height(MenuTitle.Render(title)) + helpRows)
 	return form.WithWidth(width).WithHeight(height)
 }
 
-// RenderFormScreen draws form under its screen title.
-func RenderFormScreen(title string, form *huh.Form) string {
-	return lipgloss.JoinVertical(lipgloss.Left, MenuTitle.Render(title), form.View())
+// RenderFormScreen draws form, built without huh's help, under its screen
+// title and above a help line of the focused field's keys and extraKeys. The
+// help line gives way to the form's errors, as huh's own does.
+func RenderFormScreen(title string, form *huh.Form, extraKeys ...key.Binding) string {
+	rows := []string{MenuTitle.Render(title), form.View()}
+	if len(form.Errors()) == 0 {
+		rows = append(rows, "", Help.ShortHelpView(append(form.KeyBinds(), extraKeys...)))
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, rows...)
 }

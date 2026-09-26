@@ -44,7 +44,7 @@ func New(key, dir string, format semver.Format, tags []string) *Model {
 			}, &m.bump).
 			Affirmative("Push").Negative("Cancel").
 			Value(&m.isConfirmed).Validate(m.validateConfirmed),
-	)).WithKeyMap(styles.FormKeyMap()).WithShowHelp(true).WithTheme(styles.FormTheme)
+	)).WithKeyMap(styles.FormKeyMap()).WithShowHelp(false).WithTheme(styles.FormTheme)
 	m.resize()
 	return m
 }

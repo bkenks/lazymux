@@ -162,3 +162,33 @@ func TestReturnOnExitIgnoresYAndN(t *testing.T) {
 		t.Errorf("saved %+v, want ReturnOnExit toggled on by left", got)
 	}
 }
+
+func TestSaveKeyNeedsEveryFieldValid(t *testing.T) {
+	m := newTestModel()
+	saveKey := tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}
+
+	press(m, tea.KeyPressMsg{Code: 'n', Text: "n"})
+	for _, r := range "Tests" {
+		press(m, tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+	if changed := press(m, saveKey); len(changed) != 0 || m.form == nil {
+		t.Fatalf("saved a keybind with no keys or command: %v", changed)
+	}
+
+	press(m, enterKey)
+	for _, field := range []string{"ctrl + t", "go test ./..."} {
+		for _, r := range field {
+			press(m, tea.KeyPressMsg{Code: r, Text: string(r)})
+		}
+		press(m, enterKey)
+	}
+	changed := press(m, saveKey)
+
+	if len(changed) != 1 {
+		t.Fatalf("form emitted %d KeybindsChanged, want 1 (form open: %v)", len(changed), m.form != nil)
+	}
+	want := config.Keybind{Name: "Tests", Keys: "ctrl+t", Command: "go test ./..."}
+	if got := m.keybinds[len(m.keybinds)-1]; got != want {
+		t.Errorf("saved %+v, want %+v", got, want)
+	}
+}

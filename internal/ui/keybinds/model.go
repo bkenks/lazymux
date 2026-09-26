@@ -56,6 +56,7 @@ type Model struct {
 	reserved []string
 
 	form              *huh.Form
+	formFields        []huh.Field
 	purpose           formPurpose
 	editIndex         int // -1 = new keybind
 	draft             *config.Keybind
@@ -139,7 +140,7 @@ func (m *Model) startEdit(index int) tea.Cmd {
 	formKeys := cancelableKeyMap()
 	formKeys.Confirm.Accept.SetEnabled(false)
 	formKeys.Confirm.Reject.SetEnabled(false)
-	m.form = newForm(formKeys, huh.NewGroup(
+	m.form = m.newForm(formKeys,
 		huh.NewInput().Title("Name").Placeholder("Git log").
 			Value(&m.draft.Name).Validate(requireText("name")),
 		huh.NewInput().Title("Keybind").Placeholder("ctrl + l").
@@ -149,7 +150,7 @@ func (m *Model) startEdit(index int) tea.Cmd {
 		huh.NewConfirm().Title("Return to lazymux on command end").
 			Affirmative("Yes").Negative("No").
 			Value(&m.draft.ReturnOnExit),
-	))
+	)
 	return m.form.Init()
 }
 
@@ -158,13 +159,13 @@ func (m *Model) startDelete(index int) tea.Cmd {
 	m.purpose = purposeDelete
 	m.isDeleteConfirmed = false
 	name := lipgloss.NewStyle().Bold(true).Render(m.keybinds[index].Name)
-	m.form = newForm(cancelableKeyMap(), huh.NewGroup(
+	m.form = m.newForm(cancelableKeyMap(),
 		huh.NewConfirm().
 			Title(fmt.Sprintf("Are you sure you'd like to delete %s?", name)).
 			Affirmative("Yes").
 			Negative("No").
 			Value(&m.isDeleteConfirmed),
-	))
+	)
 	return m.form.Init()
 }
 
@@ -176,15 +177,15 @@ func cancelableKeyMap() *huh.KeyMap {
 	return formKeys
 }
 
-func newForm(formKeys *huh.KeyMap, group *huh.Group) *huh.Form {
-	return huh.NewForm(group).WithKeyMap(formKeys).WithShowHelp(true).WithTheme(styles.FormTheme)
+func (m *Model) newForm(formKeys *huh.KeyMap, fields ...huh.Field) *huh.Form {
+	m.formFields = fields
+	return huh.NewForm(huh.NewGroup(fields...)).
+		WithKeyMap(formKeys).WithShowHelp(false).WithTheme(styles.FormTheme)
 }
 
 func (m *Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
-	model, cmd := m.form.Update(msg)
-	if form, ok := model.(*huh.Form); ok {
-		m.form = form
-	}
+	var cmd tea.Cmd
+	m.form, cmd = styles.UpdateForm(m.form, m.formFields, msg)
 
 	switch m.form.State {
 	case huh.StateAborted:
@@ -265,7 +266,11 @@ func (m *Model) View() tea.View {
 			title = "Edit Keybind"
 		}
 	}
-	rows := []string{styles.MenuTitle.Render(title), m.form.View()}
+	var formKeys []key.Binding
+	if m.purpose == purposeEdit {
+		formKeys = append(formKeys, styles.SaveKey)
+	}
+	rows := []string{styles.RenderFormScreen(title, m.form, formKeys...)}
 	if m.purpose == purposeEdit {
 		width, _ := styles.ContentSize(0)
 		keyNamesHelp := styles.Subtle(keybind.KeyNamesHelp)

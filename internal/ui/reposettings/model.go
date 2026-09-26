@@ -1,8 +1,9 @@
 // Package reposettings is the per-repo settings screen: the prefix and suffix
 // its version tags wrap around MAJOR.MINOR.PATCH, which forges it is pushed to
 // (upstreams), which one it is fetched from (the origin), and the URL scheme.
-// Submitting the form saves it and re-renders the repo's placeholder origin,
-// insteadOf rule and push URLs; esc leaves without saving.
+// Submitting the form, or ctrl+s from any field, saves it and re-renders the
+// repo's placeholder origin, insteadOf rule and push URLs; esc leaves without
+// saving.
 package reposettings
 
 import (
@@ -23,6 +24,7 @@ import (
 
 type Model struct {
 	form    *huh.Form
+	fields  []huh.Field
 	title   string
 	repoKey string
 	link    config.RepoLink
@@ -55,9 +57,9 @@ func New(cfg config.Config, repoKey string, tags []string, tagsErr error) *Model
 			DescriptionFunc(m.describeTags, &m.link).
 			Value(&m.link.TagSuffix).Validate(validateAffix),
 	}
-	fields = append(fields, m.forgeFields(cfg.Forges)...)
-	m.form = huh.NewForm(huh.NewGroup(fields...)).
-		WithKeyMap(styles.FormKeyMap()).WithShowHelp(true).WithTheme(styles.FormTheme)
+	m.fields = append(fields, m.forgeFields(cfg.Forges)...)
+	m.form = huh.NewForm(huh.NewGroup(m.fields...)).
+		WithKeyMap(styles.FormKeyMap()).WithShowHelp(false).WithTheme(styles.FormTheme)
 	m.resize()
 	return m
 }
@@ -137,10 +139,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resize()
 	}
 
-	model, cmd := m.form.Update(msg)
-	if form, ok := model.(*huh.Form); ok {
-		m.form = form
-	}
+	var cmd tea.Cmd
+	m.form, cmd = styles.UpdateForm(m.form, m.fields, msg)
 
 	switch m.form.State {
 	case huh.StateAborted:
@@ -172,4 +172,6 @@ func (m *Model) edited() config.RepoLink {
 
 func (m *Model) resize() { m.form = styles.FitForm(m.form, m.title) }
 
-func (m *Model) View() tea.View { return tea.NewView(styles.RenderFormScreen(m.title, m.form)) }
+func (m *Model) View() tea.View {
+	return tea.NewView(styles.RenderFormScreen(m.title, m.form, styles.SaveKey))
+}

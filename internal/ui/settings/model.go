@@ -1,5 +1,6 @@
 // Package settings is the screen for editing lazymux's preferences as one huh
-// form. Submitting the form saves every field; esc leaves without saving.
+// form. Submitting the form, or ctrl+s from any field, saves every field; esc
+// leaves without saving.
 package settings
 
 import (
@@ -18,19 +19,22 @@ import (
 const title = "Settings"
 
 type Model struct {
-	form  *huh.Form
-	draft *config.Config
+	form   *huh.Form
+	fields []huh.Field
+	draft  *config.Config
 }
 
 // New builds the form over a copy of cfg, sized to the current window.
 func New(cfg config.Config) *Model {
 	m := &Model{draft: &cfg}
-	m.form = m.newForm()
+	m.fields = m.newFields()
+	m.form = huh.NewForm(huh.NewGroup(m.fields...)).
+		WithKeyMap(styles.FormKeyMap()).WithShowHelp(false).WithTheme(styles.FormTheme)
 	m.resize()
 	return m
 }
 
-func (m *Model) newForm() *huh.Form {
+func (m *Model) newFields() []huh.Field {
 	d := m.draft
 	fields := []huh.Field{
 		huh.NewSelect[string]().Title("Default clone protocol").Inline(true).
@@ -45,9 +49,7 @@ func (m *Model) newForm() *huh.Form {
 			Value(&d.UI.SortMode),
 	}
 	fields = append(fields, colorInputs("Dark", &d.UI.Colors.Dark, styles.IsDark)...)
-	fields = append(fields, colorInputs("Light", &d.UI.Colors.Light, !styles.IsDark)...)
-	return huh.NewForm(huh.NewGroup(fields...)).
-		WithKeyMap(styles.FormKeyMap()).WithShowHelp(true).WithTheme(styles.FormTheme)
+	return append(fields, colorInputs("Light", &d.UI.Colors.Light, !styles.IsDark)...)
 }
 
 func toggle(title string, value *bool) *huh.Confirm {
@@ -113,10 +115,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resize()
 	}
 
-	model, cmd := m.form.Update(msg)
-	if form, ok := model.(*huh.Form); ok {
-		m.form = form
-	}
+	var cmd tea.Cmd
+	m.form, cmd = styles.UpdateForm(m.form, m.fields, msg)
 
 	switch m.form.State {
 	case huh.StateAborted:
@@ -132,4 +132,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Model) resize() { m.form = styles.FitForm(m.form, title) }
 
-func (m *Model) View() tea.View { return tea.NewView(styles.RenderFormScreen(title, m.form)) }
+func (m *Model) View() tea.View {
+	return tea.NewView(styles.RenderFormScreen(title, m.form, styles.SaveKey))
+}

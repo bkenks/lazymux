@@ -32,7 +32,7 @@ func New(cfg config.Config, problem error) *Model {
 			Description(describe(problem)).
 			Placeholder("~/Development").
 			Value(&m.dir).Validate(validate),
-	)).WithKeyMap(formKeys).WithShowHelp(true).WithTheme(styles.FormTheme)
+	)).WithKeyMap(formKeys).WithShowHelp(false).WithTheme(styles.FormTheme)
 	m.resize()
 	return m
 }

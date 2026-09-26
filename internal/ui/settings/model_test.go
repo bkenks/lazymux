@@ -102,3 +102,38 @@ func TestEscLeavesWithoutSaving(t *testing.T) {
 		t.Errorf("emitted %v, want SetState to the repo list", emitted[0])
 	}
 }
+
+var saveKey = tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}
+
+func TestSaveKeySavesFromAnyField(t *testing.T) {
+	m := newTestModel(t)
+	press(m, enterKey)
+	press(m, tea.KeyPressMsg{Code: tea.KeyLeft})
+
+	emitted := press(m, saveKey)
+
+	if len(emitted) != 1 {
+		t.Fatalf("emitted %v, want one SettingsChanged", emitted)
+	}
+	changed, ok := emitted[0].(events.SettingsChanged)
+	if !ok {
+		t.Fatalf("emitted %T, want SettingsChanged", emitted[0])
+	}
+	if changed.Config.Behavior.ConfirmDelete == config.Default().Behavior.ConfirmDelete {
+		t.Error("save dropped the toggled confirm-delete field")
+	}
+}
+
+func TestSaveKeyChecksFieldsNotYetVisited(t *testing.T) {
+	cfg := config.Default()
+	cfg.UI.Colors.Light.Accent = "purple"
+	m := New(cfg)
+	press(m, m.Init())
+
+	if emitted := press(m, saveKey); len(emitted) != 0 {
+		t.Errorf("emitted %v with an invalid light accent, want nothing", emitted)
+	}
+	if err := m.form.GetFocusedField().Error(); err != nil {
+		t.Errorf("focused field shows %v, want the error on the light accent only", err)
+	}
+}
