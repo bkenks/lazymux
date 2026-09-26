@@ -11,12 +11,12 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/bkenks/lazymux/internal/commands"
-	"github.com/bkenks/lazymux/internal/config"
-	"github.com/bkenks/lazymux/internal/constants"
-	"github.com/bkenks/lazymux/internal/domain"
-	"github.com/bkenks/lazymux/internal/events"
-	"github.com/bkenks/lazymux/internal/styles"
+	"github.com/bkenks/gitkeeper/internal/commands"
+	"github.com/bkenks/gitkeeper/internal/config"
+	"github.com/bkenks/gitkeeper/internal/constants"
+	"github.com/bkenks/gitkeeper/internal/domain"
+	"github.com/bkenks/gitkeeper/internal/events"
+	"github.com/bkenks/gitkeeper/internal/styles"
 )
 
 type keyMap struct {

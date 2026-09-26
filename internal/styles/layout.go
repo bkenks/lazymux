@@ -1,6 +1,6 @@
 package styles
 
-import "github.com/bkenks/lazymux/internal/constants"
+import "github.com/bkenks/gitkeeper/internal/constants"
 
 // ContentSize is the space a screen has to draw in: the window minus
 // DocStyle's frame, the app's footer, and reservedRows the screen keeps for

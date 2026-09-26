@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bkenks/lazymux/internal/atomicfile"
-	"github.com/bkenks/lazymux/internal/config"
+	"github.com/bkenks/gitkeeper/internal/atomicfile"
+	"github.com/bkenks/gitkeeper/internal/config"
 )
 
 type InteractionStore map[string]time.Time

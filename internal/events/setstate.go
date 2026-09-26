@@ -1,7 +1,7 @@
 package events
 
 import (
-	"github.com/bkenks/lazymux/internal/domain"
+	"github.com/bkenks/gitkeeper/internal/domain"
 )
 
 type SetState struct{ State domain.SessionState }

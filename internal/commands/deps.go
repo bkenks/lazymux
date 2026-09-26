@@ -1,6 +1,6 @@
 package commands
 
-import "github.com/bkenks/lazymux/internal/config"
+import "github.com/bkenks/gitkeeper/internal/config"
 
 // deps is a package-private container for runtime dependencies that
 // commands need (config-driven tool paths, etc.). The app sets it via SetDeps

@@ -1,8 +1,8 @@
 package events
 
 import (
-	"github.com/bkenks/lazymux/internal/config"
-	"github.com/bkenks/lazymux/internal/repomgr"
+	"github.com/bkenks/gitkeeper/internal/config"
+	"github.com/bkenks/gitkeeper/internal/repomgr"
 )
 
 // ForgeSelectComplete is emitted by the clone-time forge-select screen once the

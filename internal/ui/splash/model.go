@@ -1,5 +1,5 @@
 // Package splash is the brief gradient intro shown at launch. It displays the
-// lazymux wordmark and build version, then auto-dismisses to the repo list (or
+// gitkeeper wordmark and build version, then auto-dismisses to the repo list (or
 // on any keypress) while the initial repo scan runs behind it.
 package splash
 
@@ -9,9 +9,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/bkenks/lazymux/internal/commands"
-	"github.com/bkenks/lazymux/internal/domain"
-	"github.com/bkenks/lazymux/internal/styles"
+	"github.com/bkenks/gitkeeper/internal/commands"
+	"github.com/bkenks/gitkeeper/internal/domain"
+	"github.com/bkenks/gitkeeper/internal/styles"
 	colorful "github.com/lucasb-eyer/go-colorful"
 )
 
@@ -43,7 +43,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) View() tea.View {
 	from, _ := colorful.MakeColor(styles.Main)
 	to, _ := colorful.MakeColor(styles.Accent)
-	wordmark := gradient("lazymux", from, to)
+	wordmark := gradient("gitkeeper", from, to)
 	inner := lipgloss.JoinVertical(
 		lipgloss.Center,
 		wordmark,

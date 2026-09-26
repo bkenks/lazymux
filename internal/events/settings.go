@@ -1,6 +1,6 @@
 package events
 
-import "github.com/bkenks/lazymux/internal/config"
+import "github.com/bkenks/gitkeeper/internal/config"
 
 // SettingsChanged carries the config as the submitted settings form left it.
 // The fields that screen edits are saved from it.

@@ -3,7 +3,7 @@ package repomgr
 import (
 	"strings"
 
-	"github.com/bkenks/lazymux/internal/config"
+	"github.com/bkenks/gitkeeper/internal/config"
 )
 
 // PendingClone is a repo the user is about to clone, together with the forge

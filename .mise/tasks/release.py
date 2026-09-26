@@ -4,7 +4,7 @@
 # ///
 # MISE description="Cut a release: check the tree, tag the new version and push it"
 
-"""Cut a lazymux release.
+"""Cut a gitkeeper release.
 
     mise run release patch          v1.0.2 -> v1.0.3
     mise run release minor          v1.0.2 -> v1.1.0
@@ -17,7 +17,7 @@ branch that has diverged from its remote, and the test suite runs *before* the
 tag is created, so a broken tree never gets tagged.
 
 Tags are `vX.Y.Z`. The prefix is what Go modules require, so it is also what keeps
-`go install github.com/bkenks/lazymux@latest` resolving to the newest release.
+`go install github.com/bkenks/gitkeeper@latest` resolving to the newest release.
 
 Pushing the tag is the whole job: Woodpecker (`.woodpecker.yml`) picks up the
 `v*` tag, cross-compiles the release matrix and creates the Forgejo release with
@@ -47,7 +47,7 @@ BUMPS = ("patch", "minor", "major")
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="mise run release",
-        description="Test, tag and push a lazymux release for CI to build and publish.",
+        description="Test, tag and push a gitkeeper release for CI to build and publish.",
     )
     parser.add_argument(
         "version",

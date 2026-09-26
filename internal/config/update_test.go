@@ -9,8 +9,8 @@ import (
 
 func writeConfigFile(t *testing.T, contents string) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), ".lazymux.json")
-	t.Setenv("LAZYMUX_CONFIG", path)
+	path := filepath.Join(t.TempDir(), ".gitkeeper.json")
+	t.Setenv("GITKEEPER_CONFIG", path)
 	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -72,8 +72,8 @@ func TestUpdateKeepsEditsMadeByAnotherWriter(t *testing.T) {
 }
 
 func TestUpdateCreatesMissingConfig(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "nested", ".lazymux.json")
-	t.Setenv("LAZYMUX_CONFIG", path)
+	path := filepath.Join(t.TempDir(), "nested", ".gitkeeper.json")
+	t.Setenv("GITKEEPER_CONFIG", path)
 
 	if _, err := Update(func(c *Config) { c.Tools.Shell = "zsh" }); err != nil {
 		t.Fatal(err)
@@ -86,9 +86,9 @@ func TestUpdateCreatesMissingConfig(t *testing.T) {
 func TestLoadNormalizesReposDir(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	writeConfigFile(t, `{"baseDir": "~/repos/../lazymux/"}`)
+	writeConfigFile(t, `{"reposDir": "~/repos/../gitkeeper/"}`)
 
-	if got, want := Load().ReposDir, filepath.Join(home, "lazymux"); got != want {
+	if got, want := Load().ReposDir, filepath.Join(home, "gitkeeper"); got != want {
 		t.Errorf("ReposDir = %q, want %q", got, want)
 	}
 }

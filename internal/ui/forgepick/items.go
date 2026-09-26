@@ -4,8 +4,8 @@ package forgepick
 
 import (
 	"charm.land/bubbles/v2/list"
-	"github.com/bkenks/lazymux/internal/config"
-	"github.com/bkenks/lazymux/internal/styles"
+	"github.com/bkenks/gitkeeper/internal/config"
+	"github.com/bkenks/gitkeeper/internal/styles"
 )
 
 // item is a registry forge as shown in a selection list.

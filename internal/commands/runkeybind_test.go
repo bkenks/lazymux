@@ -26,7 +26,7 @@ func TestHandoffWaitsForEnterAndKeepsTheCommandError(t *testing.T) {
 		t.Errorf("Run() = %v, want the command's exit status 3", err)
 	}
 	got := ansi.Strip(output.String())
-	want := []string{"loading…", "hello", "press enter to return to lazymux"}
+	want := []string{"loading…", "hello", "press enter to return to gitkeeper"}
 	for _, part := range want {
 		index := strings.Index(got, part)
 		if index < 0 {

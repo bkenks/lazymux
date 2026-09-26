@@ -1,6 +1,6 @@
 package events
 
-import "github.com/bkenks/lazymux/internal/domain"
+import "github.com/bkenks/gitkeeper/internal/domain"
 
 // SortModeChanged is emitted when the repo list cycles its sort order, so the
 // choice is persisted to config. The list has already reordered itself.

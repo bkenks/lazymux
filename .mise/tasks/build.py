@@ -2,12 +2,12 @@
 # /// script
 # requires-python = ">=3.13"
 # ///
-# MISE description="Build lazymux (host by default; --all cross-compiles the release matrix)"
+# MISE description="Build gitkeeper (host by default; --all cross-compiles the release matrix)"
 
-"""Build the lazymux binary.
+"""Build the gitkeeper binary.
 
-    mise run build                      build/bin/lazymux for this machine
-    mise run build --dev                build/bin/lazymux-dev, sandboxed to lazymux-dev dirs
+    mise run build                      build/bin/gitkeeper for this machine
+    mise run build --dev                build/bin/gitkeeper-dev, sandboxed to gitkeeper-dev dirs
     mise run build --all                build/dist/* for every release platform
     mise run build --platform linux/amd64   build/dist/* for one platform
     mise run build --version v1.4.0     stamp an explicit version
@@ -29,8 +29,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from _lib import (
     DEV_SUFFIX,
     PLATFORMS,
-    build_lazymux,
-    build_lazymux_dev,
+    build_gitkeeper,
+    build_gitkeeper_dev,
     build_matrix,
     build_version,
     die,
@@ -51,11 +51,13 @@ def parse_platform(value: str) -> tuple[str, str]:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog="mise run build", description="Build the lazymux binary.")
+    parser = argparse.ArgumentParser(
+        prog="mise run build", description="Build the gitkeeper binary."
+    )
     parser.add_argument(
         "--dev",
         action="store_true",
-        help="build build/bin/lazymux-dev for this machine, sandboxed to lazymux-dev dirs",
+        help="build build/bin/gitkeeper-dev for this machine, sandboxed to gitkeeper-dev dirs",
     )
     parser.add_argument(
         "--all",
@@ -93,12 +95,12 @@ def main() -> None:
     version = args.version or build_version()
 
     if args.dev:
-        output = build_lazymux_dev(version)
+        output = build_gitkeeper_dev(version)
         print(f"built {output} ({version}{DEV_SUFFIX})")
         return
 
     if not args.all and not args.platform:
-        output = build_lazymux(version)
+        output = build_gitkeeper(version)
         print(f"built {output} ({version})")
         return
 

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bkenks/lazymux/internal/config"
+	"github.com/bkenks/gitkeeper/internal/config"
 )
 
 func TestParseRepoURL(t *testing.T) {
@@ -15,11 +15,11 @@ func TestParseRepoURL(t *testing.T) {
 		in                          string
 		scheme, host, ns, name, key string
 	}{
-		{"https://github.com/bkenks/lazymux.git", "https", "github.com", "bkenks", "lazymux", "bkenks/lazymux"},
-		{"https://github.com/bkenks/lazymux", "https", "github.com", "bkenks", "lazymux", "bkenks/lazymux"},
-		{"git@github.com:bkenks/lazymux.git", "ssh", "github.com", "bkenks", "lazymux", "bkenks/lazymux"},
-		{"ssh://git@fj.homektb.com/bkenks/lazymux.git", "ssh", "fj.homektb.com", "bkenks", "lazymux", "bkenks/lazymux"},
-		{"ssh://git@fj.homektb.com:2222/bkenks/lazymux.git", "ssh", "fj.homektb.com", "bkenks", "lazymux", "bkenks/lazymux"},
+		{"https://github.com/bkenks/gitkeeper.git", "https", "github.com", "bkenks", "gitkeeper", "bkenks/gitkeeper"},
+		{"https://github.com/bkenks/gitkeeper", "https", "github.com", "bkenks", "gitkeeper", "bkenks/gitkeeper"},
+		{"git@github.com:bkenks/gitkeeper.git", "ssh", "github.com", "bkenks", "gitkeeper", "bkenks/gitkeeper"},
+		{"ssh://git@fj.homektb.com/bkenks/gitkeeper.git", "ssh", "fj.homektb.com", "bkenks", "gitkeeper", "bkenks/gitkeeper"},
+		{"ssh://git@fj.homektb.com:2222/bkenks/gitkeeper.git", "ssh", "fj.homektb.com", "bkenks", "gitkeeper", "bkenks/gitkeeper"},
 		{"https://gitlab.com/group/subgroup/proj.git", "https", "gitlab.com", "group/subgroup", "proj", "group/subgroup/proj"},
 	}
 	for _, c := range cases {
@@ -97,8 +97,8 @@ func gitCfgAll(t *testing.T, dir, key string) []string {
 
 func TestRenderGitConfig(t *testing.T) {
 	base := t.TempDir()
-	key := "bkenks/lazymux"
-	dir := filepath.Join(base, "bkenks", "lazymux")
+	key := "bkenks/gitkeeper"
+	dir := filepath.Join(base, "bkenks", "gitkeeper")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -120,17 +120,17 @@ func TestRenderGitConfig(t *testing.T) {
 	if err := RenderGitConfig(cfg, key, link); err != nil {
 		t.Fatal(err)
 	}
-	if got := gitCfg(t, dir, "remote.origin.url"); got != "https://lazymux-placeholder/bkenks/lazymux.git" {
+	if got := gitCfg(t, dir, "remote.origin.url"); got != "https://gitkeeper-placeholder/bkenks/gitkeeper.git" {
 		t.Errorf("origin = %q", got)
 	}
-	if got := gitCfg(t, dir, "url.https://fj.homektb.com/.insteadOf"); got != "https://lazymux-placeholder/" {
+	if got := gitCfg(t, dir, "url.https://fj.homektb.com/.insteadOf"); got != "https://gitkeeper-placeholder/" {
 		t.Errorf("forgejo insteadOf = %q", got)
 	}
 
 	// Both upstreams get a push URL, so a push fans out to each forge.
 	if got := gitCfgAll(t, dir, "remote.origin.pushurl"); !equalStrings(got, []string{
-		"https://github.com/bkenks/lazymux.git",
-		"https://fj.homektb.com/bkenks/lazymux.git",
+		"https://github.com/bkenks/gitkeeper.git",
+		"https://fj.homektb.com/bkenks/gitkeeper.git",
 	}) {
 		t.Errorf("push URLs = %q", got)
 	}
@@ -140,7 +140,7 @@ func TestRenderGitConfig(t *testing.T) {
 	if err := RenderGitConfig(cfg, key, link); err != nil {
 		t.Fatal(err)
 	}
-	if got := gitCfg(t, dir, "url.https://github.com/.insteadOf"); got != "https://lazymux-placeholder/" {
+	if got := gitCfg(t, dir, "url.https://github.com/.insteadOf"); got != "https://gitkeeper-placeholder/" {
 		t.Errorf("github insteadOf = %q", got)
 	}
 	if got := gitCfg(t, dir, "url.https://fj.homektb.com/.insteadOf"); got != "" {
@@ -152,18 +152,18 @@ func TestRenderGitConfig(t *testing.T) {
 	if err := RenderGitConfig(cfg, key, link); err != nil {
 		t.Fatal(err)
 	}
-	if got := gitCfg(t, dir, "remote.origin.url"); got != "git@lazymux-placeholder:bkenks/lazymux.git" {
+	if got := gitCfg(t, dir, "remote.origin.url"); got != "git@gitkeeper-placeholder:bkenks/gitkeeper.git" {
 		t.Errorf("ssh origin = %q", got)
 	}
-	if got := gitCfg(t, dir, "url.git@github.com:.insteadOf"); got != "git@lazymux-placeholder:" {
+	if got := gitCfg(t, dir, "url.git@github.com:.insteadOf"); got != "git@gitkeeper-placeholder:" {
 		t.Errorf("ssh insteadOf = %q", got)
 	}
 	if got := gitCfg(t, dir, "url.https://github.com/.insteadOf"); got != "" {
 		t.Errorf("stale https insteadOf still present: %q", got)
 	}
 	if got := gitCfgAll(t, dir, "remote.origin.pushurl"); !equalStrings(got, []string{
-		"git@github.com:bkenks/lazymux.git",
-		"git@fj.homektb.com:bkenks/lazymux.git",
+		"git@github.com:bkenks/gitkeeper.git",
+		"git@fj.homektb.com:bkenks/gitkeeper.git",
 	}) {
 		t.Errorf("ssh push URLs = %q", got)
 	}

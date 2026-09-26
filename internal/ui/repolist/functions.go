@@ -2,7 +2,7 @@ package repolist
 
 import (
 	"charm.land/bubbles/v2/list"
-	"github.com/bkenks/lazymux/internal/domain"
+	"github.com/bkenks/gitkeeper/internal/domain"
 )
 
 func ConvertToRepoType(i list.Item) domain.Repo {

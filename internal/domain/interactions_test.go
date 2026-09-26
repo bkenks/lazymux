@@ -5,14 +5,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bkenks/lazymux/internal/config"
+	"github.com/bkenks/gitkeeper/internal/config"
 )
 
 func TestSaveInteractionWritesUnderTheBuildsDirName(t *testing.T) {
 	dataHome := t.TempDir()
 	t.Setenv("XDG_DATA_HOME", dataHome)
 
-	if err := SaveInteraction("bkenks/lazymux"); err != nil {
+	if err := SaveInteraction("bkenks/gitkeeper"); err != nil {
 		t.Fatalf("SaveInteraction: %v", err)
 	}
 	if err := SaveInteraction("acme/website"); err != nil {
@@ -29,7 +29,7 @@ func TestSaveInteractionWritesUnderTheBuildsDirName(t *testing.T) {
 	}
 
 	store := LoadInteractions()
-	if store["bkenks/lazymux"].IsZero() || store["acme/website"].IsZero() {
+	if store["bkenks/gitkeeper"].IsZero() || store["acme/website"].IsZero() {
 		t.Errorf("store = %v, want both interactions recorded", store)
 	}
 }

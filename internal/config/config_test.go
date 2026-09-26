@@ -8,8 +8,8 @@ import (
 )
 
 func TestLoadCanonicalizesHandEditedKeybinds(t *testing.T) {
-	path := filepath.Join(t.TempDir(), ".lazymux.json")
-	t.Setenv("LAZYMUX_CONFIG", path)
+	path := filepath.Join(t.TempDir(), ".gitkeeper.json")
+	t.Setenv("GITKEEPER_CONFIG", path)
 
 	edited := `{"keybinds":[{"name":"log","keys":"Ctrl + G","command":"git log"},` +
 		`{"name":"broken","keys":"ctrl + banana","command":"true"}]}`
@@ -31,11 +31,11 @@ func TestLoadCanonicalizesHandEditedKeybinds(t *testing.T) {
 
 func TestSaveLoadRoundtrip(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("LAZYMUX_CONFIG", filepath.Join(dir, ".lazymux.json"))
+	t.Setenv("GITKEEPER_CONFIG", filepath.Join(dir, ".gitkeeper.json"))
 
 	cfg := Default()
 	cfg.Forges = []Forge{{Name: "github", Host: "github.com"}}
-	cfg.Repos["bkenks/lazymux"] = RepoLink{Upstreams: []string{"github"}, Origin: "github", Scheme: "https"}
+	cfg.Repos["bkenks/gitkeeper"] = RepoLink{Upstreams: []string{"github"}, Origin: "github", Scheme: "https"}
 	if err := Save(cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestSaveLoadRoundtrip(t *testing.T) {
 	if len(got.Forges) != 1 || got.Forges[0].Name != "github" {
 		t.Errorf("forges = %+v", got.Forges)
 	}
-	link, ok := got.Repos["bkenks/lazymux"]
+	link, ok := got.Repos["bkenks/gitkeeper"]
 	if !ok || link.Origin != "github" || link.Scheme != "https" {
 		t.Errorf("repo link = %+v ok=%v", link, ok)
 	}
@@ -56,52 +56,18 @@ func TestSaveLoadRoundtrip(t *testing.T) {
 	}
 }
 
-func TestMigrateLegacyToml(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("LAZYMUX_CONFIG", filepath.Join(dir, ".lazymux.json"))
-
-	// Point the legacy lookup at a temp XDG dir holding an old config.toml.
-	xdg := filepath.Join(dir, "xdg")
-	if err := os.MkdirAll(filepath.Join(xdg, "lazymux"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("XDG_CONFIG_HOME", xdg)
-	toml := "[tools]\nshell = \"zsh\"\n[ui]\nshow_full_path = true\n[behavior]\ndefault_protocol = \"ssh\"\nconfirm_delete = false\n"
-	if err := os.WriteFile(filepath.Join(xdg, "lazymux", "config.toml"), []byte(toml), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	got := Load() // first run: no json yet → migrates the toml
-	if got.Tools.Shell != "zsh" {
-		t.Errorf("shell = %q, want zsh", got.Tools.Shell)
-	}
-	if !got.UI.ShowFullPath {
-		t.Errorf("showFullPath should be true")
-	}
-	if got.Behavior.DefaultProtocol != "ssh" {
-		t.Errorf("protocol = %q, want ssh", got.Behavior.DefaultProtocol)
-	}
-	if got.Behavior.ConfirmDelete {
-		t.Errorf("confirmDelete should be false")
-	}
-	// The migrated config should now exist as json.
-	if _, err := os.Stat(filepath.Join(dir, ".lazymux.json")); err != nil {
-		t.Errorf("migrated json not written: %v", err)
-	}
-}
-
 func TestLoadMigratesForgesPrimary(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, ".lazymux.json")
-	t.Setenv("LAZYMUX_CONFIG", path)
+	path := filepath.Join(dir, ".gitkeeper.json")
+	t.Setenv("GITKEEPER_CONFIG", path)
 
-	legacy := `{"repos":{"bkenks/lazymux":{"forges":["github","forgejo"],` +
+	legacy := `{"repos":{"bkenks/gitkeeper":{"forges":["github","forgejo"],` +
 		`"primary":"forgejo","scheme":"https"}}}`
 	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	link := Load().Repos["bkenks/lazymux"]
+	link := Load().Repos["bkenks/gitkeeper"]
 	if link.Origin != "forgejo" {
 		t.Errorf("Origin = %q, want forgejo", link.Origin)
 	}

@@ -5,12 +5,12 @@ import (
 
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
-	"github.com/bkenks/lazymux/internal/domain"
-	"github.com/bkenks/lazymux/internal/events"
-	"github.com/bkenks/lazymux/internal/repomgr"
+	"github.com/bkenks/gitkeeper/internal/domain"
+	"github.com/bkenks/gitkeeper/internal/events"
+	"github.com/bkenks/gitkeeper/internal/repomgr"
 )
 
-// RefreshReposCmd walks the lazymux base dir and rebuilds the repo list,
+// RefreshReposCmd walks the gitkeeper base dir and rebuilds the repo list,
 // ordered by the current domain.Sort mode.
 func RefreshReposCmd() tea.Cmd {
 	snapshot := cfg().Clone()

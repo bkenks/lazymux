@@ -1,6 +1,6 @@
 package events
 
-import "github.com/bkenks/lazymux/internal/config"
+import "github.com/bkenks/gitkeeper/internal/config"
 
 // KeybindsChanged replaces the whole custom keybind list (from the keybinds
 // screen) and is persisted right away.

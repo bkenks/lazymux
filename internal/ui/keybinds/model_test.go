@@ -5,8 +5,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/bkenks/lazymux/internal/config"
-	"github.com/bkenks/lazymux/internal/events"
+	"github.com/bkenks/gitkeeper/internal/config"
+	"github.com/bkenks/gitkeeper/internal/events"
 )
 
 func newTestModel() *Model {

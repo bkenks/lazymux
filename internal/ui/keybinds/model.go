@@ -13,13 +13,13 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/bkenks/lazymux/internal/commands"
-	"github.com/bkenks/lazymux/internal/config"
-	"github.com/bkenks/lazymux/internal/constants"
-	"github.com/bkenks/lazymux/internal/domain"
-	"github.com/bkenks/lazymux/internal/events"
-	"github.com/bkenks/lazymux/internal/keybind"
-	"github.com/bkenks/lazymux/internal/styles"
+	"github.com/bkenks/gitkeeper/internal/commands"
+	"github.com/bkenks/gitkeeper/internal/config"
+	"github.com/bkenks/gitkeeper/internal/constants"
+	"github.com/bkenks/gitkeeper/internal/domain"
+	"github.com/bkenks/gitkeeper/internal/events"
+	"github.com/bkenks/gitkeeper/internal/keybind"
+	"github.com/bkenks/gitkeeper/internal/styles"
 )
 
 type keyMap struct {
@@ -147,7 +147,7 @@ func (m *Model) startEdit(index int) tea.Cmd {
 			Value(&m.draft.Keys).Validate(m.validateKeys),
 		huh.NewInput().Title("Command").Placeholder("git log --oneline --graph").
 			Value(&m.draft.Command).Validate(requireText("command")),
-		huh.NewConfirm().Title("Return to lazymux on command end").
+		huh.NewConfirm().Title("Return to gitkeeper on command end").
 			Affirmative("Yes").Negative("No").
 			Value(&m.draft.ReturnOnExit),
 	)
@@ -170,7 +170,7 @@ func (m *Model) startDelete(index int) tea.Cmd {
 }
 
 // cancelableKeyMap is huh's default key map with esc cancelling the form, like
-// every other lazymux screen.
+// every other gitkeeper screen.
 func cancelableKeyMap() *huh.KeyMap {
 	formKeys := huh.NewDefaultKeyMap()
 	formKeys.Quit = key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel"))
@@ -235,7 +235,7 @@ func (m *Model) validateKeys(input string) error {
 		return err
 	}
 	if used, ok := keybind.FindClash(keystroke, m.reserved); ok {
-		return fmt.Errorf("%s is already a lazymux key", used)
+		return fmt.Errorf("%s is already a gitkeeper key", used)
 	}
 	for i, other := range m.keybinds {
 		if i != m.editIndex && other.Keys == keystroke {

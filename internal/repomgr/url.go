@@ -1,4 +1,4 @@
-// Package repomgr is lazymux's native replacement for ghq: it parses clone
+// Package repomgr is gitkeeper's native replacement for ghq: it parses clone
 // URLs, decides on-disk locations (<baseDir>/<namespace>/<repo>), and manages
 // each repo's placeholder origin + origin-forge insteadOf rewrite.
 package repomgr
@@ -8,10 +8,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bkenks/lazymux/internal/config"
+	"github.com/bkenks/gitkeeper/internal/config"
 )
 
-// RepoURL is a parsed git remote, split into the parts lazymux cares about.
+// RepoURL is a parsed git remote, split into the parts gitkeeper cares about.
 type RepoURL struct {
 	Scheme    string // config.SchemeHTTPS | config.SchemeSSH
 	Host      string // e.g. github.com

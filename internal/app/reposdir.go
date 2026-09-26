@@ -5,11 +5,11 @@ import (
 	"os"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/bkenks/lazymux/internal/commands"
-	"github.com/bkenks/lazymux/internal/config"
-	"github.com/bkenks/lazymux/internal/domain"
-	"github.com/bkenks/lazymux/internal/events"
-	"github.com/bkenks/lazymux/internal/ui/reposdir"
+	"github.com/bkenks/gitkeeper/internal/commands"
+	"github.com/bkenks/gitkeeper/internal/config"
+	"github.com/bkenks/gitkeeper/internal/domain"
+	"github.com/bkenks/gitkeeper/internal/events"
+	"github.com/bkenks/gitkeeper/internal/ui/reposdir"
 )
 
 // showMainOrReposDir opens the repo list, or the repo directory prompt in its
@@ -28,7 +28,7 @@ func (m *ModelManager) showMainOrReposDir() tea.Cmd {
 }
 
 // applyReposDir creates and saves the chosen repo directory, then scans it and
-// returns to the repo list. $LAZYMUX_REPOS would override the saved value, so
+// returns to the repo list. $GITKEEPER_REPOS would override the saved value, so
 // it is dropped for this session and the user is told to unset it.
 func (m *ModelManager) applyReposDir(input string) tea.Cmd {
 	dir, err := config.ParseReposDir(input)

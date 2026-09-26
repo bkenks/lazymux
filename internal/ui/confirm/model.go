@@ -4,10 +4,10 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/bkenks/lazymux/internal/commands"
-	"github.com/bkenks/lazymux/internal/constants"
-	"github.com/bkenks/lazymux/internal/domain"
-	"github.com/bkenks/lazymux/internal/styles"
+	"github.com/bkenks/gitkeeper/internal/commands"
+	"github.com/bkenks/gitkeeper/internal/constants"
+	"github.com/bkenks/gitkeeper/internal/domain"
+	"github.com/bkenks/gitkeeper/internal/styles"
 )
 
 type choice int

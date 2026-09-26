@@ -1,4 +1,4 @@
-"""Shared helpers for the lazymux mise tasks.
+"""Shared helpers for the gitkeeper mise tasks.
 
 This file is intentionally not executable, so mise does not expose it as a task.
 Task scripts import it by adding their own directory to `sys.path`.
@@ -14,12 +14,12 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
-BINARY_NAME = "lazymux"
+BINARY_NAME = "gitkeeper"
 DEV_SUFFIX = "-dev"
 DEV_BINARY_NAME = BINARY_NAME + DEV_SUFFIX
 DEV_DIR_NAME = BINARY_NAME + DEV_SUFFIX
 
-# Release matrix. lazymux is pure Go (no cgo in the dependency graph), so these
+# Release matrix. gitkeeper is pure Go (no cgo in the dependency graph), so these
 # cross-compile with nothing but GOOS/GOARCH — no C toolchain required.
 PLATFORMS: tuple[tuple[str, str], ...] = (
     ("darwin", "amd64"),
@@ -127,14 +127,14 @@ def release_ldflags(version: str) -> str:
     return f"-X main.buildVersion={version}"
 
 
-def build_lazymux(version: str | None = None) -> Path:
+def build_gitkeeper(version: str | None = None) -> Path:
     """Build the host release binary into build/bin. Defaults to the describe version."""
     version = version or build_version()
     return go_build(bin_dir() / BINARY_NAME, release_ldflags(version))
 
 
-def build_lazymux_dev(version: str | None = None) -> Path:
-    """Build the dev binary, whose config and data dirs are named lazymux-dev.
+def build_gitkeeper_dev(version: str | None = None) -> Path:
+    """Build the dev binary, whose config and data dirs are named gitkeeper-dev.
 
     The build is checked by running it with --version, since the linker ignores
     an -X flag that names no symbol.
@@ -154,7 +154,7 @@ def build_lazymux_dev(version: str | None = None) -> Path:
 
 
 def asset_name(version: str, goos: str, goarch: str) -> str:
-    """Release artifact filename, e.g. lazymux-v1.2.3-windows-amd64.exe."""
+    """Release artifact filename, e.g. gitkeeper-v1.2.3-windows-amd64.exe."""
     suffix = ".exe" if goos == "windows" else ""
     return f"{BINARY_NAME}-{version}-{goos}-{goarch}{suffix}"
 

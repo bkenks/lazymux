@@ -9,9 +9,9 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
-	"github.com/bkenks/lazymux/internal/config"
-	"github.com/bkenks/lazymux/internal/events"
-	"github.com/bkenks/lazymux/internal/styles"
+	"github.com/bkenks/gitkeeper/internal/config"
+	"github.com/bkenks/gitkeeper/internal/events"
+	"github.com/bkenks/gitkeeper/internal/styles"
 )
 
 const title = "Repo directory"
@@ -28,7 +28,7 @@ func New(cfg config.Config, problem error) *Model {
 	formKeys := huh.NewDefaultKeyMap()
 	formKeys.Quit = key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "quit"))
 	m.form = huh.NewForm(huh.NewGroup(
-		huh.NewInput().Title("Where should lazymux keep your repos?").
+		huh.NewInput().Title("Where should gitkeeper keep your repos?").
 			Description(describe(problem)).
 			Placeholder("~/Development").
 			Value(&m.dir).Validate(validate),

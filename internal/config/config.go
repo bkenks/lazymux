@@ -9,15 +9,14 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/BurntSushi/toml"
-	"github.com/bkenks/lazymux/internal/atomicfile"
-	"github.com/bkenks/lazymux/internal/keybind"
+	"github.com/bkenks/gitkeeper/internal/atomicfile"
+	"github.com/bkenks/gitkeeper/internal/keybind"
 )
 
 // DefaultPlaceholderHost is the fake host stored in every managed repo's
 // origin. A per-repo local git `insteadOf` rule rewrites it to the origin
 // forge, so the stored remote never changes when the origin forge does.
-const DefaultPlaceholderHost = "lazymux-placeholder"
+const DefaultPlaceholderHost = "gitkeeper-placeholder"
 
 // DefaultSortMode is the repo list ordering used when none is stored. It
 // mirrors domain.SortRecent, which config can't import without a cycle.
@@ -34,7 +33,7 @@ type Tools struct {
 }
 
 // Colors are the hex base colors ("#7D56F4") the UI palette is derived from.
-// An empty one keeps lazymux's default.
+// An empty one keeps gitkeeper's default.
 type Colors struct {
 	Main   string `json:"main"`
 	Accent string `json:"accent"`
@@ -198,7 +197,7 @@ func NormalizeScheme(scheme string) string {
 // Keybind binds a key combo on the repo list to a shell command that runs in
 // the selected repo's directory. Keys holds the canonical keystroke produced by
 // keybind.Parse (e.g. "ctrl+shift+k"). ReturnOnExit goes straight back to
-// lazymux when the command ends instead of waiting for enter.
+// gitkeeper when the command ends instead of waiting for enter.
 type Keybind struct {
 	Name         string `json:"name"`
 	Keys         string `json:"keys"`
@@ -209,10 +208,7 @@ type Keybind struct {
 type Config struct {
 	// ReposDir is the configured directory repos live under as
 	// <namespace>/<repo>. RepoRoot resolves the directory actually used.
-	ReposDir string `json:"reposDir,omitempty"`
-	// LegacyBaseDir holds the pre-reposDir key. normalize folds it into
-	// ReposDir, and it is never written back.
-	LegacyBaseDir   string `json:"baseDir,omitempty"`
+	ReposDir        string `json:"reposDir,omitempty"`
 	PlaceholderHost string `json:"placeholderHost"`
 
 	Tools    Tools    `json:"tools"`
@@ -254,12 +250,12 @@ func Default() Config {
 }
 
 // dirName is the name of the directory under each XDG base directory that
-// holds lazymux's config and data. Overridden at build time via
-// -ldflags "-X .../config.dirName=lazymux-dev" to build a dev binary that
-// is fully sandboxed from the normal lazymux directories.
-var dirName = "lazymux"
+// holds gitkeeper's config and data. Overridden at build time via
+// -ldflags "-X .../config.dirName=gitkeeper-dev" to build a dev binary that
+// is fully sandboxed from the normal gitkeeper directories.
+var dirName = "gitkeeper"
 
-// DirName is the per-build directory name ("lazymux", or "lazymux-dev" for
+// DirName is the per-build directory name ("gitkeeper", or "gitkeeper-dev" for
 // the dev binary) that every piece of on-disk state should be keyed by.
 func DirName() string { return dirName }
 
@@ -277,15 +273,15 @@ func xdgDir(envVar string, fallback ...string) string {
 	return filepath.Join(append([]string{home}, fallback...)...)
 }
 
-// DataDir is lazymux's directory under $XDG_DATA_HOME (~/.local/share).
+// DataDir is gitkeeper's directory under $XDG_DATA_HOME (~/.local/share).
 func DataDir() string {
 	return filepath.Join(xdgDir("XDG_DATA_HOME", ".local", "share"), dirName)
 }
 
 // ReposEnvVar names the environment variable that overrides reposDir.
-const ReposEnvVar = "LAZYMUX_REPOS"
+const ReposEnvVar = "GITKEEPER_REPOS"
 
-// RepoRoot is the directory repos live under: $LAZYMUX_REPOS, then the
+// RepoRoot is the directory repos live under: $GITKEEPER_REPOS, then the
 // configured reposDir. It is empty when neither is set.
 func (c Config) RepoRoot() string {
 	if dir := os.Getenv(ReposEnvVar); dir != "" {
@@ -333,38 +329,21 @@ func ParseReposDir(input string) (string, error) {
 }
 
 // Path returns the resolved config file path: config.json under
-// $XDG_CONFIG_HOME (~/.config), honoring $LAZYMUX_CONFIG for overrides.
+// $XDG_CONFIG_HOME (~/.config), honoring $GITKEEPER_CONFIG for overrides.
 func Path() string {
-	if p := os.Getenv("LAZYMUX_CONFIG"); p != "" {
+	if p := os.Getenv("GITKEEPER_CONFIG"); p != "" {
 		return p
 	}
 	return filepath.Join(xdgDir("XDG_CONFIG_HOME", ".config"), dirName, "config.json")
 }
 
-// legacyJSONPath is where configs lived before moving under XDG_CONFIG_HOME.
-func legacyJSONPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, dirName, ".lazymux.json")
-}
-
-// Load reads the config file, moving a legacy ~/lazymux/.lazymux.json into
-// place or migrating a legacy TOML config on first run, and writing a default
-// file if none exists. If the file exists but can't be read or parsed, it
+// Load reads the config file, writing a default file if none exists. If the file exists but can't be read or parsed, it
 // returns defaults with LoadFailed set.
 func Load() Config {
 	path := Path()
 	cfg, err := readFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		if moved, ok := moveLegacyJSON(path); ok {
-			return moved
-		}
 		cfg = Default()
-		if migrated, ok := migrateLegacy(cfg); ok {
-			cfg = migrated
-		}
 		if writeErr := Save(cfg); writeErr != nil {
 			cfg.Warnings = append(cfg.Warnings, fmt.Sprintf("couldn't write config: %v", writeErr))
 		}
@@ -386,15 +365,9 @@ func Update(change func(*Config)) (Config, error) {
 	cfg, err := readFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		cfg, err = Default(), nil
-		if moved, ok := moveLegacyJSON(path); ok {
-			cfg = moved
-		}
 	}
 	if err != nil {
 		return Config{}, fmt.Errorf("refusing to overwrite unreadable config: %w", err)
-	}
-	if cfg.LoadFailed {
-		return Config{}, fmt.Errorf("refusing to overwrite unreadable config: %s", cfg.Warnings[0])
 	}
 	change(&cfg)
 	if err := Save(cfg); err != nil {
@@ -419,10 +392,6 @@ func readFile(path string) (Config, error) {
 // rest of the app can assume sane values.
 func normalize(cfg Config) Config {
 	d := Default()
-	if cfg.ReposDir == "" {
-		cfg.ReposDir = cfg.LegacyBaseDir
-	}
-	cfg.LegacyBaseDir = ""
 	if cfg.ReposDir != "" {
 		cfg.ReposDir = normalizeDir(cfg.ReposDir)
 	}
@@ -501,93 +470,9 @@ func migrateRepoLink(link RepoLink) RepoLink {
 	return link
 }
 
-// legacyConfig mirrors the old TOML schema for one-time migration.
-type legacyConfig struct {
-	Tools struct {
-		Shell string `toml:"shell"`
-	} `toml:"tools"`
-	UI struct {
-		ShowFullPath bool `toml:"show_full_path"`
-	} `toml:"ui"`
-	Behavior struct {
-		DefaultProtocol string `toml:"default_protocol"`
-		ConfirmDelete   bool   `toml:"confirm_delete"`
-	} `toml:"behavior"`
-}
-
-func legacyPath() string {
-	if x := os.Getenv("XDG_CONFIG_HOME"); x != "" {
-		return filepath.Join(x, "lazymux", "config.toml")
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".config", "lazymux", "config.toml")
-}
-
-// moveLegacyJSON moves a config from legacyJSONPath to path, keeping its repos
-// where they are. It reports false when there is nothing to move or
-// $LAZYMUX_CONFIG picks the path. A legacy file that can't be read yields
-// defaults with LoadFailed set, so a fresh config never buries it.
-func moveLegacyJSON(path string) (Config, bool) {
-	legacy := legacyJSONPath()
-	if legacy == "" || os.Getenv("LAZYMUX_CONFIG") != "" {
-		return Config{}, false
-	}
-	cfg, err := readFile(legacy)
-	if errors.Is(err, os.ErrNotExist) {
-		return Config{}, false
-	}
-	if err != nil {
-		cfg = Default()
-		cfg.LoadFailed = true
-		cfg.Warnings = []string{fmt.Sprintf(
-			"using defaults, changes won't be saved: %v (fix it to move it to %s)", err, path)}
-		return cfg, true
-	}
-	if cfg.ReposDir == "" {
-		cfg.ReposDir = filepath.Dir(legacy)
-	}
-	if err := Save(cfg); err != nil {
-		cfg.Warnings = append(cfg.Warnings,
-			fmt.Sprintf("couldn't move config from %s to %s: %v", legacy, path, err))
-		return cfg, true
-	}
-	if err := os.Remove(legacy); err != nil {
-		cfg.Warnings = append(cfg.Warnings,
-			fmt.Sprintf("config moved to %s, but couldn't remove %s: %v", path, legacy, err))
-	}
-	return cfg, true
-}
-
-// migrateLegacy folds a legacy config.toml into the new Config, preserving the
-// user's shell/UI/behavior choices. Returns (cfg, true) only on success.
-func migrateLegacy(base Config) (Config, bool) {
-	p := legacyPath()
-	if p == "" {
-		return base, false
-	}
-	data, err := os.ReadFile(p)
-	if err != nil {
-		return base, false
-	}
-	var old legacyConfig
-	if _, err := toml.Decode(string(data), &old); err != nil {
-		return base, false
-	}
-	base.Tools.Shell = old.Tools.Shell
-	base.UI.ShowFullPath = old.UI.ShowFullPath
-	if old.Behavior.DefaultProtocol != "" {
-		base.Behavior.DefaultProtocol = old.Behavior.DefaultProtocol
-	}
-	base.Behavior.ConfirmDelete = old.Behavior.ConfirmDelete
-	return base, true
-}
-
 // Save serializes cfg to Path() as indented JSON, creating parents as needed.
 // The write goes to a temp file in the same directory and is renamed into
-// place, so a crash (or two lazymux processes writing at once) can't
+// place, so a crash (or two gitkeeper processes writing at once) can't
 // leave a half-written config behind.
 func Save(cfg Config) error {
 	if cfg.LoadFailed {

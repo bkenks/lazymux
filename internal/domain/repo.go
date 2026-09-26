@@ -18,7 +18,7 @@ type Repo struct {
 	AbsPath        string
 	LastInteracted time.Time
 
-	// Forge links, populated from config for repos under the lazymux base dir.
+	// Forge links, populated from config for repos under the gitkeeper base dir.
 	// Upstreams are every forge the repo is pushed to; Origin is the one it is
 	// fetched from.
 	Upstreams []string

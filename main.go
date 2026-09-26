@@ -7,16 +7,16 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/bkenks/lazymux/internal/app"
-	"github.com/bkenks/lazymux/internal/config"
-	"github.com/bkenks/lazymux/internal/constants"
+	"github.com/bkenks/gitkeeper/internal/app"
+	"github.com/bkenks/gitkeeper/internal/config"
+	"github.com/bkenks/gitkeeper/internal/constants"
 )
 
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "-v", "--version":
-			fmt.Println("lazymux", version())
+			fmt.Println("gitkeeper", version())
 			return
 		case "-h", "--help":
 			printHelp()
@@ -33,7 +33,7 @@ func main() {
 	tui := app.New(cfg, version())
 	p := tea.NewProgram(tui)
 	if _, err := p.Run(); err != nil {
-		fmt.Fprintln(os.Stderr, "lazymux: fatal:", err)
+		fmt.Fprintln(os.Stderr, "gitkeeper: fatal:", err)
 		os.Exit(1)
 	}
 }
@@ -44,9 +44,9 @@ var buildVersion = "dev"
 func version() string { return buildVersion }
 
 func printHelp() {
-	fmt.Println(`lazymux — a TUI git repo manager (clone + custom keybinds)
+	fmt.Println(`gitkeeper — a TUI git repo manager (clone + custom keybinds)
 
-Usage: lazymux [flags]
+Usage: gitkeeper [flags]
 
 Flags:
   -h, --help     show this help
@@ -54,10 +54,10 @@ Flags:
 
 Configuration:
   All settings, the forge registry, and per-repo forge links live in a single
-  $XDG_CONFIG_HOME/lazymux/config.json, by default ~/.config/lazymux/config.json
-  (override the path with $LAZYMUX_CONFIG). Repos are cloned into
-  <repos>/<namespace>/<repo>, where <repos> is $LAZYMUX_REPOS or else the
-  config's reposDir. If neither names an existing directory, lazymux asks for
+  $XDG_CONFIG_HOME/gitkeeper/config.json, by default ~/.config/gitkeeper/config.json
+  (override the path with $GITKEEPER_CONFIG). Repos are cloned into
+  <repos>/<namespace>/<repo>, where <repos> is $GITKEEPER_REPOS or else the
+  config's reposDir. If neither names an existing directory, gitkeeper asks for
   one at startup.
 
 Keybindings (repo list):`)

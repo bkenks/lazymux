@@ -1,4 +1,4 @@
-module github.com/bkenks/lazymux
+module github.com/bkenks/gitkeeper
 
 go 1.25.8
 
@@ -7,7 +7,6 @@ require (
 	charm.land/bubbletea/v2 v2.0.9
 	charm.land/huh/v2 v2.0.3
 	charm.land/lipgloss/v2 v2.0.6
-	github.com/BurntSushi/toml v1.6.0
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/x/ansi v0.11.8
 	github.com/lucasb-eyer/go-colorful v1.4.1

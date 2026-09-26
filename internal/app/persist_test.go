@@ -6,14 +6,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bkenks/lazymux/internal/config"
-	"github.com/bkenks/lazymux/internal/events"
+	"github.com/bkenks/gitkeeper/internal/config"
+	"github.com/bkenks/gitkeeper/internal/events"
 )
 
 // newPersistedApp writes cfg to a temp config file and starts the app on it.
 func newPersistedApp(t *testing.T, cfg config.Config) *ModelManager {
 	t.Helper()
-	t.Setenv("LAZYMUX_CONFIG", filepath.Join(t.TempDir(), ".lazymux.json"))
+	t.Setenv("GITKEEPER_CONFIG", filepath.Join(t.TempDir(), ".gitkeeper.json"))
 	cfg.ReposDir = t.TempDir()
 	if err := config.Save(cfg); err != nil {
 		t.Fatal(err)
@@ -118,8 +118,8 @@ func TestRepoDeletedRemovesTheDeletedRepoLink(t *testing.T) {
 }
 
 func TestSettingsSaveDoesNotOverwriteUnparseableConfig(t *testing.T) {
-	path := filepath.Join(t.TempDir(), ".lazymux.json")
-	t.Setenv("LAZYMUX_CONFIG", path)
+	path := filepath.Join(t.TempDir(), ".gitkeeper.json")
+	t.Setenv("GITKEEPER_CONFIG", path)
 	const broken = `{"forges": [`
 	if err := os.WriteFile(path, []byte(broken), 0o644); err != nil {
 		t.Fatal(err)

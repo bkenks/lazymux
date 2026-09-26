@@ -1,4 +1,4 @@
-# Building lazymux
+# Building gitkeeper
 
 Build, install and release tasks are uv/Python scripts in `.mise/tasks/`. Run them
 with `mise run <task>` from anywhere in the repo; `mise tasks` lists them.
@@ -12,14 +12,14 @@ provisions everything. Each script carries its own PEP 723 header and runs under
 
 | Command                       | Output                        |
 |-------------------------------|--------------------------------|
-| `mise run build`              | `build/bin/lazymux` (this machine) |
+| `mise run build`              | `build/bin/gitkeeper` (this machine) |
 | `mise run build --all`        | `build/dist/*` — all 6 platforms + `SHA256SUMS` |
 | `mise run build --platform GOOS/GOARCH` | `build/dist/*` — one platform (repeatable) |
 | `mise run build --version vX.Y.Z` | stamps an explicit version instead of `git describe` |
 | `mise run build --list`       | prints the release matrix       |
-| `mise run build --dev`        | `build/bin/lazymux-dev` (this machine) |
-| `mise run install`            | installs `lazymux` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
-| `mise run install --dev`      | installs `lazymux-dev` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
+| `mise run build --dev`        | `build/bin/gitkeeper-dev` (this machine) |
+| `mise run install`            | installs `gitkeeper` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
+| `mise run install --dev`      | installs `gitkeeper-dev` to `$GOBIN` (or `$(go env GOPATH)/bin`) |
 | `mise run clean`              | removes `build/bin` and `build/dist` |
 | `mise run check`              | `go vet`, `go test`, `golangci-lint`, `ruff` and `ty` |
 | `mise run release <bump>`     | tests, tags and pushes; CI builds and publishes (see below) |
@@ -38,10 +38,10 @@ into `build/dist/` (~20s):
 | linux   | amd64, arm64  |
 | windows | amd64, arm64  |
 
-lazymux is pure Go — there is no cgo anywhere in its dependency graph — so these
+gitkeeper is pure Go — there is no cgo anywhere in its dependency graph — so these
 need nothing but `GOOS`/`GOARCH`; no C cross-toolchain is involved. Matrix builds
 set `CGO_ENABLED=0`, so the Linux binaries are static. Windows artifacts get a
-`.exe` suffix. Artifacts are named `lazymux-<version>-<goos>-<goarch>`, and a
+`.exe` suffix. Artifacts are named `gitkeeper-<version>-<goos>-<goarch>`, and a
 `SHA256SUMS` file is written alongside them in the standard `sha256sum -c` format.
 
 The matrix lives in `PLATFORMS` in `.mise/tasks/_lib.py`; `--platform` only accepts
@@ -66,17 +66,16 @@ Tasks are file tasks, so mise passes arguments straight through to the script;
 ## Regular build vs. dev build
 
 Both builds compile the same source. The only difference is a build-time flag
-(`-ldflags -X`) that overrides `internal/config.dirName`, which controls the
-directory under `$HOME` used for the config file and the default repo `BaseDir`:
+(`-ldflags -X`) that overrides `internal/config.dirName`, which names the
+directory under `$XDG_CONFIG_HOME` and `$XDG_DATA_HOME` that holds the config and
+recency history:
 
-- **`build`** — `dirName` stays `lazymux`, so the binary reads/writes
-  `~/lazymux/.lazymux.json` and clones repos under `~/lazymux/` by default.
-- **`build --dev`** — `dirName` is overridden to `lazymux-dev`, so `lazymux-dev` reads/writes
-  `~/lazymux-dev/.lazymux.json` and clones repos under `~/lazymux-dev/` instead.
-  Its recency history (`$XDG_DATA_HOME/lazymux-dev/interactions.json`, by default
-  under `~/.local/share`) is keyed by the same name. This keeps local development
-  fully sandboxed from your real repo tree — you can run `lazymux-dev` against
-  throwaway clones without touching `~/lazymux`.
+- **`build`** — `dirName` stays `gitkeeper`, so the binary reads/writes
+  `~/.config/gitkeeper/config.json` and `~/.local/share/gitkeeper/interactions.json`.
+- **`build --dev`** — `dirName` is overridden to `gitkeeper-dev`, so `gitkeeper-dev` reads/writes
+  `~/.config/gitkeeper-dev/config.json` and `~/.local/share/gitkeeper-dev/interactions.json`
+  instead. Its repo directory is set separately on first launch, so pointing it at a
+  scratch directory keeps local development away from your real repos.
 
 Both binaries also embed a version string via `-X main.buildVersion=...` (derived
 from `git describe`); the dev build appends a `-dev` suffix to that version.
@@ -133,9 +132,9 @@ from `mise.toml`, so CI compiles with the same Go version as a local build.
 access token with the `write:repository` and `read:misc` scopes. The forge URL is
 taken from Woodpecker's own `$CI_FORGE_URL`, so nothing else is hardcoded.
 
-lazymux is not distributed through Homebrew. Releases ship prebuilt binaries; install
+gitkeeper is not distributed through Homebrew. Releases ship prebuilt binaries; install
 one from the releases page, with `go install`, or from a clone with `mise run install`.
 
-`go install github.com/bkenks/lazymux@latest` resolves through the GitHub mirror, which
+`go install github.com/bkenks/gitkeeper@latest` resolves through the GitHub mirror, which
 is why release tags keep the `v` prefix: the Go proxy only indexes `vX.Y.Z`. Pushing a
 new tag to the mirror is what makes a release visible there.

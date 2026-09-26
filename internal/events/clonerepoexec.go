@@ -1,6 +1,6 @@
 package events
 
-import "github.com/bkenks/lazymux/internal/repomgr"
+import "github.com/bkenks/gitkeeper/internal/repomgr"
 
 // CloneRepoExec reports the result of one repo clone, carrying the pending
 // clone so the handler can apply the placeholder/insteadOf rewrite and record

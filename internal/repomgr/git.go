@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bkenks/lazymux/internal/config"
-	"github.com/bkenks/lazymux/internal/domain"
+	"github.com/bkenks/gitkeeper/internal/config"
+	"github.com/bkenks/gitkeeper/internal/domain"
 )
 
 // RepoDir returns the on-disk path for a repo key under baseDir.
@@ -24,7 +24,7 @@ func RepoDir(baseDir, key string) string {
 // at the placeholder host, a single local insteadOf rewrites the placeholder to
 // the origin forge (so fetch/pull go there), and one remote.origin.pushurl is
 // written per upstream forge, which makes a push fan out to all of them. It's
-// idempotent — stale lazymux-managed insteadOf rules and every existing pushurl
+// idempotent — stale gitkeeper-managed insteadOf rules and every existing pushurl
 // are cleared first — so it can be re-run whenever the links or scheme change.
 // The origin forge is looked up before anything is changed, so a missing forge
 // leaves the repo's existing config working.

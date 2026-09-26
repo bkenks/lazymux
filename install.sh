@@ -2,12 +2,12 @@
 set -euo pipefail
 
 readonly FORGE_URL="https://fj.ktbcloud.com"
-readonly REPO="bkenks/lazymux"
+readonly REPO="bkenks/gitkeeper"
 readonly INSTALL_DIR="${HOME}/.local/bin"
 tmp_dir=""
 
 fail() {
-  echo "lazymux install: $*" >&2
+  echo "gitkeeper install: $*" >&2
   exit 1
 }
 
@@ -61,13 +61,13 @@ main() {
   os="$(detect_os)"
   arch="$(detect_arch)"
   tag="$(get_latest_tag)"
-  artifact="lazymux-${tag}-${os}-${arch}"
+  artifact="gitkeeper-${tag}-${os}-${arch}"
   download_url="${FORGE_URL}/${REPO}/releases/download/${tag}"
 
   tmp_dir="$(mktemp -d)"
   trap 'rm -r "$tmp_dir"' EXIT
 
-  echo "Downloading lazymux ${tag} for ${os}/${arch}..."
+  echo "Downloading gitkeeper ${tag} for ${os}/${arch}..."
   curl -fsSL -o "$tmp_dir/$artifact" "$download_url/$artifact" ||
     fail "couldn't download $download_url/$artifact"
   curl -fsSL -o "$tmp_dir/SHA256SUMS" "$download_url/SHA256SUMS" ||
@@ -75,12 +75,12 @@ main() {
   verify_checksum "$tmp_dir" "$artifact"
 
   mkdir -p "$INSTALL_DIR"
-  install -m 0755 "$tmp_dir/$artifact" "$INSTALL_DIR/lazymux"
-  echo "Installed lazymux ${tag} to ${INSTALL_DIR}/lazymux"
+  install -m 0755 "$tmp_dir/$artifact" "$INSTALL_DIR/gitkeeper"
+  echo "Installed gitkeeper ${tag} to ${INSTALL_DIR}/gitkeeper"
 
   case ":${PATH}:" in
   *":${INSTALL_DIR}:"*) ;;
-  *) echo "Add ${INSTALL_DIR} to your PATH to run lazymux." ;;
+  *) echo "Add ${INSTALL_DIR} to your PATH to run gitkeeper." ;;
   esac
 }
 

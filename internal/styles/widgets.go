@@ -9,7 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/bkenks/lazymux/internal/constants"
+	"github.com/bkenks/gitkeeper/internal/constants"
 )
 
 // NewDelegate returns the default list row renderer in the palette's colors.
@@ -79,7 +79,7 @@ func NewTextArea() textarea.Model {
 }
 
 // FormTheme is the huh theme in the palette's colors, keeping huh's red for
-// errors. huh only learns the background from a message lazymux never
+// errors. huh only learns the background from a message gitkeeper never
 // requests, so this ignores its guess.
 var FormTheme = huh.ThemeFunc(func(bool) *huh.Styles {
 	t := huh.ThemeCharm(IsDark)

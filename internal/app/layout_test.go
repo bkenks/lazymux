@@ -7,13 +7,13 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/bkenks/lazymux/internal/domain"
-	"github.com/bkenks/lazymux/internal/events"
+	"github.com/bkenks/gitkeeper/internal/domain"
+	"github.com/bkenks/gitkeeper/internal/events"
 	"github.com/charmbracelet/x/ansi"
 )
 
 func TestScreensFitTheWindow(t *testing.T) {
-	t.Setenv("LAZYMUX_CONFIG", filepath.Join(t.TempDir(), ".lazymux.json"))
+	t.Setenv("GITKEEPER_CONFIG", filepath.Join(t.TempDir(), ".gitkeeper.json"))
 	window := tea.WindowSizeMsg{Width: 80, Height: 30}
 
 	for _, state := range []domain.SessionState{
@@ -33,7 +33,7 @@ func TestScreensFitTheWindow(t *testing.T) {
 }
 
 func TestListScreensShowQuitOnce(t *testing.T) {
-	t.Setenv("LAZYMUX_CONFIG", filepath.Join(t.TempDir(), ".lazymux.json"))
+	t.Setenv("GITKEEPER_CONFIG", filepath.Join(t.TempDir(), ".gitkeeper.json"))
 	window := tea.WindowSizeMsg{Width: 200, Height: 30}
 
 	for _, state := range []domain.SessionState{

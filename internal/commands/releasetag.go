@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/bkenks/lazymux/internal/events"
-	"github.com/bkenks/lazymux/internal/repomgr"
+	"github.com/bkenks/gitkeeper/internal/events"
+	"github.com/bkenks/gitkeeper/internal/repomgr"
 )
 
 // OpenTagReleaseCmd reads the tags of the repo at dir, then opens the release

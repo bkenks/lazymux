@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/bkenks/lazymux/internal/domain"
-	"github.com/bkenks/lazymux/internal/events"
-	"github.com/bkenks/lazymux/internal/semver"
-	"github.com/bkenks/lazymux/internal/ui/formtest"
+	"github.com/bkenks/gitkeeper/internal/domain"
+	"github.com/bkenks/gitkeeper/internal/events"
+	"github.com/bkenks/gitkeeper/internal/semver"
+	"github.com/bkenks/gitkeeper/internal/ui/formtest"
 )
 
 var (

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bkenks/lazymux/internal/config"
-	"github.com/bkenks/lazymux/internal/domain"
-	"github.com/bkenks/lazymux/internal/events"
+	"github.com/bkenks/gitkeeper/internal/config"
+	"github.com/bkenks/gitkeeper/internal/domain"
+	"github.com/bkenks/gitkeeper/internal/events"
 )
 
 // configWithReposDir is the default config with an existing repo directory,
@@ -22,7 +22,7 @@ func configWithReposDir(t *testing.T) config.Config {
 
 func isolateReposDir(t *testing.T) {
 	t.Helper()
-	t.Setenv("LAZYMUX_CONFIG", filepath.Join(t.TempDir(), "config.json"))
+	t.Setenv("GITKEEPER_CONFIG", filepath.Join(t.TempDir(), "config.json"))
 	t.Setenv(config.ReposEnvVar, "")
 }
 

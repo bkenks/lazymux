@@ -10,26 +10,26 @@ import (
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/bkenks/lazymux/internal/commands"
-	"github.com/bkenks/lazymux/internal/config"
-	"github.com/bkenks/lazymux/internal/constants"
-	"github.com/bkenks/lazymux/internal/domain"
-	"github.com/bkenks/lazymux/internal/events"
-	"github.com/bkenks/lazymux/internal/keybind"
-	"github.com/bkenks/lazymux/internal/repomgr"
-	"github.com/bkenks/lazymux/internal/semver"
-	"github.com/bkenks/lazymux/internal/styles"
-	"github.com/bkenks/lazymux/internal/ui/clonerepos"
-	"github.com/bkenks/lazymux/internal/ui/confirm"
-	"github.com/bkenks/lazymux/internal/ui/forgeregistry"
-	"github.com/bkenks/lazymux/internal/ui/forgeselect"
-	"github.com/bkenks/lazymux/internal/ui/keybinds"
-	"github.com/bkenks/lazymux/internal/ui/repolist"
-	"github.com/bkenks/lazymux/internal/ui/reposdir"
-	"github.com/bkenks/lazymux/internal/ui/reposettings"
-	"github.com/bkenks/lazymux/internal/ui/settings"
-	"github.com/bkenks/lazymux/internal/ui/splash"
-	"github.com/bkenks/lazymux/internal/ui/tagrelease"
+	"github.com/bkenks/gitkeeper/internal/commands"
+	"github.com/bkenks/gitkeeper/internal/config"
+	"github.com/bkenks/gitkeeper/internal/constants"
+	"github.com/bkenks/gitkeeper/internal/domain"
+	"github.com/bkenks/gitkeeper/internal/events"
+	"github.com/bkenks/gitkeeper/internal/keybind"
+	"github.com/bkenks/gitkeeper/internal/repomgr"
+	"github.com/bkenks/gitkeeper/internal/semver"
+	"github.com/bkenks/gitkeeper/internal/styles"
+	"github.com/bkenks/gitkeeper/internal/ui/clonerepos"
+	"github.com/bkenks/gitkeeper/internal/ui/confirm"
+	"github.com/bkenks/gitkeeper/internal/ui/forgeregistry"
+	"github.com/bkenks/gitkeeper/internal/ui/forgeselect"
+	"github.com/bkenks/gitkeeper/internal/ui/keybinds"
+	"github.com/bkenks/gitkeeper/internal/ui/repolist"
+	"github.com/bkenks/gitkeeper/internal/ui/reposdir"
+	"github.com/bkenks/gitkeeper/internal/ui/reposettings"
+	"github.com/bkenks/gitkeeper/internal/ui/settings"
+	"github.com/bkenks/gitkeeper/internal/ui/splash"
+	"github.com/bkenks/gitkeeper/internal/ui/tagrelease"
 )
 
 const (
@@ -513,7 +513,7 @@ func (m *ModelManager) keybindClashes() []string {
 	for _, bind := range m.cfg.Keybinds {
 		if used, ok := keybind.FindClash(bind.Keys, reserved); ok {
 			clashes = append(clashes,
-				fmt.Sprintf("keybind %q won't run: %s is a lazymux key", bind.Name, used))
+				fmt.Sprintf("keybind %q won't run: %s is a gitkeeper key", bind.Name, used))
 		} else if first, ok := claimed[bind.Keys]; ok {
 			clashes = append(clashes,
 				fmt.Sprintf("keybind %q won't run: %s is already bound to %q",

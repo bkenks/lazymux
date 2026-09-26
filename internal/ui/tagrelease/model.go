@@ -7,12 +7,12 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
-	"github.com/bkenks/lazymux/internal/commands"
-	"github.com/bkenks/lazymux/internal/domain"
-	"github.com/bkenks/lazymux/internal/events"
-	"github.com/bkenks/lazymux/internal/repomgr"
-	"github.com/bkenks/lazymux/internal/semver"
-	"github.com/bkenks/lazymux/internal/styles"
+	"github.com/bkenks/gitkeeper/internal/commands"
+	"github.com/bkenks/gitkeeper/internal/domain"
+	"github.com/bkenks/gitkeeper/internal/events"
+	"github.com/bkenks/gitkeeper/internal/repomgr"
+	"github.com/bkenks/gitkeeper/internal/semver"
+	"github.com/bkenks/gitkeeper/internal/styles"
 )
 
 type Model struct {
