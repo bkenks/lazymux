@@ -242,15 +242,16 @@ lazymux comes back when you quit it.
 `ctrl+shift` combos and `cmd` need a terminal that reports them (kitty keyboard
 protocol — e.g. Ghostty, kitty, WezTerm, or iTerm2 with CSI u enabled).
 
-### Confirm / Settings
+### Confirm Delete (`d`)
 
 | Key | Action |
 |---|---|
-| `Ctrl+P` | Proceed (confirm delete) |
-| `←` / `h` · `→` / `l` / `Enter` / `Space` | Previous / next setting value |
-| `Esc` | Cancel / back |
+| `←` / `h` · `→` / `l` | Choose Yes / No |
+| `Enter` | Confirm the choice |
+| `Ctrl+P` | Delete right away |
+| `Esc` | Back without deleting |
 
-Changes save to disk immediately.
+Turn the prompt off with **Confirm before deleting** in settings (`1`).
 
 ---
 
@@ -339,4 +340,4 @@ On startup, lazymux walks the repo directory to populate the repository list. Cl
 
 ## License
 
-[MIT](LICENSE)
+[GPL-3.0](LICENSE)
